@@ -1,0 +1,79 @@
+{
+  "app": {
+    "name": "FPOLink TN",
+    "tagline": "FPO டிஜிட்டல் செயல்பாட்டு அமைப்பு"
+  },
+  "nav": {
+    "dashboard": "கட்டுப்பாட்டு பலகை",
+    "farmers": "விவசாயிகள்",
+    "prices": "சந்தை விலைகள்",
+    "harvest": "அறுவடை",
+    "aggregation": "ஒருங்கிணைப்பு",
+    "buyers": "கொள்முதலாளர்கள்",
+    "orders": "ஆர்டர்கள்",
+    "predictions": "முன்கணிப்புகள்",
+    "settings": "அமைப்புகள்"
+  },
+  "dashboard": {
+    "members": "உறுப்பினர்கள்",
+    "todays_produce": "இன்றைய விளைச்சல்",
+    "revenue": "வருவாய்",
+    "market_prices": "சந்தை விலைகள்",
+    "price_forecast": "விலை முன்கணிப்பு",
+    "alerts": "எச்சரிக்கைகள்",
+    "supply_summary": "சரக்கு சுருக்கம்"
+  },
+  "farmer": {
+    "name": "பெயர்",
+    "mobile": "கைபேசி",
+    "village": "கிராமம்",
+    "crop": "பயிர்",
+    "land_area": "நில பரப்பு",
+    "expected_harvest": "எதிர்பார்க்கப்படும் அறுவடை",
+    "expected_harvest_date": "எதிர்பார்க்கப்படும் அறுவடை தேதி",
+    "add_farmer": "விவசாயி சேர்",
+    "farmer_list": "விவசாயிகள் பட்டியல்"
+  },
+  "harvest": {
+    "submit": "அறுவடை சமர்ப்பி",
+    "crop": "பயிர்",
+    "quantity": "அளவு (கிலோ)",
+    "grade": "தரம்",
+    "date": "அறுவடை தேதி",
+    "submit_button": "சமர்ப்பி",
+    "history": "அறுவடை வரலாறு"
+  },
+  "price": {
+    "market_price": "சந்தை விலை",
+    "min_price": "குறைந்தபட்ச விலை",
+    "max_price": "அதிகபட்ச விலை",
+    "modal_price": "சராசரி விலை",
+    "trend": "போக்கு",
+    "forecast": "முன்கணிப்பு",
+    "history": "விலை வரலாறு"
+  },
+  "buyer": {
+    "name": "கொள்முதலாளர் பெயர்",
+    "location": "இடம்",
+    "required_crop": "தேவையான பயிர்",
+    "required_quantity": "தேவையான அளவு",
+    "min_grade": "குறைந்தபட்ச தரம்",
+    "required_date": "தேவையான தேதி",
+    "create_offer": "ஆஃபர் உருவாக்கு",
+    "open_requirements": "திறந்த தேவைகள்"
+  },
+  "common": {
+    "save": "சேமி",
+    "cancel": "ரத்து",
+    "delete": "நீக்கு",
+    "edit": "திருத்து",
+    "search": "தேடு",
+    "filter": "வடிகட்டு",
+    "loading": "ஏற்றுகிறது...",
+    "no_data": "தரவு இல்லை",
+    "per_kg": "/கிலோ",
+    "per_unit": "/அலகு",
+    "kg": "கிலோ",
+    "acres": "ஏக்கர்"
+  }
+}

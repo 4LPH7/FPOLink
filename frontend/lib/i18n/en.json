@@ -1,0 +1,79 @@
+{
+  "app": {
+    "name": "FPOLink TN",
+    "tagline": "FPO Digital Operating System"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "farmers": "Farmers",
+    "prices": "Market Prices",
+    "harvest": "Harvest",
+    "aggregation": "Aggregation",
+    "buyers": "Buyers",
+    "orders": "Orders",
+    "predictions": "Predictions",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "members": "Members",
+    "todays_produce": "Today's Produce",
+    "revenue": "Revenue",
+    "market_prices": "Market Prices",
+    "price_forecast": "Price Forecast",
+    "alerts": "Alerts",
+    "supply_summary": "Supply Summary"
+  },
+  "farmer": {
+    "name": "Name",
+    "mobile": "Mobile",
+    "village": "Village",
+    "crop": "Crop",
+    "land_area": "Land Area",
+    "expected_harvest": "Expected Harvest",
+    "expected_harvest_date": "Expected Harvest Date",
+    "add_farmer": "Add Farmer",
+    "farmer_list": "Farmer List"
+  },
+  "harvest": {
+    "submit": "Submit Harvest",
+    "crop": "Crop",
+    "quantity": "Quantity (kg)",
+    "grade": "Grade",
+    "date": "Harvest Date",
+    "submit_button": "Submit",
+    "history": "Harvest History"
+  },
+  "price": {
+    "market_price": "Market Price",
+    "min_price": "Min Price",
+    "max_price": "Max Price",
+    "modal_price": "Modal Price",
+    "trend": "Trend",
+    "forecast": "Forecast",
+    "history": "Price History"
+  },
+  "buyer": {
+    "name": "Buyer Name",
+    "location": "Location",
+    "required_crop": "Required Crop",
+    "required_quantity": "Required Quantity",
+    "min_grade": "Minimum Grade",
+    "required_date": "Required Date",
+    "create_offer": "Create Offer",
+    "open_requirements": "Open Requirements"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "loading": "Loading...",
+    "no_data": "No data available",
+    "per_kg": "/kg",
+    "per_unit": "/unit",
+    "kg": "kg",
+    "acres": "acres"
+  }
+}
