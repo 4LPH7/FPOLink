@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
 
-from app.api import auth, fpo, farmers, prices, harvest, buyers, predictions
+from app.api import auth, fpo, farmers, prices, harvest, buyers, predictions, crops, admin
 from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -33,9 +33,11 @@ app.include_router(auth.router)
 app.include_router(fpo.router)
 app.include_router(farmers.router)
 app.include_router(prices.router)
+app.include_router(crops.router)
 app.include_router(harvest.router)
 app.include_router(buyers.router)
 app.include_router(predictions.router)
+app.include_router(admin.router)
 
 @app.get("/api/health")
 def health_check():
