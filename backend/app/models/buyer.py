@@ -1,5 +1,6 @@
+"""Buyer and buyer requirement models."""
 import uuid
-from sqlalchemy import Column, String, Float, Date, Text, ForeignKey, Enum
+from sqlalchemy import Column, String, Float, Numeric, Date, Text, ForeignKey, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin
@@ -24,7 +25,7 @@ class BuyerRequirement(Base, TimestampMixin):
     quantity_kg = Column(Float, nullable=False)
     min_grade = Column(Enum(HarvestGrade), nullable=False)
     required_date = Column(Date, nullable=False)
-    max_price_per_kg = Column(Float, nullable=True)
+    max_price_per_kg = Column(Numeric(12, 2), nullable=True)
     status = Column(String(20), default='open')
     notes = Column(Text, nullable=True)
 

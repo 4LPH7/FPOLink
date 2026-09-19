@@ -1,6 +1,6 @@
 """
-FPOLink TN — Database Seed Script
-Seeds initial reference data for development and demo purposes.
+FPOLink TN — Database Seed Script (v2)
+Uses Argon2 hashing (pwdlib) and normalized markets table.
 Idempotent: safe to run multiple times.
 """
 
@@ -8,25 +8,22 @@ import os
 import sys
 import uuid
 import datetime
+from decimal import Decimal
 
 # Add backend directory to path for app imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from passlib.context import CryptContext
 from app.database import engine, SessionLocal
 from app.models.base import Base
 from app.models.user import User, UserRole
 from app.models.crop import Crop
+from app.models.variety import Variety
 from app.models.fpo import FPO
 from app.models.farmer import Farmer
+from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.weather import WeatherData
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+from app.services.auth import hash_password
 
 
 def seed_data():
@@ -37,7 +34,7 @@ def seed_data():
     db = SessionLocal()
     try:
         print("=" * 50)
-        print("FPOLink TN — Seeding Database")
+        print("FPOLink TN — Seeding Database (v2)")
         print("=" * 50)
 
         # ─── 1. Admin User ────────────────────────────────
@@ -52,6 +49,8 @@ def seed_data():
                 hashed_password=hash_password("admin123"),
                 is_active=True,
                 language_preference="en",
+                consent_given=True,
+                consent_date=datetime.datetime.now(datetime.timezone.utc),
             )
             db.add(admin)
             db.commit()
@@ -80,7 +79,74 @@ def seed_data():
                 print(f"· Crop '{cd['name']}' already exists")
             crop_objects[cd["name"]] = crop
 
-        # ─── 3. FPO ───────────────────────────────────────
+        # ─── 3. Varieties ─────────────────────────────────
+        varieties_data = [
+            {"crop": "turmeric", "name": "finger", "tamil_name": "விரல் மஞ்சள்", "grade": "A"},
+            {"crop": "turmeric", "name": "bulb", "tamil_name": "கிழங்கு மஞ்சள்", "grade": "B"},
+            {"crop": "banana", "name": "Nendran", "tamil_name": "நேந்திரம்", "grade": "A"},
+            {"crop": "banana", "name": "Poovan", "tamil_name": "பூவன்", "grade": "A"},
+        ]
+
+        for vd in varieties_data:
+            crop = crop_objects[vd["crop"]]
+            existing = db.query(Variety).filter(
+                Variety.crop_id == crop.id, Variety.name == vd["name"]
+            ).first()
+            if not existing:
+                variety = Variety(
+                    crop_id=crop.id,
+                    name=vd["name"],
+                    tamil_name=vd["tamil_name"],
+                    grade=vd["grade"],
+                )
+                db.add(variety)
+                db.commit()
+                print(f"✓ Variety '{vd['name']}' for {vd['crop']} created")
+            else:
+                print(f"· Variety '{vd['name']}' already exists")
+
+        # ─── 4. Markets ───────────────────────────────────
+        markets_data = [
+            {
+                "name": "Erode Mandi",
+                "district": "Erode",
+                "state": "Tamil Nadu",
+                "latitude": 11.3410,
+                "longitude": 77.7172,
+                "market_type": "mandi",
+            },
+            {
+                "name": "Gobichettipalayam Mandi",
+                "district": "Erode",
+                "state": "Tamil Nadu",
+                "latitude": 11.4539,
+                "longitude": 77.4380,
+                "market_type": "mandi",
+            },
+            {
+                "name": "Erode Uzhavar Sandhai",
+                "district": "Erode",
+                "state": "Tamil Nadu",
+                "latitude": 11.3410,
+                "longitude": 77.7172,
+                "market_type": "uzhavar_sandhai",
+            },
+        ]
+
+        market_objects = {}
+        for md in markets_data:
+            market = db.query(Market).filter(Market.name == md["name"]).first()
+            if not market:
+                market = Market(**md)
+                db.add(market)
+                db.commit()
+                db.refresh(market)
+                print(f"✓ Market '{md['name']}' created")
+            else:
+                print(f"· Market '{md['name']}' already exists")
+            market_objects[md["name"]] = market
+
+        # ─── 5. FPO ───────────────────────────────────────
         fpo_reg = "FPO-TN-ERD-001"
         fpo = db.query(FPO).filter(FPO.registration_number == fpo_reg).first()
         if not fpo:
@@ -99,7 +165,7 @@ def seed_data():
         else:
             print("· FPO already exists")
 
-        # ─── 4. Farmer Users + Farmer Records ─────────────
+        # ─── 6. Farmer Users + Farmer Records ─────────────
         farmers_data = [
             {
                 "name": "Ramasamy",
@@ -120,7 +186,6 @@ def seed_data():
         for fd in farmers_data:
             farmer_user = db.query(User).filter(User.phone == fd["phone"]).first()
             if not farmer_user:
-                # Create the user account
                 farmer_user = User(
                     name=fd["name"],
                     phone=fd["phone"],
@@ -128,12 +193,13 @@ def seed_data():
                     hashed_password=hash_password("farmer123"),
                     is_active=True,
                     language_preference="ta",
+                    consent_given=True,
+                    consent_date=datetime.datetime.now(datetime.timezone.utc),
                 )
                 db.add(farmer_user)
                 db.commit()
                 db.refresh(farmer_user)
 
-                # Create the farmer profile
                 farmer = Farmer(
                     user_id=farmer_user.id,
                     fpo_id=fpo.id,
@@ -148,16 +214,17 @@ def seed_data():
             else:
                 print(f"· Farmer '{fd['name']}' already exists")
 
-        # ─── 5. Market Prices (Turmeric, Erode, last 5 days) ──
+        # ─── 7. Market Prices (Turmeric, Erode, last 5 days) ──
         turmeric = crop_objects.get("turmeric")
-        if turmeric:
+        erode_mandi = market_objects.get("Erode Mandi")
+        if turmeric and erode_mandi:
             today = datetime.date.today()
             price_data = [
-                {"days_ago": 0, "modal": 150.0},
-                {"days_ago": 1, "modal": 148.0},
-                {"days_ago": 2, "modal": 144.0},
-                {"days_ago": 3, "modal": 145.0},
-                {"days_ago": 4, "modal": 142.0},
+                {"days_ago": 0, "modal": Decimal("150.00")},
+                {"days_ago": 1, "modal": Decimal("148.00")},
+                {"days_ago": 2, "modal": Decimal("144.00")},
+                {"days_ago": 3, "modal": Decimal("145.00")},
+                {"days_ago": 4, "modal": Decimal("142.00")},
             ]
 
             for pd_item in price_data:
@@ -166,7 +233,7 @@ def seed_data():
                     db.query(MarketPrice)
                     .filter(
                         MarketPrice.crop_id == turmeric.id,
-                        MarketPrice.market_name == "Erode",
+                        MarketPrice.market_id == erode_mandi.id,
                         MarketPrice.price_date == price_date,
                         MarketPrice.source == "seed",
                     )
@@ -176,11 +243,13 @@ def seed_data():
                     modal = pd_item["modal"]
                     mp = MarketPrice(
                         crop_id=turmeric.id,
-                        market_name="Erode",
+                        market_id=erode_mandi.id,
                         district="Erode",
-                        min_price=modal - 10,
-                        max_price=modal + 10,
+                        min_price=modal - Decimal("10.00"),
+                        max_price=modal + Decimal("10.00"),
                         modal_price=modal,
+                        raw_price=modal * Decimal("100"),  # Rs/quintal
+                        raw_unit="quintal",
                         arrival_quantity=1200.0 + (pd_item["days_ago"] * 50),
                         price_date=price_date,
                         source="seed",
@@ -191,7 +260,7 @@ def seed_data():
                 else:
                     print(f"· Turmeric price for {price_date} already exists")
 
-        # ─── 6. Weather Data (Erode, today + tomorrow) ────
+        # ─── 8. Weather Data (Erode, today + tomorrow) ────
         today = datetime.date.today()
         weather_entries = [
             {
@@ -229,7 +298,7 @@ def seed_data():
                 w = WeatherData(**wd)
                 db.add(w)
                 db.commit()
-                print(f"✓ Weather data for Erode on {wd['date']}: {wd['temperature_max']}°C, {wd['rainfall_mm']}mm rain")
+                print(f"✓ Weather for Erode on {wd['date']}: {wd['temperature_max']}°C, {wd['rainfall_mm']}mm rain")
             else:
                 print(f"· Weather data for {wd['date']} already exists")
 

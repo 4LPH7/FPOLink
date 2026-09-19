@@ -1,0 +1,62 @@
+"""Test configuration and fixtures."""
+
+import os
+import sys
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Ensure app imports work
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Override DATABASE_URL for tests BEFORE importing app
+os.environ["DATABASE_URL"] = os.environ.get(
+    "DATABASE_URL", "postgresql://fpolink:fpolink@localhost:5432/fpolink_test"
+)
+
+from app.main import app
+from app.database import get_db
+from app.models.base import Base
+
+TEST_DATABASE_URL = os.environ["DATABASE_URL"]
+
+engine = create_engine(TEST_DATABASE_URL)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_get_db
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_tables():
+    """Create all tables before tests, drop after."""
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture()
+def db():
+    """Provide a clean database session for each test."""
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSessionLocal(bind=connection)
+    yield session
+    session.close()
+    transaction.rollback()
+    connection.close()
+
+
+@pytest.fixture()
+def client():
+    """Provide a test client."""
+    return TestClient(app)

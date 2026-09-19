@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import Column, String, Boolean, Enum
+from sqlalchemy import Column, String, Boolean, Enum, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from app.models.base import Base, TimestampMixin
 
@@ -22,3 +22,6 @@ class User(Base, TimestampMixin):
     is_active = Column(Boolean, default=True)
     language_preference = Column(String(2), default='en')
     telegram_chat_id = Column(String, nullable=True)
+    consent_given = Column(Boolean, default=False)
+    consent_date = Column(DateTime(timezone=True), nullable=True)
+
