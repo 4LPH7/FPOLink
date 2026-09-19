@@ -1,5 +1,4 @@
-"""FPOLink TN — Application Configuration."""
-
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 
@@ -8,7 +7,15 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables and .env file."""
 
     # Database
-    DATABASE_URL: str = "postgresql://fpolink:fpolink@postgres:5432/fpolink"
+    DATABASE_URL: str = "postgresql+psycopg://fpolink:fpolink@postgres:5432/fpolink"
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def use_psycopg3(cls, v: str) -> str:
+        for old in ("postgresql://", "postgres://"):
+            if v.startswith(old):
+                return v.replace(old, "postgresql+psycopg://", 1)
+        return v
 
     # Authentication
     SECRET_KEY: str = "change-me-in-production"

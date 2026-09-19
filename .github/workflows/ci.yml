@@ -42,7 +42,7 @@ jobs:
       - name: Run tests
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://fpolink:fpolink@localhost:5432/fpolink_test
+          DATABASE_URL: postgresql+psycopg://fpolink:fpolink@localhost:5432/fpolink_test
           SECRET_KEY: test-secret-key-not-for-production
         run: pytest -v --tb=short
 

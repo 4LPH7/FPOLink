@@ -12,14 +12,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Override DATABASE_URL for tests BEFORE importing app
 os.environ["DATABASE_URL"] = os.environ.get(
-    "DATABASE_URL", "postgresql://fpolink:fpolink@localhost:5432/fpolink_test"
+    "DATABASE_URL", "postgresql+psycopg://fpolink:fpolink@localhost:5432/fpolink_test"
 )
 
 from app.main import app
+from app.config import settings
 from app.database import get_db
 from app.models.base import Base
 
-TEST_DATABASE_URL = os.environ["DATABASE_URL"]
+TEST_DATABASE_URL = settings.DATABASE_URL
 
 engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
