@@ -28,7 +28,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    entrypoint: ["/app/entrypoint.sh"]
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
     restart: unless-stopped
 
   worker:

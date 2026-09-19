@@ -27,17 +27,6 @@ engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
     """Create all tables before tests, drop after."""
@@ -60,13 +49,19 @@ def db():
     connection = engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
+
+    def _override_get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = _override_get_db
     yield session
+    app.dependency_overrides.pop(get_db, None)
     session.close()
     transaction.rollback()
     connection.close()
 
 
 @pytest.fixture()
-def client():
-    """Provide a test client."""
+def client(db):
+    """Provide a test client using the shared test database session."""
     return TestClient(app)
