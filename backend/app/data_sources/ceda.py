@@ -8,11 +8,11 @@ This is the training-data goldmine for ML models.
 """
 
 import csv
-import os
 import logging
+import os
 from datetime import date, datetime
-from typing import List, Optional
 from decimal import Decimal, InvalidOperation
+from typing import List, Optional
 
 from app.data_sources.base import MarketDataProvider, PriceRecord
 
@@ -53,7 +53,7 @@ class CEDAProvider(MarketDataProvider):
 
         logger.info(f"Parsing CEDA CSV: {csv_path}")
         try:
-            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            with open(csv_path, "r", encoding="utf-8-sig") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     record = self._parse_row(row, crop, district, start_date, end_date)
@@ -71,12 +71,12 @@ class CEDAProvider(MarketDataProvider):
             return None
 
         for filename in os.listdir(self.data_dir):
-            if filename.endswith('.csv') and crop.lower() in filename.lower():
+            if filename.endswith(".csv") and crop.lower() in filename.lower():
                 return os.path.join(self.data_dir, filename)
 
         # Try a generic file
         for filename in os.listdir(self.data_dir):
-            if filename.endswith('.csv') and 'ceda' in filename.lower():
+            if filename.endswith(".csv") and "ceda" in filename.lower():
                 return os.path.join(self.data_dir, filename)
 
         return None
@@ -92,8 +92,8 @@ class CEDAProvider(MarketDataProvider):
         """Parse a single CSV row into a PriceRecord."""
         try:
             # Flexible column name matching (CEDA CSVs vary)
-            row_commodity = self._get_field(row, ['Commodity', 'commodity', 'COMMODITY', 'Crop'])
-            row_district = self._get_field(row, ['District', 'district', 'DISTRICT'])
+            row_commodity = self._get_field(row, ["Commodity", "commodity", "COMMODITY", "Crop"])
+            row_district = self._get_field(row, ["District", "district", "DISTRICT"])
 
             if not row_commodity or not row_district:
                 return None
@@ -105,7 +105,7 @@ class CEDAProvider(MarketDataProvider):
                 return None
 
             # Parse date
-            date_str = self._get_field(row, ['Date', 'date', 'DATE', 'Price Date', 'Arrival_Date'])
+            date_str = self._get_field(row, ["Date", "date", "DATE", "Price Date", "Arrival_Date"])
             if not date_str:
                 return None
             price_date = self._parse_date(date_str)
@@ -119,9 +119,15 @@ class CEDAProvider(MarketDataProvider):
                 return None
 
             # Parse prices (Rs/quintal → Rs/kg)
-            raw_modal = self._parse_decimal(self._get_field(row, ['Modal Price', 'Modal_Price', 'modal_price', 'Modal']))
-            raw_min = self._parse_decimal(self._get_field(row, ['Min Price', 'Min_Price', 'min_price', 'Minimum']))
-            raw_max = self._parse_decimal(self._get_field(row, ['Max Price', 'Max_Price', 'max_price', 'Maximum']))
+            raw_modal = self._parse_decimal(
+                self._get_field(row, ["Modal Price", "Modal_Price", "modal_price", "Modal"])
+            )
+            raw_min = self._parse_decimal(
+                self._get_field(row, ["Min Price", "Min_Price", "min_price", "Minimum"])
+            )
+            raw_max = self._parse_decimal(
+                self._get_field(row, ["Max Price", "Max_Price", "max_price", "Maximum"])
+            )
 
             if raw_modal is None or raw_modal <= 0:
                 return None
@@ -131,24 +137,28 @@ class CEDAProvider(MarketDataProvider):
             min_price = (raw_min / QUINTAL_TO_KG) if raw_min else modal_price
             max_price = (raw_max / QUINTAL_TO_KG) if raw_max else modal_price
 
-            market_name = self._get_field(row, ['Market', 'market', 'MARKET', 'Market Center']) or district
-            variety = self._get_field(row, ['Variety', 'variety', 'VARIETY'])
-            arrival = self._parse_float(self._get_field(row, ['Arrival', 'arrival', 'Arrivals', 'Arrival_Tonnes']))
+            market_name = (
+                self._get_field(row, ["Market", "market", "MARKET", "Market Center"]) or district
+            )
+            variety = self._get_field(row, ["Variety", "variety", "VARIETY"])
+            arrival = self._parse_float(
+                self._get_field(row, ["Arrival", "arrival", "Arrivals", "Arrival_Tonnes"])
+            )
 
             return PriceRecord(
                 crop_name=crop.lower(),
                 variety_name=variety,
                 market_name=market_name.strip(),
                 district=district.strip(),
-                state=self._get_field(row, ['State', 'state', 'STATE']) or 'Tamil Nadu',
+                state=self._get_field(row, ["State", "state", "STATE"]) or "Tamil Nadu",
                 min_price=min_price,
                 max_price=max_price,
                 modal_price=modal_price,
                 raw_price=raw_modal,
-                raw_unit='quintal',
+                raw_unit="quintal",
                 arrival_quantity=arrival,
                 price_date=price_date,
-                source='ceda',
+                source="ceda",
                 raw_payload=dict(row),
             )
         except Exception as e:
@@ -166,7 +176,7 @@ class CEDAProvider(MarketDataProvider):
     @staticmethod
     def _parse_date(date_str: str) -> Optional[date]:
         """Try multiple date formats."""
-        formats = ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%d/%m/%y', '%Y/%m/%d']
+        formats = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"]
         for fmt in formats:
             try:
                 return datetime.strptime(date_str.strip(), fmt).date()
@@ -179,7 +189,7 @@ class CEDAProvider(MarketDataProvider):
         if not value:
             return None
         try:
-            return Decimal(value.strip().replace(',', ''))
+            return Decimal(value.strip().replace(",", ""))
         except (InvalidOperation, ValueError):
             return None
 
@@ -188,6 +198,6 @@ class CEDAProvider(MarketDataProvider):
         if not value:
             return None
         try:
-            return float(value.strip().replace(',', ''))
+            return float(value.strip().replace(",", ""))
         except ValueError:
             return None

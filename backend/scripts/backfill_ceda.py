@@ -16,37 +16,33 @@ Download the dataset from CEDA's data portal before running this script.
 Place the CSV file in ml/datasets/
 """
 
-import os
-import sys
 import argparse
 import logging
+import os
+import sys
 from datetime import date
 
 # Add backend directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.database import SessionLocal
-from app.models.base import Base
-from app.database import engine
 from app.data_sources.ceda import CEDAProvider
+from app.database import SessionLocal, engine
+from app.models.base import Base
 from app.services.ingestion import IngestionService
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Backfill CEDA historical data')
-    parser.add_argument('--csv-path', type=str, default='ml/datasets',
-                        help='Path to CEDA CSV file or directory')
-    parser.add_argument('--crop', type=str, default='turmeric',
-                        help='Crop to backfill')
-    parser.add_argument('--district', type=str, default='Erode',
-                        help='District to filter')
-    parser.add_argument('--start-date', type=str, default=None,
-                        help='Start date (YYYY-MM-DD)')
-    parser.add_argument('--end-date', type=str, default=None,
-                        help='End date (YYYY-MM-DD)')
+    parser = argparse.ArgumentParser(description="Backfill CEDA historical data")
+    parser.add_argument(
+        "--csv-path", type=str, default="ml/datasets", help="Path to CEDA CSV file or directory"
+    )
+    parser.add_argument("--crop", type=str, default="turmeric", help="Crop to backfill")
+    parser.add_argument("--district", type=str, default="Erode", help="District to filter")
+    parser.add_argument("--start-date", type=str, default=None, help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--end-date", type=str, default=None, help="End date (YYYY-MM-DD)")
     args = parser.parse_args()
 
     # Ensure tables exist
@@ -76,7 +72,7 @@ def main():
         print("\nNo records found. Make sure:")
         print(f"  1. CEDA CSV file exists in {args.csv_path}/")
         print(f"  2. The CSV contains data for '{args.crop}' in '{args.district}'")
-        print(f"  3. Download from: https://agrimarket.ceda.ashoka.edu.in/")
+        print("  3. Download from: https://agrimarket.ceda.ashoka.edu.in/")
         return
 
     print(f"\nFound {len(records)} records from CEDA")
@@ -96,5 +92,5 @@ def main():
     print("=" * 60)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

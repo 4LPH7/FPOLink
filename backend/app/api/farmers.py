@@ -1,14 +1,15 @@
 """Farmer management endpoints."""
 
-from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from typing import Optional
+from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import require_role
 from app.database import get_db
-from app.api.deps import get_current_user, require_role
 from app.models.user import User
-from app.schemas.farmer import FarmerCreate, FarmerUpdate, FarmerResponse, FarmerListResponse
+from app.schemas.farmer import FarmerCreate, FarmerListResponse, FarmerResponse, FarmerUpdate
 from app.services.farmer_service import (
     create_farmer,
     get_farmer,

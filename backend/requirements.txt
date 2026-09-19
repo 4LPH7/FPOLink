@@ -39,9 +39,10 @@ holidays==0.63
 # Telegram
 python-telegram-bot==21.9
 
-# Testing
+# Testing & Linting
 pytest==8.3.4
 pytest-asyncio==0.25.0
+ruff==0.8.4
 httpx  # already listed, used for TestClient
 
 # Error monitoring

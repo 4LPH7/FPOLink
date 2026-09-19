@@ -2,13 +2,14 @@
 
 from typing import List
 from uuid import UUID
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.jwt import decode_token
 from app.models.user import User
+from app.services.jwt import decode_token
 
 security = HTTPBearer()
 
@@ -53,6 +54,7 @@ def get_current_user(
 
 def require_role(allowed_roles: List[str]):
     """Dependency factory: restrict endpoint to specific roles."""
+
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role.value not in allowed_roles:
             raise HTTPException(
@@ -60,4 +62,5 @@ def require_role(allowed_roles: List[str]):
                 detail=f"Role '{current_user.role.value}' not authorized. Required: {allowed_roles}",
             )
         return current_user
+
     return role_checker

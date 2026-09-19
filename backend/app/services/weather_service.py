@@ -1,14 +1,14 @@
 """Weather ingestion service."""
 
 import logging
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.weather import WeatherData
-from app.data_sources.weather import WeatherProvider
 from app.data_sources.nasa_power import NASAPowerProvider
+from app.data_sources.weather import WeatherProvider
+from app.models.weather import WeatherData
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +42,14 @@ class WeatherService:
         stored = 0
         for entry in data:
             d = date.fromisoformat(entry["date"])
-            existing = self.db.query(WeatherData).filter(
-                WeatherData.district == district,
-                WeatherData.date == d,
-            ).first()
+            existing = (
+                self.db.query(WeatherData)
+                .filter(
+                    WeatherData.district == district,
+                    WeatherData.date == d,
+                )
+                .first()
+            )
 
             if existing:
                 # Update forecast data
@@ -96,10 +100,14 @@ class WeatherService:
         stored = 0
         for entry in data:
             d = date.fromisoformat(entry["date"])
-            existing = self.db.query(WeatherData).filter(
-                WeatherData.district == district,
-                WeatherData.date == d,
-            ).first()
+            existing = (
+                self.db.query(WeatherData)
+                .filter(
+                    WeatherData.district == district,
+                    WeatherData.date == d,
+                )
+                .first()
+            )
 
             if not existing:
                 w = WeatherData(

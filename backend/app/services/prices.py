@@ -3,14 +3,14 @@
 import logging
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
 
-from app.models.market_price import MarketPrice
 from app.models.crop import Crop
 from app.models.market import Market
+from app.models.market_price import MarketPrice
 from app.services.data_cleaning import detect_anomaly_mad
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]:
     """Get the most recent price for each crop in each market."""
     from app.config import settings
+
     district = district or settings.DEFAULT_DISTRICT
 
     # Subquery for max date per crop/market
@@ -51,20 +52,22 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
         # Calculate trend
         trend = _calculate_trend(db, mp.crop_id, mp.market_id, mp.price_date)
 
-        prices.append({
-            "id": str(mp.id),
-            "crop_name": crop.name,
-            "crop_tamil_name": crop.tamil_name,
-            "market_name": market.name,
-            "district": mp.district,
-            "min_price": mp.min_price,
-            "max_price": mp.max_price,
-            "modal_price": mp.modal_price,
-            "price_date": mp.price_date,
-            "source": mp.source,
-            "arrival_quantity": mp.arrival_quantity,
-            "trend": trend,
-        })
+        prices.append(
+            {
+                "id": str(mp.id),
+                "crop_name": crop.name,
+                "crop_tamil_name": crop.tamil_name,
+                "market_name": market.name,
+                "district": mp.district,
+                "min_price": mp.min_price,
+                "max_price": mp.max_price,
+                "modal_price": mp.modal_price,
+                "price_date": mp.price_date,
+                "source": mp.source,
+                "arrival_quantity": mp.arrival_quantity,
+                "trend": trend,
+            }
+        )
 
     return prices
 
@@ -154,11 +157,13 @@ def check_anomalies(
     results = []
     for row, is_anomaly in zip(prices_rows, anomalies):
         if is_anomaly:
-            results.append({
-                "date": row.price_date,
-                "price": row.modal_price,
-                "source": row.source,
-            })
+            results.append(
+                {
+                    "date": row.price_date,
+                    "price": row.modal_price,
+                    "source": row.source,
+                }
+            )
 
     return results
 

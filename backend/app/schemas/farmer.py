@@ -1,8 +1,9 @@
 """Farmer request/response schemas."""
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FarmerCreate(BaseModel):
@@ -36,8 +37,7 @@ class FarmerResponse(BaseModel):
     language_preference: str
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FarmerListResponse(BaseModel):

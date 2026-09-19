@@ -1,9 +1,10 @@
 """JWT service — token creation and verification using PyJWT."""
 
-import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
+
+import jwt
 
 from app.config import settings
 

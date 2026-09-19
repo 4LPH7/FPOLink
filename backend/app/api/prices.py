@@ -1,15 +1,16 @@
 """Price endpoints — latest prices, history, trends, anomalies."""
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from app.database import get_db
 from app.services.prices import (
+    check_anomalies,
     get_latest_prices,
     get_price_history,
     get_price_trend,
-    check_anomalies,
 )
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])

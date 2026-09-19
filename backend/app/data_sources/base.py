@@ -6,15 +6,16 @@ you only replace one adapter.
 """
 
 from abc import ABC, abstractmethod
-from datetime import date
-from typing import List, Optional
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
+from typing import List, Optional
 
 
 @dataclass
 class PriceRecord:
     """Standardized price record from any data source."""
+
     crop_name: str
     variety_name: Optional[str] = None
     market_name: str = ""

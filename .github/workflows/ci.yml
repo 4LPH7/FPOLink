@@ -39,6 +39,14 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
+      - name: Migrations match models
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://fpolink:fpolink@localhost:5432/fpolink_test
+        run: |
+          alembic upgrade head
+          alembic check
+
       - name: Run tests
         working-directory: backend
         env:
@@ -46,6 +54,33 @@ jobs:
           SECRET_KEY: test-secret-key-not-for-production
         run: pytest -v --tb=short
 
-      - name: Run linting
+      - name: Run linting & format check
         working-directory: backend
-        run: python -m py_compile app/main.py
+        run: |
+          ruff check .
+          ruff format --check .
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env
+        run: cp .env.example .env
+
+      - name: Start backend stack
+        run: docker compose up -d --build postgres backend worker
+
+      - name: Wait for API health check
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/api/health | grep -q '"status":"ok"'; then
+              echo "API is healthy!"
+              exit 0
+            fi
+            echo "Waiting for API to be healthy... ($i/30)"
+            sleep 2
+          done
+          echo "API failed to become healthy in time"
+          docker compose logs
+          exit 1

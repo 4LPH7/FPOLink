@@ -1,7 +1,10 @@
 """Price prediction model."""
+
 import uuid
-from sqlalchemy import Column, String, Float, Numeric, Date, ForeignKey, DateTime, func
+
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
+
 from app.models.base import Base
 
 

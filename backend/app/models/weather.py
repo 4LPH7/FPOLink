@@ -1,7 +1,10 @@
 import uuid
-from sqlalchemy import Column, String, Float, Date, UniqueConstraint, DateTime, func
+
+from sqlalchemy import Column, Date, DateTime, Float, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
+
 from app.models.base import Base
+
 
 class WeatherData(Base):
     __tablename__ = "weather_data"
@@ -14,9 +17,7 @@ class WeatherData(Base):
     rainfall_mm = Column(Float, nullable=False)
     humidity = Column(Float, nullable=True)
     wind_speed = Column(Float, nullable=True)
-    source = Column(String(50), default='open_meteo')
+    source = Column(String(50), default="open_meteo")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    __table_args__ = (
-        UniqueConstraint('district', 'date', name='uix_weather_district_date'),
-    )
+    __table_args__ = (UniqueConstraint("district", "date", name="uix_weather_district_date"),)

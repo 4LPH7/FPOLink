@@ -1,7 +1,8 @@
 """Crop schemas."""
 
-from pydantic import BaseModel
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 class CropResponse(BaseModel):
@@ -11,8 +12,7 @@ class CropResponse(BaseModel):
     category: Optional[str] = None
     unit: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CropListResponse(BaseModel):

@@ -6,10 +6,11 @@ Tamil Nadu festivals that affect agricultural demand.
 
 import logging
 from datetime import date
-from typing import List, Dict
+from typing import Dict
 
 try:
     import holidays
+
     HAS_HOLIDAYS = True
 except ImportError:
     HAS_HOLIDAYS = False
@@ -42,7 +43,7 @@ def is_festival(d: date) -> bool:
 
     # Check national holidays
     if HAS_HOLIDAYS:
-        india_holidays = holidays.India(years=d.year, state='TN')
+        india_holidays = holidays.India(years=d.year, state="TN")
         if d in india_holidays:
             return True
 
@@ -55,6 +56,7 @@ def days_to_nearest_festival(d: date, window: int = 30) -> int:
         check_date = date(d.year, d.month, d.day)
         try:
             from datetime import timedelta
+
             check_date = d + timedelta(days=offset)
             if is_festival(check_date):
                 return offset

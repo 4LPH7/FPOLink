@@ -5,9 +5,9 @@ Requires a free API key from data.gov.in.
 """
 
 import logging
-from datetime import date, timedelta
-from typing import List, Optional
+from datetime import date
 from decimal import Decimal
+from typing import List, Optional
 
 import httpx
 
@@ -106,6 +106,7 @@ class OGDProvider(MarketDataProvider):
             # Parse date
             date_str = record.get("Arrival_Date", record.get("Arrival Date", ""))
             from app.data_sources.ceda import CEDAProvider
+
             price_date = CEDAProvider._parse_date(date_str)
             if not price_date:
                 return None

@@ -1,21 +1,22 @@
 """Authentication endpoints — register, login, refresh."""
 
 from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import (
-    RegisterRequest,
     LoginRequest,
-    TokenResponse,
     RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
     UserResponse,
 )
 from app.services.auth import hash_password, verify_password
 from app.services.jwt import create_access_token, create_refresh_token, decode_token
-from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -104,6 +105,7 @@ def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
         )
 
     from uuid import UUID
+
     user = db.query(User).filter(User.id == UUID(payload["sub"])).first()
     if not user or not user.is_active:
         raise HTTPException(

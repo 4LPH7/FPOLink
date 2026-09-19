@@ -1,8 +1,11 @@
 import uuid
-from sqlalchemy import Column, String, Float, Date, ForeignKey
+
+from sqlalchemy import Column, Date, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
+
 
 class Farm(Base, TimestampMixin):
     __tablename__ = "farms"
@@ -13,7 +16,7 @@ class Farm(Base, TimestampMixin):
     area_acres = Column(Float, nullable=False)
     sowing_date = Column(Date, nullable=True)
     expected_harvest_date = Column(Date, nullable=True)
-    status = Column(String(20), default='active')
+    status = Column(String(20), default="active")
 
     farmer = relationship("Farmer", back_populates="farms")
     crop = relationship("Crop")

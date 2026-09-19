@@ -6,8 +6,8 @@ from typing import List, Optional
 
 from app.data_sources.base import MarketDataProvider, PriceRecord
 from app.data_sources.ceda import CEDAProvider
-from app.data_sources.ogd import OGDProvider
 from app.data_sources.manual import ManualProvider
+from app.data_sources.ogd import OGDProvider
 
 logger = logging.getLogger(__name__)
 

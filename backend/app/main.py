@@ -1,24 +1,27 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
 
-from app.api import auth, fpo, farmers, prices, harvest, buyers, predictions, crops, admin
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api import admin, auth, buyers, crops, farmers, fpo, harvest, predictions, prices
 from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("FPOLink TN API starting...")
     yield
 
+
 app = FastAPI(
     title="FPOLink TN API",
     description="FPO Digital Operating System for Tamil Nadu",
     version="0.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -38,6 +41,7 @@ app.include_router(harvest.router)
 app.include_router(buyers.router)
 app.include_router(predictions.router)
 app.include_router(admin.router)
+
 
 @app.get("/api/health")
 def health_check():

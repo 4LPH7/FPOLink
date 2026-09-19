@@ -3,13 +3,13 @@
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from app.models.fpo import FPO
-from app.models.farmer import Farmer
-from app.models.farm import Farm
 from app.models.crop import Crop
+from app.models.farm import Farm
+from app.models.farmer import Farmer
+from app.models.fpo import FPO
 from app.models.harvest import Harvest
 from app.models.order import Order
 from app.schemas.fpo import FPOCreate, FPOUpdate
@@ -48,7 +48,9 @@ def get_dashboard_stats(db: Session, fpo_id: UUID) -> dict:
     member_count = db.query(func.count(Farmer.id)).filter(Farmer.fpo_id == fpo_id).scalar() or 0
 
     # Total farm area
-    total_area = db.query(func.sum(Farmer.farm_area_acres)).filter(Farmer.fpo_id == fpo_id).scalar() or 0.0
+    total_area = (
+        db.query(func.sum(Farmer.farm_area_acres)).filter(Farmer.fpo_id == fpo_id).scalar() or 0.0
+    )
 
     # Crop distribution
     crop_dist_rows = (

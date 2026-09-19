@@ -4,24 +4,23 @@ Uses Argon2 hashing (pwdlib) and normalized markets table.
 Idempotent: safe to run multiple times.
 """
 
+import datetime
 import os
 import sys
-import uuid
-import datetime
 from decimal import Decimal
 
 # Add backend directory to path for app imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.database import engine, SessionLocal
+from app.database import SessionLocal, engine
 from app.models.base import Base
-from app.models.user import User, UserRole
 from app.models.crop import Crop
-from app.models.variety import Variety
-from app.models.fpo import FPO
 from app.models.farmer import Farmer
+from app.models.fpo import FPO
 from app.models.market import Market
 from app.models.market_price import MarketPrice
+from app.models.user import User, UserRole
+from app.models.variety import Variety
 from app.models.weather import WeatherData
 from app.services.auth import hash_password
 
@@ -89,9 +88,11 @@ def seed_data():
 
         for vd in varieties_data:
             crop = crop_objects[vd["crop"]]
-            existing = db.query(Variety).filter(
-                Variety.crop_id == crop.id, Variety.name == vd["name"]
-            ).first()
+            existing = (
+                db.query(Variety)
+                .filter(Variety.crop_id == crop.id, Variety.name == vd["name"])
+                .first()
+            )
             if not existing:
                 variety = Variety(
                     crop_id=crop.id,
@@ -210,7 +211,9 @@ def seed_data():
                 )
                 db.add(farmer)
                 db.commit()
-                print(f"✓ Farmer '{fd['name']}' created (phone: {fd['phone']}, password: farmer123)")
+                print(
+                    f"✓ Farmer '{fd['name']}' created (phone: {fd['phone']}, password: farmer123)"
+                )
             else:
                 print(f"· Farmer '{fd['name']}' already exists")
 
@@ -298,7 +301,9 @@ def seed_data():
                 w = WeatherData(**wd)
                 db.add(w)
                 db.commit()
-                print(f"✓ Weather for Erode on {wd['date']}: {wd['temperature_max']}°C, {wd['rainfall_mm']}mm rain")
+                print(
+                    f"✓ Weather for Erode on {wd['date']}: {wd['temperature_max']}°C, {wd['rainfall_mm']}mm rain"
+                )
             else:
                 print(f"· Weather data for {wd['date']} already exists")
 

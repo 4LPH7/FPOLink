@@ -1,7 +1,10 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Float, Text, DateTime, func
+
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
+
 from app.models.base import Base
+
 
 class IngestionLog(Base):
     __tablename__ = "ingestion_logs"

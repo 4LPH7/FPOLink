@@ -1,9 +1,10 @@
 """Price-related request/response schemas."""
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import date
 from decimal import Decimal
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MarketPriceResponse(BaseModel):
@@ -19,8 +20,7 @@ class MarketPriceResponse(BaseModel):
     source: str
     arrival_quantity: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PriceTrend(BaseModel):

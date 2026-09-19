@@ -5,6 +5,7 @@ Does NOT run inside the API process to avoid duplicate jobs with multiple worker
 """
 
 import logging
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -36,13 +37,13 @@ def main():
     scheduler = BlockingScheduler(timezone="Asia/Kolkata")
 
     # Daily at 5 AM IST — weather
-    scheduler.add_job(run_weather_ingestion, 'cron', hour=5, minute=0, id='weather_ingestion')
+    scheduler.add_job(run_weather_ingestion, "cron", hour=5, minute=0, id="weather_ingestion")
 
     # Daily at 6 AM IST — prices
-    scheduler.add_job(run_price_ingestion, 'cron', hour=6, minute=0, id='price_ingestion')
+    scheduler.add_job(run_price_ingestion, "cron", hour=6, minute=0, id="price_ingestion")
 
     # Daily at 7 AM IST — predictions (after fresh prices)
-    scheduler.add_job(run_predictions, 'cron', hour=7, minute=0, id='predictions')
+    scheduler.add_job(run_predictions, "cron", hour=7, minute=0, id="predictions")
 
     logger.info("FPOLink Worker started. Scheduled jobs:")
     for job in scheduler.get_jobs():

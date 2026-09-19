@@ -6,7 +6,7 @@ Provides solar, temperature, precipitation data.
 
 import logging
 from datetime import date
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
 
 import httpx
 
@@ -59,14 +59,18 @@ class NASAPowerProvider:
                 if val_max == -999 or val_min == -999:
                     continue
 
-                results.append({
-                    "date": f"{date_key[:4]}-{date_key[4:6]}-{date_key[6:]}",
-                    "temperature_max": val_max,
-                    "temperature_min": val_min,
-                    "rainfall_mm": val_precip if val_precip != -999 else None,
-                    "humidity": humidity.get(date_key) if humidity.get(date_key) != -999 else None,
-                    "wind_speed": wind.get(date_key) if wind.get(date_key) != -999 else None,
-                })
+                results.append(
+                    {
+                        "date": f"{date_key[:4]}-{date_key[4:6]}-{date_key[6:]}",
+                        "temperature_max": val_max,
+                        "temperature_min": val_min,
+                        "rainfall_mm": val_precip if val_precip != -999 else None,
+                        "humidity": humidity.get(date_key)
+                        if humidity.get(date_key) != -999
+                        else None,
+                        "wind_speed": wind.get(date_key) if wind.get(date_key) != -999 else None,
+                    }
+                )
 
             logger.info(f"Fetched {len(results)} days of NASA POWER data")
             return results

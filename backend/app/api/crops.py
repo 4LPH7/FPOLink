@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.crop import Crop
-from app.schemas.crop import CropResponse, CropListResponse
+from app.schemas.crop import CropListResponse, CropResponse
 
 router = APIRouter(prefix="/api/crops", tags=["crops"])
 

@@ -4,73 +4,78 @@
 
 A self-hostable, open-source platform that provides Farmer Producer Organizations (FPOs) with price intelligence, harvest aggregation, demand forecasting, and buyer matching — focused on Erode district and key Tamil Nadu crops.
 
+[![CI](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml/badge.svg)](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml)
+
 ---
 
 ## Architecture
 
 ```text
-                    FPO ADMIN
-                       │
-              ┌────────▼────────┐
-              │   Web Dashboard │
-              │   (Next.js)     │
-              └────────┬────────┘
-                       │
-        ┌──────────────┼──────────────┐
-        │              │              │
-   Price Intel     Aggregation     Members
-        │              │              │
-        └──────────────┼──────────────┘
-                       │
-                 FastAPI Backend
-                       │
-       ┌───────────────┼────────────────┐
-       │               │                │
-   PostgreSQL       ML Engine       Notifications
-       │               │                │
-       │          Price Forecast      Telegram Bot
-       │          Demand Forecast
-       │          Anomaly Detection
+                    FPO ADMIN / STAFF
+                           │
+                  ┌────────▼────────┐
+                  │   Web Dashboard │
+                  │   (Next.js PWA) │
+                  └────────┬────────┘
+                           │
+            ┌──────────────┼──────────────┐
+            │              │              │
+       Price Intel    Aggregation      Members
+            │              │              │
+            └──────────────┼──────────────┘
+                           │
+                     FastAPI Backend
+                           │
+       ┌───────────────────┼───────────────────┐
+       │                   │                   │
+  PostgreSQL 16     Background Worker     Notifications
+   (21 Tables)        (APScheduler)       (Telegram Bot)
+       │                   │
+       │              Daily ETL:
+       │              ├── data.gov.in (OGD)
+       │              ├── CEDA Agri-Market (Ashoka Univ)
+       │              ├── Open-Meteo & NASA POWER
+       │              └── TN Festival Features
        │
-       ├── TN Agriculture Marketing data
-       ├── AGMARKNET
-       ├── FPO-entered data
-       └── Open-Meteo weather data
+   ML Forecasting
+   ├── Baselines (Seasonal Naive)
+   ├── statsforecast (ETS / ARIMA)
+   └── LightGBM (Quantile intervals)
 ```
 
 ## Modules
 
-| Module | Description |
-|--------|-------------|
-| **FPO Dashboard** | Real-time stats, market prices, forecasts, alerts |
-| **Farmer Management** | Member registration, farm tracking, harvest submissions |
-| **Market Intelligence** | Price ingestion from TN Agri Marketing + AGMARKNET, trend analysis |
-| **Harvest Aggregation** | Aggregate individual harvests into bulk batches |
-| **Price Prediction** | ML-based price forecasting with confidence intervals |
-| **Buyer Module** | Buyer directory, purchase requirements, supply matching |
-| **Telegram Bot** | Low-tech interface for farmers — price lookups, harvest submission |
+| Module | Description | Status |
+|---|---|---|
+| **Auth & DPDP Consent** | Phone auth with Argon2id + PyJWT and DPDP Act consent tracking | **Active** |
+| **Market Intelligence** | Daily mandi prices, normalized markets/varieties, MAD anomaly detection | **Active** |
+| **FPO Management** | Organization registration, staff administration, member statistics | **Active** |
+| **Farmer Directory** | Farmer registration, farm land tracking, bilingual preferences | **Active** |
+| **Data Ingestion (ETL)** | CEDA historical backfill, OGD API, Open-Meteo & NASA POWER weather | **Active** |
+| **Harvest Aggregation** | Aggregate individual farmer harvests into bulk batches | In Progress |
+| **Telegram Bot** | Free verified phone authentication, price checks, alerts | Planned (W2) |
+| **Price Forecasting** | Model ladder (statsforecast → LightGBM) with hold/sell ranges | Planned (W4) |
+| **Buyer Module** | Purchase requirements and order matching | Deferred (v0.2) |
 
 ## Tech Stack
 
-| Component | Technology | Cost |
-|-----------|-----------|------|
-| Frontend | Next.js + Tailwind CSS | Free |
-| Backend | FastAPI (Python) | Free |
-| Database | PostgreSQL 16 | Free |
-| ORM | SQLAlchemy + Alembic | Free |
-| Auth | JWT (python-jose) | Free |
-| ML | scikit-learn + XGBoost | Free |
-| Charts | Recharts | Free |
-| Maps | OpenStreetMap + Leaflet | Free |
-| Weather | Open-Meteo API | Free |
-| Market Data | TN Agri Marketing + AGMARKNET | Free/Public |
-| Notifications | Telegram Bot API | Free |
-| Containers | Docker Compose | Free |
+| Component | Technology | Rationale |
+|---|---|---|
+| Frontend | Next.js (App Router) + Tailwind CSS | Fast, PWA support, Tamil i18n |
+| Backend | FastAPI + SQLAlchemy 2.0 (async-ready) | High performance, auto OpenAPI docs |
+| Database | PostgreSQL 16 (psycopg 3 driver) | Robust relational engine, JSONB support |
+| Migrations | Alembic | Version-controlled schema migrations |
+| Auth | `pwdlib[argon2]` + `PyJWT` | Actively maintained, OWASP recommended |
+| Worker | Standalone APScheduler Container | Process isolation, prevents duplicate jobs |
+| ML & Stats | `statsforecast`, `lightgbm`, `mapie` | Scalable forecasting with prediction intervals |
+| Feature Eng | `holidays` + curated TN festival calendar | Seasonal demand & arrival indicators |
+| Anomaly Detection | Median Absolute Deviation (MAD) | Robust against spiky agricultural price data |
+| External Feeds | OGD API, CEDA bulk data, Open-Meteo | Zero mandatory paid APIs |
+| Containers | Docker Compose | Reproducible development & deployment |
 
 ## Quick Start
 
 ### Prerequisites
-
 - [Docker](https://www.docker.com/) and Docker Compose
 - Git
 
@@ -78,89 +83,75 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/fpolink.git
-cd fpolink
+git clone https://github.com/4LPH7/FPOLink.git
+cd FPOLink
 
 # 2. Copy environment file
 cp .env.example .env
 
-# 3. Start all services
-docker compose up -d
+# 3. Start stack (PostgreSQL, Backend API, Scheduler Worker)
+docker compose up -d --build postgres backend worker
 
 # 4. Run database migrations
 docker compose exec backend alembic upgrade head
 
-# 5. Seed initial data
+# 5. Seed initial reference data (Admin, Crops, Varieties, Markets, Prices)
 docker compose exec backend python scripts/seed.py
 ```
 
 ### Access
 
 | Service | URL |
-|---------|-----|
-| Frontend (Dashboard) | http://localhost:3000 |
-| Backend (API) | http://localhost:8000 |
-| API Documentation | http://localhost:8000/docs |
+|---|---|
+| Backend API | http://localhost:8000 |
+| Swagger Documentation | http://localhost:8000/docs |
+| Health Check | http://localhost:8000/api/health |
+| Frontend Dashboard | http://localhost:3000 (after Day 8) |
 | PostgreSQL | localhost:5432 |
 
-### Default Login
+### Default Credentials (Seed)
 
 | Role | Phone | Password |
-|------|-------|----------|
-| Admin | 9999900000 | admin123 |
+|---|---|---|
+| Admin | `9999900000` | `admin123` |
+| Farmer 1 | `9876543210` | `farmer123` |
 
 ## Project Structure
 
 ```text
 fpolink/
-├── backend/           # FastAPI application
+├── .github/workflows/ci.yml # Automated CI (pytest, alembic check, ruff, docker smoke)
+├── backend/
+│   ├── alembic/             # Versioned schema migrations
+│   │   └── versions/        # Migration scripts (0001_initial_schema.py)
 │   ├── app/
-│   │   ├── api/       # Route handlers
-│   │   ├── models/    # SQLAlchemy models
-│   │   ├── schemas/   # Pydantic schemas
-│   │   ├── services/  # Business logic
-│   │   ├── data_sources/  # Market data adapters
-│   │   ├── ml/        # ML model integration
-│   │   └── notifications/ # Telegram/notification logic
-│   ├── alembic/       # Database migrations
-│   ├── scripts/       # Seed data, utilities
-│   └── Dockerfile
-├── frontend/          # Next.js dashboard
-│   ├── app/           # App router pages
-│   ├── components/    # Reusable UI components
-│   └── lib/           # Utilities, i18n, API client
-├── ml/                # ML training & inference
-│   ├── datasets/      # Training data
-│   ├── notebooks/     # Jupyter notebooks
-│   ├── training/      # Model training scripts
-│   ├── models/        # Saved model artifacts
-│   └── inference/     # Prediction pipeline
-├── bot/               # Telegram bot
-│   └── handlers/      # Bot command handlers
-├── config/            # Project configuration (YAML)
-├── database/          # DB init scripts
-├── docker-compose.yml
-├── .env.example
-└── README.md
+│   │   ├── api/             # Routers: auth, prices, fpos, farmers, crops, admin
+│   │   ├── data_sources/    # Adapters: CEDA, OGD, Open-Meteo, NASA POWER, holidays
+│   │   ├── models/          # 21 SQLAlchemy models with single declarative base
+│   │   ├── schemas/         # Pydantic validation schemas
+│   │   ├── services/        # Business logic: auth, prices, ingestion, weather
+│   │   ├── utils/           # Unit conversions (Rs/quintal -> Rs/kg)
+│   │   ├── config.py        # Settings with automatic postgresql+psycopg normalization
+│   │   ├── database.py      # Engine and SessionLocal
+│   │   ├── main.py          # FastAPI application entrypoint
+│   │   └── worker.py        # Dedicated background scheduler process
+│   ├── scripts/
+│   │   ├── backfill_ceda.py # Historical data backfill script
+│   │   └── seed.py          # Idempotent development database seeder
+│   ├── tests/               # Pytest suite (auth, units, parsers, ingestion, APIs)
+│   ├── Dockerfile
+│   └── entrypoint.sh        # DB health wait check + alembic auto-upgrade
+├── frontend/
+│   └── lib/i18n/            # English (en.json) & Tamil (ta.json) translation dictionaries
+├── config/fpolink.yaml      # Regional config (Erode, crops, data feeds)
+├── database/init.sql        # Database initialization with UTF-8 and extensions
+└── docker-compose.yml
 ```
-
-## Configuration
-
-Edit `config/fpolink.yaml` to configure:
-
-- **Geography**: State, districts, markets (default: Erode, Tamil Nadu)
-- **Crops**: Tracked commodities with Tamil names (default: turmeric, banana, coconut)
-- **Data Sources**: Enable/disable TN Agri, AGMARKNET, Open-Meteo
-- **Scheduler**: Cron schedules for data ingestion and predictions
 
 ## Language Support
 
-The UI supports **English** and **Tamil (தமிழ்)**. Translation files are in `frontend/lib/i18n/`.
+The UI and messaging layers support **English** and **Tamil (தமிழ்)** from the ground up.
 
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-> **Note**: This is decision-support software. Price forecasts and demand estimates are model-generated and should not be treated as guaranteed agricultural advice.

@@ -1,8 +1,21 @@
 """Market price model — daily commodity prices from various sources."""
+
 import uuid
-from sqlalchemy import Column, String, Float, Date, Numeric, ForeignKey, UniqueConstraint, DateTime, func
+
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Numeric,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base
 
 
@@ -29,5 +42,13 @@ class MarketPrice(Base):
     market = relationship("Market")
 
     __table_args__ = (
-        UniqueConstraint('crop_id', 'market_id', 'price_date', 'source', name='uix_market_price_details'),
+        UniqueConstraint(
+            "crop_id",
+            "market_id",
+            "variety_id",
+            "price_date",
+            "source",
+            name="uix_market_price_details",
+            postgresql_nulls_not_distinct=True,
+        ),
     )

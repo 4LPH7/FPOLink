@@ -1,16 +1,15 @@
 """Farmer service — business logic for farmer management."""
 
 from datetime import datetime, timezone
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.models.user import User, UserRole
 from app.models.farmer import Farmer
-from app.services.auth import hash_password
+from app.models.user import User, UserRole
 from app.schemas.farmer import FarmerCreate, FarmerUpdate
+from app.services.auth import hash_password
 
 
 def create_farmer(
@@ -62,11 +61,7 @@ def list_farmers(
     search: Optional[str] = None,
 ) -> Tuple[List[Farmer], int]:
     """List farmers for an FPO with pagination and search."""
-    query = (
-        db.query(Farmer)
-        .join(User, Farmer.user_id == User.id)
-        .filter(Farmer.fpo_id == fpo_id)
-    )
+    query = db.query(Farmer).join(User, Farmer.user_id == User.id).filter(Farmer.fpo_id == fpo_id)
 
     if search:
         query = query.filter(

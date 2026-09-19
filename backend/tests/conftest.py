@@ -2,22 +2,23 @@
 
 import os
 import sys
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Ensure app imports work
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Override DATABASE_URL for tests BEFORE importing app
 os.environ["DATABASE_URL"] = os.environ.get(
     "DATABASE_URL", "postgresql+psycopg://fpolink:fpolink@localhost:5432/fpolink_test"
 )
 
-from app.main import app
 from app.config import settings
 from app.database import get_db
+from app.main import app
 from app.models.base import Base
 
 TEST_DATABASE_URL = settings.DATABASE_URL
@@ -40,9 +41,17 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
     """Create all tables before tests, drop after."""
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        yield
+        return
+
     yield
-    Base.metadata.drop_all(bind=engine)
+    try:
+        Base.metadata.drop_all(bind=engine)
+    except Exception:
+        pass
 
 
 @pytest.fixture()

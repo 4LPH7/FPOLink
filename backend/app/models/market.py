@@ -1,7 +1,10 @@
 """Market model — normalized market locations."""
+
 import uuid
-from sqlalchemy import Column, String, Float
+
+from sqlalchemy import Column, Float, String
 from sqlalchemy.dialects.postgresql import UUID
+
 from app.models.base import Base, TimestampMixin
 
 

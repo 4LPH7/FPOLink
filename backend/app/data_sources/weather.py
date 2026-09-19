@@ -5,8 +5,8 @@ Check terms if the FPO will pay for the service.
 """
 
 import logging
-from datetime import date, timedelta
-from typing import Optional, List, Dict, Any
+from datetime import date
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -47,14 +47,16 @@ class WeatherProvider:
             dates = daily.get("time", [])
             results = []
             for i, d in enumerate(dates):
-                results.append({
-                    "date": d,
-                    "temperature_max": daily.get("temperature_2m_max", [None])[i],
-                    "temperature_min": daily.get("temperature_2m_min", [None])[i],
-                    "rainfall_mm": daily.get("precipitation_sum", [None])[i],
-                    "humidity": daily.get("relative_humidity_2m_mean", [None])[i],
-                    "wind_speed": daily.get("wind_speed_10m_max", [None])[i],
-                })
+                results.append(
+                    {
+                        "date": d,
+                        "temperature_max": daily.get("temperature_2m_max", [None])[i],
+                        "temperature_min": daily.get("temperature_2m_min", [None])[i],
+                        "rainfall_mm": daily.get("precipitation_sum", [None])[i],
+                        "humidity": daily.get("relative_humidity_2m_mean", [None])[i],
+                        "wind_speed": daily.get("wind_speed_10m_max", [None])[i],
+                    }
+                )
 
             logger.info(f"Fetched {len(results)} days of weather forecast")
             return results
@@ -91,14 +93,16 @@ class WeatherProvider:
             dates = daily.get("time", [])
             results = []
             for i, d in enumerate(dates):
-                results.append({
-                    "date": d,
-                    "temperature_max": daily.get("temperature_2m_max", [None])[i],
-                    "temperature_min": daily.get("temperature_2m_min", [None])[i],
-                    "rainfall_mm": daily.get("precipitation_sum", [None])[i],
-                    "humidity": daily.get("relative_humidity_2m_mean", [None])[i],
-                    "wind_speed": daily.get("wind_speed_10m_max", [None])[i],
-                })
+                results.append(
+                    {
+                        "date": d,
+                        "temperature_max": daily.get("temperature_2m_max", [None])[i],
+                        "temperature_min": daily.get("temperature_2m_min", [None])[i],
+                        "rainfall_mm": daily.get("precipitation_sum", [None])[i],
+                        "humidity": daily.get("relative_humidity_2m_mean", [None])[i],
+                        "wind_speed": daily.get("wind_speed_10m_max", [None])[i],
+                    }
+                )
 
             logger.info(f"Fetched {len(results)} days of weather history")
             return results

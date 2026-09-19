@@ -2,8 +2,8 @@
 
 import logging
 from datetime import date
-from typing import List, Optional
 from decimal import Decimal
+from typing import List, Optional
 
 from app.data_sources.base import MarketDataProvider, PriceRecord
 

@@ -1,7 +1,8 @@
 """Auth request/response schemas."""
 
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RegisterRequest(BaseModel):
@@ -38,5 +39,4 @@ class UserResponse(BaseModel):
     language_preference: str
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

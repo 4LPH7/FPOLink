@@ -1,19 +1,20 @@
 """FPO management endpoints."""
 
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_role
 from app.database import get_db
-from app.api.deps import get_current_user, require_role
 from app.models.user import User
-from app.schemas.fpo import FPOCreate, FPOUpdate, FPOResponse, FPODashboardStats
+from app.schemas.fpo import FPOCreate, FPODashboardStats, FPOResponse, FPOUpdate
 from app.services.fpo_service import (
     create_fpo,
+    get_dashboard_stats,
     get_fpo,
     list_fpos,
     update_fpo,
-    get_dashboard_stats,
 )
 
 router = APIRouter(prefix="/api/fpos", tags=["fpos"])

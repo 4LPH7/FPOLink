@@ -1,7 +1,10 @@
 """Forecast accuracy log — track predictions vs actuals."""
+
 import uuid
-from sqlalchemy import Column, Numeric, ForeignKey, DateTime, func
+
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, func
 from sqlalchemy.dialects.postgresql import UUID
+
 from app.models.base import Base
 
 

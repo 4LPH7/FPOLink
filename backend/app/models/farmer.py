@@ -1,8 +1,11 @@
 import uuid
-from sqlalchemy import Column, String, Float, ForeignKey
+
+from sqlalchemy import Column, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
+
 
 class Farmer(Base, TimestampMixin):
     __tablename__ = "farmers"
@@ -12,7 +15,7 @@ class Farmer(Base, TimestampMixin):
     fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id"), nullable=False)
     village = Column(String(100), nullable=False)
     taluk = Column(String(100), nullable=False)
-    district = Column(String(100), default='Erode')
+    district = Column(String(100), default="Erode")
     farm_area_acres = Column(Float, nullable=False)
 
     user = relationship("User")

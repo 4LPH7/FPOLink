@@ -1,19 +1,18 @@
 """Data ingestion service — fetches, cleans, and stores market price data."""
 
-import json
 import logging
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
+from app.data_sources.base import PriceRecord
+from app.data_sources.registry import DataSourceRegistry
 from app.models.crop import Crop
+from app.models.ingestion_log import IngestionLog
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.raw_ingest import RawIngest
-from app.models.ingestion_log import IngestionLog
-from app.data_sources.base import PriceRecord
-from app.data_sources.registry import DataSourceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +105,7 @@ class IngestionService:
                     self.db.add(raw)
 
                 # Resolve crop
-                crop = self.db.query(Crop).filter(
-                    Crop.name == record.crop_name
-                ).first()
+                crop = self.db.query(Crop).filter(Crop.name == record.crop_name).first()
                 if not crop:
                     logger.warning(f"Unknown crop: {record.crop_name}, skipping")
                     continue
@@ -118,13 +115,34 @@ class IngestionService:
                 if not market:
                     continue
 
+                # Resolve variety if provided
+                variety_id = None
+                if record.variety_name:
+                    from app.models.variety import Variety
+
+                    variety = (
+                        self.db.query(Variety)
+                        .filter(
+                            Variety.crop_id == crop.id,
+                            Variety.name.ilike(record.variety_name.strip()),
+                        )
+                        .first()
+                    )
+                    if variety:
+                        variety_id = variety.id
+
                 # Check for existing record (dedup)
-                existing = self.db.query(MarketPrice).filter(
+                existing_q = self.db.query(MarketPrice).filter(
                     MarketPrice.crop_id == crop.id,
                     MarketPrice.market_id == market.id,
                     MarketPrice.price_date == record.price_date,
                     MarketPrice.source == record.source,
-                ).first()
+                )
+                if variety_id is not None:
+                    existing_q = existing_q.filter(MarketPrice.variety_id == variety_id)
+                else:
+                    existing_q = existing_q.filter(MarketPrice.variety_id.is_(None))
+                existing = existing_q.first()
 
                 if existing:
                     # Update if newer data
@@ -137,6 +155,7 @@ class IngestionService:
                 else:
                     mp = MarketPrice(
                         crop_id=crop.id,
+                        variety_id=variety_id,
                         market_id=market.id,
                         district=record.district,
                         min_price=record.min_price,
@@ -161,10 +180,14 @@ class IngestionService:
 
     def _resolve_market(self, record: PriceRecord) -> Optional[Market]:
         """Find or create a market entry."""
-        market = self.db.query(Market).filter(
-            Market.name == record.market_name,
-            Market.district == record.district,
-        ).first()
+        market = (
+            self.db.query(Market)
+            .filter(
+                Market.name == record.market_name,
+                Market.district == record.district,
+            )
+            .first()
+        )
 
         if not market:
             # Auto-create market

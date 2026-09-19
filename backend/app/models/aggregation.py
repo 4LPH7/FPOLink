@@ -1,10 +1,13 @@
 import enum
 import uuid
-from sqlalchemy import Column, Float, ForeignKey, Enum, DateTime, func
+
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 from app.models.harvest import HarvestGrade
+
 
 class BatchStatus(str, enum.Enum):
     OPEN = "open"
@@ -12,6 +15,7 @@ class BatchStatus(str, enum.Enum):
     READY = "ready"
     SOLD = "sold"
     COMPLETED = "completed"
+
 
 class AggregationBatch(Base, TimestampMixin):
     __tablename__ = "aggregation_batches"
@@ -26,6 +30,7 @@ class AggregationBatch(Base, TimestampMixin):
 
     fpo = relationship("FPO")
     crop = relationship("Crop")
+
 
 class BatchItem(Base):
     __tablename__ = "batch_items"
