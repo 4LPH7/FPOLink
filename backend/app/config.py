@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
     OGD_API_KEY: str = ""  # data.gov.in Open Government Data API key
+    CEDA_API_KEY: str = ""  # Centre for Economic Data & Analysis API key
 
     # Geography & Scope
     STATE: str = "Tamil Nadu"
@@ -58,7 +59,10 @@ class Settings(BaseSettings):
     # Sentry (optional error monitoring)
     SENTRY_DSN: Optional[str] = None
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # Seed Admin Password
+    SEED_ADMIN_PASSWORD: Optional[str] = None
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()

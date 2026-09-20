@@ -73,6 +73,60 @@ def test_ceda_parser_with_sample_csv():
         assert record.raw_payload is not None
 
 
+def test_ceda_parser_with_published_schema():
+    """Verify CEDA parser with exact published Agmarknet schema columns (no arrival column)."""
+    ceda_official_rows = [
+        {
+            "date": "2024-03-15",
+            "state_name": "Tamil Nadu",
+            "district_name": "Erode",
+            "market_name": "Erode",
+            "commodity_name": "Turmeric",
+            "variety": "Finger",
+            "grade": "FAQ",
+            "min_price": "15200",
+            "max_price": "16800",
+            "modal_price": "16100",
+        },
+        {
+            "date": "2024-03-15",
+            "state_name": "Tamil Nadu",
+            "district_name": "Erode",
+            "market_name": "Perundurai",
+            "commodity_name": "Turmeric",
+            "variety": "Bulb",
+            "grade": "FAQ",
+            "min_price": "13500",
+            "max_price": "14800",
+            "modal_price": "14200",
+        },
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_file = f"{tmpdir}/turmeric_ceda_published_schema.csv"
+        with open(csv_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=list(ceda_official_rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(ceda_official_rows)
+
+        provider = CEDAProvider(data_dir=tmpdir, source_name="ceda")
+        records = provider.fetch_prices("turmeric", "Erode")
+
+        assert len(records) == 2
+        r0 = records[0]
+        assert r0.crop_name == "turmeric"
+        assert r0.market_name == "Erode"
+        assert r0.district == "Erode"
+        assert r0.state == "Tamil Nadu"
+        assert r0.variety_name == "Finger"
+        assert r0.modal_price == Decimal("161")
+        assert r0.min_price == Decimal("152")
+        assert r0.max_price == Decimal("168")
+        assert r0.price_date == date(2024, 3, 15)
+        assert r0.arrival_quantity is None  # Arrivals are a separate table in CEDA
+        assert r0.source == "ceda"
+
+
 def test_ceda_parser_with_synthetic_fixture():
     fixtures_dir = os.path.join(os.path.dirname(__file__), "fixtures")
     provider = CEDAProvider(data_dir=fixtures_dir)
@@ -90,7 +144,7 @@ def test_ceda_parser_with_synthetic_fixture():
     assert r0.min_price == Decimal("145")
     assert r0.max_price == Decimal("162")
     assert r0.price_date == date(2024, 1, 15)
-    assert r0.arrival_quantity == 125.5
+    assert r0.arrival_quantity is None  # In CEDA Agmarknet schema, arrivals are separate
     assert r0.source == "ceda_synthetic"
 
     # Verify variety parsing across records

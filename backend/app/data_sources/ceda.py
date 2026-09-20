@@ -104,9 +104,30 @@ class CEDAProvider(MarketDataProvider):
     ) -> Optional[PriceRecord]:
         """Parse a single CSV row into a PriceRecord."""
         try:
-            # Flexible column name matching (CEDA CSVs vary)
-            row_commodity = self._get_field(row, ["Commodity", "commodity", "COMMODITY", "Crop"])
-            row_district = self._get_field(row, ["District", "district", "DISTRICT"])
+            # Flexible column name matching matching CEDA Agmarknet published schema:
+            # date, state_name, district_name, market_name, commodity_name, variety, grade, min_price, max_price, modal_price
+            row_commodity = self._get_field(
+                row,
+                [
+                    "commodity_name",
+                    "Commodity_Name",
+                    "Commodity",
+                    "commodity",
+                    "COMMODITY",
+                    "Crop",
+                    "crop",
+                ],
+            )
+            row_district = self._get_field(
+                row,
+                [
+                    "district_name",
+                    "District_Name",
+                    "District",
+                    "district",
+                    "DISTRICT",
+                ],
+            )
 
             if not row_commodity or not row_district:
                 return None
@@ -118,7 +139,18 @@ class CEDAProvider(MarketDataProvider):
                 return None
 
             # Parse date
-            date_str = self._get_field(row, ["Date", "date", "DATE", "Price Date", "Arrival_Date"])
+            date_str = self._get_field(
+                row,
+                [
+                    "date",
+                    "Date",
+                    "DATE",
+                    "Price Date",
+                    "price_date",
+                    "Arrival_Date",
+                    "arrival_date",
+                ],
+            )
             if not date_str:
                 return None
             price_date = self._parse_date(date_str)
@@ -133,13 +165,40 @@ class CEDAProvider(MarketDataProvider):
 
             # Parse prices (Rs/quintal → Rs/kg)
             raw_modal = self._parse_decimal(
-                self._get_field(row, ["Modal Price", "Modal_Price", "modal_price", "Modal"])
+                self._get_field(
+                    row,
+                    [
+                        "modal_price",
+                        "Modal_Price",
+                        "Modal Price",
+                        "modal",
+                        "Modal",
+                    ],
+                )
             )
             raw_min = self._parse_decimal(
-                self._get_field(row, ["Min Price", "Min_Price", "min_price", "Minimum"])
+                self._get_field(
+                    row,
+                    [
+                        "min_price",
+                        "Min_Price",
+                        "Min Price",
+                        "minimum",
+                        "Minimum",
+                    ],
+                )
             )
             raw_max = self._parse_decimal(
-                self._get_field(row, ["Max Price", "Max_Price", "max_price", "Maximum"])
+                self._get_field(
+                    row,
+                    [
+                        "max_price",
+                        "Max_Price",
+                        "Max Price",
+                        "maximum",
+                        "Maximum",
+                    ],
+                )
             )
 
             if raw_modal is None or raw_modal <= 0:
@@ -151,11 +210,30 @@ class CEDAProvider(MarketDataProvider):
             max_price = (raw_max / QUINTAL_TO_KG) if raw_max else modal_price
 
             market_name = (
-                self._get_field(row, ["Market", "market", "MARKET", "Market Center"]) or district
+                self._get_field(
+                    row,
+                    [
+                        "market_name",
+                        "Market_Name",
+                        "Market",
+                        "market",
+                        "MARKET",
+                        "Market Center",
+                    ],
+                )
+                or district
             )
-            variety = self._get_field(row, ["Variety", "variety", "VARIETY"])
+            variety = self._get_field(row, ["variety", "Variety", "VARIETY"])
+            # Arrival is separate in CEDA schema, optional in PriceRecord
             arrival = self._parse_float(
-                self._get_field(row, ["Arrival", "arrival", "Arrivals", "Arrival_Tonnes"])
+                self._get_field(
+                    row, ["arrival", "Arrival", "arrivals", "Arrivals", "Arrival_Tonnes"]
+                )
+            )
+
+            state_name = (
+                self._get_field(row, ["state_name", "State_Name", "State", "state", "STATE"])
+                or "Tamil Nadu"
             )
 
             return PriceRecord(
@@ -163,7 +241,7 @@ class CEDAProvider(MarketDataProvider):
                 variety_name=variety,
                 market_name=market_name.strip(),
                 district=district.strip(),
-                state=self._get_field(row, ["State", "state", "STATE"]) or "Tamil Nadu",
+                state=state_name.strip(),
                 min_price=min_price,
                 max_price=max_price,
                 modal_price=modal_price,
