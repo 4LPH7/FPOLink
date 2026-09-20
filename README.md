@@ -131,6 +131,7 @@ docker compose exec backend python scripts/check_market_coverage.py --crop turme
 
 > [!NOTE]
 > All files in `backend/tests/fixtures/*_synthetic.*` and `ml/datasets/*_synthetic.*` are **synthetic fixtures** crafted to model published government and academic schemas for deterministic unit testing. They must not be mistaken for verified ground-truth agricultural observations.
+> See [docs/data-provenance.md](docs/data-provenance.md) for the complete provenance verification ledger, dataset isolation guarantees, and step-by-step instructions.
 
 ### Obtaining Real Mandi Data
 1. **Daily Agmarknet Prices (Live Ingestion)**:
