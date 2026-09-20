@@ -14,6 +14,7 @@ Programmatic access to raw Agmarknet agricultural market data:
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -32,24 +33,67 @@ QUINTAL_TO_KG = Decimal("100")
 TN_CENSUS_STATE_ID = 33
 ERODE_CENSUS_DISTRICT_ID = 610
 
+# Known commodity IDs to avoid list-everything calls
+KNOWN_COMMODITY_IDS: Dict[str, int] = {
+    "turmeric": 14,
+    "banana": 22,
+}
+
 
 class CEDAAPIProvider(MarketDataProvider):
     """Fetch live or historical prices from CEDA Agmarknet Data Portal API."""
 
     source_name = "ceda"
 
+    # Circuit breaker state shared across instances
+    _failure_count: int = 0
+    _circuit_open_until: float = 0.0
+    failure_threshold: int = 3
+    cooldown_seconds: float = 300.0  # 5 minute cooldown
+
     def __init__(
         self,
         api_key: Optional[str] = None,
         base_url: str = CEDA_API_BASE_URL,
-        timeout: float = 60.0,
+        timeout: float = 15.0,
+        connect_timeout: float = 5.0,
+        max_retries: int = 2,
     ) -> None:
         self.api_key = api_key or settings.CEDA_API_KEY
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.connect_timeout = connect_timeout
+        self.max_retries = max_retries
 
     def is_available(self) -> bool:
         return bool(self.api_key)
+
+    def is_circuit_open(self) -> bool:
+        """Check if circuit breaker is currently tripped."""
+        now = time.time()
+        if now < self.__class__._circuit_open_until:
+            return True
+        return False
+
+    def reset_circuit(self) -> None:
+        """Reset circuit breaker state (useful for tests or recovery)."""
+        self.__class__._failure_count = 0
+        self.__class__._circuit_open_until = 0.0
+
+    def _record_failure(self) -> None:
+        self.__class__._failure_count += 1
+        threshold = getattr(self, "failure_threshold", self.__class__.failure_threshold)
+        cooldown = getattr(self, "cooldown_seconds", self.__class__.cooldown_seconds)
+        if self.__class__._failure_count >= threshold:
+            self.__class__._circuit_open_until = time.time() + cooldown
+            logger.warning(
+                f"CEDA API circuit breaker TRIPPED ({self.__class__._failure_count} consecutive failures). "
+                f"Fast-failing calls for {cooldown}s."
+            )
+
+    def _record_success(self) -> None:
+        if self.__class__._failure_count > 0:
+            self.__class__._failure_count = 0
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -59,24 +103,61 @@ class CEDAAPIProvider(MarketDataProvider):
             "User-Agent": "FPOLink/1.0",
         }
 
+    def _request_with_retry(self, method: str, url: str, **kwargs) -> Optional[httpx.Response]:
+        """Execute HTTP request with short timeout, retries, and circuit breaker."""
+        if self.is_circuit_open():
+            logger.warning("CEDA API circuit breaker is OPEN; fast-failing request")
+            return None
+
+        client_timeout = httpx.Timeout(self.timeout, connect=self.connect_timeout)
+        attempts = 0
+        last_exception = None
+
+        while attempts <= self.max_retries:
+            attempts += 1
+            try:
+                with httpx.Client(timeout=client_timeout) as client:
+                    resp = client.request(method, url, headers=self._headers(), **kwargs)
+                    if resp.status_code in (502, 503, 504):
+                        logger.warning(
+                            f"CEDA API returned {resp.status_code} (attempt {attempts}/{self.max_retries + 1})"
+                        )
+                        if attempts <= self.max_retries:
+                            time.sleep(0.3 * attempts)
+                            continue
+                        resp.raise_for_status()
+                    resp.raise_for_status()
+                    self._record_success()
+                    return resp
+            except (httpx.TimeoutException, httpx.HTTPStatusError) as e:
+                last_exception = e
+                logger.warning(f"CEDA API request error: {e} (attempt {attempts})")
+                if attempts <= self.max_retries:
+                    time.sleep(0.3 * attempts)
+                    continue
+            except Exception as e:
+                last_exception = e
+                break
+
+        # All attempts exhausted
+        logger.error(f"CEDA API request to {url} failed: {last_exception}")
+        self._record_failure()
+        return None
+
     def get_commodities(self) -> List[Dict[str, Any]]:
         """Retrieve list of all commodities: [{"id": int, "name": str}]."""
         if not self.is_available():
             logger.warning("CEDA API key not configured")
             return []
 
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.get(
-                    f"{self.base_url}/agmarknet/commodities",
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
+        resp = self._request_with_retry("GET", f"{self.base_url}/agmarknet/commodities")
+        if resp is not None:
+            try:
                 data = resp.json()
                 return data.get("commodities", [])
-        except Exception as e:
-            logger.error(f"Error fetching CEDA commodities: {e}")
-            return []
+            except Exception as e:
+                logger.error(f"Error parsing CEDA commodities JSON: {e}")
+        return []
 
     def get_geographies(self) -> List[Dict[str, Any]]:
         """Retrieve geographies: [{"state_id": int, "state_name": str, "districts": [...]}]"""
@@ -84,18 +165,14 @@ class CEDAAPIProvider(MarketDataProvider):
             logger.warning("CEDA API key not configured")
             return []
 
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.get(
-                    f"{self.base_url}/agmarknet/geographies",
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
+        resp = self._request_with_retry("GET", f"{self.base_url}/agmarknet/geographies")
+        if resp is not None:
+            try:
                 data = resp.json()
                 return data.get("geographies", [])
-        except Exception as e:
-            logger.error(f"Error fetching CEDA geographies: {e}")
-            return []
+            except Exception as e:
+                logger.error(f"Error parsing CEDA geographies JSON: {e}")
+        return []
 
     def fetch_prices(
         self,
@@ -108,17 +185,16 @@ class CEDAAPIProvider(MarketDataProvider):
         district_id: Optional[int] = ERODE_CENSUS_DISTRICT_ID,
         market_ids: Optional[List[int]] = None,
     ) -> List[PriceRecord]:
-        """Fetch prices from CEDA API.
-
-        Requires integer commodity_id. If not passed, attempts to discover
-        commodity_id via get_commodities() matching the crop name.
-        """
+        """Fetch prices from CEDA API with narrow query targeting."""
         if not self.is_available():
             logger.warning("CEDA API key not configured")
             return []
 
-        # Resolve commodity_id if needed
+        # Resolve commodity_id: first check known mapping, then query API
         cid = commodity_id
+        if cid is None:
+            cid = KNOWN_COMMODITY_IDS.get(crop.lower().strip())
+
         if cid is None:
             commodities = self.get_commodities()
             for item in commodities:
@@ -145,24 +221,19 @@ class CEDAAPIProvider(MarketDataProvider):
             payload["market_id"] = market_ids
 
         records: List[PriceRecord] = []
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.post(
-                    f"{self.base_url}/agmarknet/prices",
-                    json=payload,
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
+        resp = self._request_with_retry("POST", f"{self.base_url}/agmarknet/prices", json=payload)
+        if resp is not None:
+            try:
                 data = resp.json()
-
-            for item in data.get("data", []):
-                record = self._parse_api_item(item, crop, district)
-                if record:
-                    records.append(record)
-
-            logger.info(f"Fetched {len(records)} records from CEDA API for {crop} in {district}")
-        except Exception as e:
-            logger.error(f"Error fetching prices from CEDA API: {e}")
+                for item in data.get("data", []):
+                    record = self._parse_api_item(item, crop, district)
+                    if record:
+                        records.append(record)
+                logger.info(
+                    f"Fetched {len(records)} records from CEDA API for {crop} in {district}"
+                )
+            except Exception as e:
+                logger.error(f"Error parsing CEDA price records JSON: {e}")
 
         return records
 

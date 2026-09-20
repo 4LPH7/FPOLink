@@ -31,12 +31,13 @@ def check_coverage(crop: str = "turmeric", district: str = "Erode", db=None) -> 
         SELECT
             date_trunc('month', p.price_date)::date AS month,
             m.name AS market_name,
-            COUNT(*) AS record_count
+            COUNT(DISTINCT p.price_date) AS record_count
         FROM market_prices p
         JOIN markets m ON m.id = p.market_id
         JOIN crops c ON c.id = p.crop_id
         WHERE c.name ILIKE :crop_pattern
           AND m.district ILIKE :district_pattern
+          AND p.source IN ('ceda', 'ogd')
         GROUP BY 1, 2
         ORDER BY 1, 2;
         """

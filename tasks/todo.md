@@ -9,14 +9,16 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [ ] T0.4 Submit `daily_price_digest` templates (ta, en) for approval
 - [ ] T0.5 Real price data loaded (CEDA before Sept 27) + coverage audit
 
-## Phase 1: Vertical slice, PRICE returns a real price
+## Phase 1: Vertical slice, PRICE returns a real price (Code-Complete, Pending Live Verification)
 - [x] T1.1 Import skeleton into the repo, CI green
 - [x] T1.2 Migration: phone/lang/consent fields + bot tables
 - [x] T1.3 `DbBotServices` (farmers, prices, atomic dedup, state TTL)
 - [x] T1.4 Wire engine, settings validation, kill switch
 - [x] T1.5 Contract tests for outgoing payloads
 ### Checkpoint A: end-to-end from a real phone; CI green; no secrets in repo
-- [ ] Reviewed by human
+> [!NOTE]
+> Checkpoint A remains open: requires real phone testing, captured real Meta webhook payloads (T0.3), and verified real market price backfill (T0.5).
+- [ ] Checkpoint A verified by human with real device and live prices
 
 ## Phase 2: Onboarding, identity, consent
 - [ ] T2.1 wa.me invite link endpoint

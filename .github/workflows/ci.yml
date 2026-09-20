@@ -52,6 +52,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg://fpolink:fpolink@localhost:5432/fpolink_test
           SECRET_KEY: test-secret-key-not-for-production
+          REQUIRE_DB: "1"
         run: pytest -v --tb=short
 
       - name: Run linting & format check

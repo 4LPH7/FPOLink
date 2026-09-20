@@ -27,9 +27,15 @@ class CEDAProvider(MarketDataProvider):
 
     source_name = "ceda"
 
-    def __init__(self, data_dir: str = "ml/datasets", source_name: Optional[str] = None):
+    def __init__(
+        self,
+        data_dir: str = "ml/datasets",
+        source_name: Optional[str] = None,
+        allow_synthetic: bool = False,
+    ):
         self.data_dir = data_dir
         self.source_name = source_name
+        self.allow_synthetic = allow_synthetic
 
     def fetch_prices(
         self,
@@ -52,11 +58,17 @@ class CEDAProvider(MarketDataProvider):
             logger.warning(f"No CEDA CSV found for {crop} in {district}")
             return records
 
+        # Guard against loading synthetic files when allow_synthetic is False
+        lower_path = csv_path.lower()
+        is_synthetic = "synthetic" in lower_path or "sample" in lower_path
+        if is_synthetic and not self.allow_synthetic:
+            logger.warning(f"Skipping synthetic CSV {csv_path} because allow_synthetic is False")
+            return records
+
         # Tag synthetic or sample data to prevent contaminating ML datasets
         source = self.source_name
         if not source:
-            lower_path = csv_path.lower()
-            if "synthetic" in lower_path or "sample" in lower_path:
+            if is_synthetic:
                 source = "ceda_synthetic"
             else:
                 source = "ceda"
@@ -79,16 +91,34 @@ class CEDAProvider(MarketDataProvider):
 
     def _find_csv(self, crop: str, district: str) -> Optional[str]:
         """Find a CEDA CSV file matching the crop/district."""
+        # If data_dir is a direct file path
+        if os.path.isfile(self.data_dir):
+            if not self.allow_synthetic and (
+                "synthetic" in self.data_dir.lower() or "sample" in self.data_dir.lower()
+            ):
+                return None
+            return self.data_dir
+
         if not os.path.exists(self.data_dir):
             return None
 
+        # Helper to check if file is synthetic
+        def _is_synthetic(fname: str) -> bool:
+            fl = fname.lower()
+            return "synthetic" in fl or "sample" in fl
+
+        # 1. Match specific crop
         for filename in os.listdir(self.data_dir):
             if filename.endswith(".csv") and crop.lower() in filename.lower():
+                if not self.allow_synthetic and _is_synthetic(filename):
+                    continue
                 return os.path.join(self.data_dir, filename)
 
-        # Try a generic file
+        # 2. Match generic ceda file (only if allowed)
         for filename in os.listdir(self.data_dir):
             if filename.endswith(".csv") and "ceda" in filename.lower():
+                if not self.allow_synthetic and _is_synthetic(filename):
+                    continue
                 return os.path.join(self.data_dir, filename)
 
         return None

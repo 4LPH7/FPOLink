@@ -87,24 +87,44 @@ class DbBotServices:
         """Retrieve newest available price for crop in district, with state fallback.
 
         Price rule:
-        1. Find newest date for the given crop in the specified district.
-        2. If none found, fallback to the newest date in Tamil Nadu for that crop.
-        3. If newest date is older than stale_days_threshold (default 7 days),
+        1. Find newest date for the given crop in the specified district from verified
+           sources only (whitelisted: ceda, ogd). Never returns synthetic or demo prices.
+        2. If both OGD and CEDA exist for the newest date, OGD takes precedence as the
+           official live mandi feed.
+        3. If none found in district, fallback to the newest verified date in Tamil Nadu.
+        4. If newest date is older than stale_days_threshold (default 7 days),
            the price is flagged with an advisory.
         """
+        from sqlalchemy import case
+
+        from app.core.sources import REAL_PRICE_SOURCES
+
+        source_precedence = case(
+            (MarketPrice.source == "ogd", 1),
+            (MarketPrice.source == "ceda", 2),
+            else_=99,
+        )
+
         with self.db_factory() as db:
-            # Query with district filter first
+            # Query with district filter first — strictly whitelisting real sources
             query = (
                 db.query(MarketPrice, Market.name.label("market_name"))
                 .join(Crop, MarketPrice.crop_id == Crop.id)
                 .join(Market, MarketPrice.market_id == Market.id)
-                .filter(Crop.name.ilike(f"{crop}%"))
+                .filter(
+                    Crop.name.ilike(f"{crop}%"),
+                    MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                )
             )
 
             if district:
                 district_prices = (
                     query.filter(Market.district.ilike(f"{district}%"))
-                    .order_by(MarketPrice.price_date.desc(), MarketPrice.modal_price.desc())
+                    .order_by(
+                        MarketPrice.price_date.desc(),
+                        source_precedence.asc(),
+                        MarketPrice.modal_price.desc(),
+                    )
                     .first()
                 )
                 if district_prices:
@@ -120,7 +140,9 @@ class DbBotServices:
 
             # Fallback across all districts in state
             state_price = query.order_by(
-                MarketPrice.price_date.desc(), MarketPrice.modal_price.desc()
+                MarketPrice.price_date.desc(),
+                source_precedence.asc(),
+                MarketPrice.modal_price.desc(),
             ).first()
 
             if state_price:

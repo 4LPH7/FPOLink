@@ -8,6 +8,7 @@ from typing import List, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sources import REAL_PRICE_SOURCES, get_source_priority
 from app.models.crop import Crop
 from app.models.market import Market
 from app.models.market_price import MarketPrice
@@ -17,19 +18,22 @@ logger = logging.getLogger(__name__)
 
 
 def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]:
-    """Get the most recent price for each crop in each market."""
+    """Get the most recent verified price for each crop in each market."""
     from app.config import settings
 
     district = district or settings.DEFAULT_DISTRICT
 
-    # Subquery for max date per crop/market
+    # Subquery for max date per crop/market — whitelisting real sources only
     subq = (
         db.query(
             MarketPrice.crop_id,
             MarketPrice.market_id,
             func.max(MarketPrice.price_date).label("max_date"),
         )
-        .filter(MarketPrice.district == district)
+        .filter(
+            MarketPrice.district == district,
+            MarketPrice.source.in_(REAL_PRICE_SOURCES),
+        )
         .group_by(MarketPrice.crop_id, MarketPrice.market_id)
         .subquery()
     )
@@ -44,11 +48,23 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
             & (MarketPrice.market_id == subq.c.market_id)
             & (MarketPrice.price_date == subq.c.max_date),
         )
+        .filter(MarketPrice.source.in_(REAL_PRICE_SOURCES))
         .all()
     )
 
-    prices = []
+    # If both OGD and CEDA report on max_date, arbitrate using SOURCE_PRIORITY
+    winner_per_pair = {}
     for mp, crop, market in results:
+        pair_key = (mp.crop_id, mp.market_id)
+        if pair_key not in winner_per_pair:
+            winner_per_pair[pair_key] = (mp, crop, market)
+        else:
+            existing_mp, _, _ = winner_per_pair[pair_key]
+            if get_source_priority(mp.source) < get_source_priority(existing_mp.source):
+                winner_per_pair[pair_key] = (mp, crop, market)
+
+    prices = []
+    for mp, crop, market in winner_per_pair.values():
         # Calculate trend
         trend = _calculate_trend(db, mp.crop_id, mp.market_id, mp.price_date)
 
@@ -78,7 +94,7 @@ def get_price_history(
     market_id: str,
     days: int = 30,
 ) -> List[dict]:
-    """Get price history for a crop in a market."""
+    """Get verified price history for a crop in a market."""
     start_date = date.today() - timedelta(days=days)
 
     results = (
@@ -87,10 +103,20 @@ def get_price_history(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
             MarketPrice.price_date >= start_date,
+            MarketPrice.source.in_(REAL_PRICE_SOURCES),
         )
         .order_by(MarketPrice.price_date)
         .all()
     )
+
+    # Deduplicate dates if both OGD and CEDA exist for same date
+    date_map = {}
+    for mp in results:
+        d = mp.price_date
+        if d not in date_map or get_source_priority(mp.source) < get_source_priority(
+            date_map[d].source
+        ):
+            date_map[d] = mp
 
     return [
         {
@@ -100,7 +126,7 @@ def get_price_history(
             "modal_price": mp.modal_price,
             "arrival_quantity": mp.arrival_quantity,
         }
-        for mp in results
+        for mp in sorted(date_map.values(), key=lambda x: x.price_date)
     ]
 
 
@@ -135,7 +161,7 @@ def check_anomalies(
     window: int = 30,
     threshold: float = 3.0,
 ) -> List[dict]:
-    """Check for price anomalies using MAD z-score."""
+    """Check for price anomalies using MAD z-score on verified records."""
     start_date = date.today() - timedelta(days=window)
     prices_rows = (
         db.query(MarketPrice)
@@ -143,6 +169,7 @@ def check_anomalies(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
             MarketPrice.price_date >= start_date,
+            MarketPrice.source.in_(REAL_PRICE_SOURCES),
         )
         .order_by(MarketPrice.price_date)
         .all()
@@ -176,7 +203,15 @@ def _calculate_trend(db: Session, crop_id, market_id, current_date: date) -> dic
 
 
 def _get_price_on_date(db: Session, crop_id, market_id, target_date: date) -> Optional[Decimal]:
-    """Get modal price on or near a date (tries up to 3 days back)."""
+    """Get modal price on or near a date from verified sources."""
+    from sqlalchemy import case
+
+    source_precedence = case(
+        (MarketPrice.source == "ogd", 1),
+        (MarketPrice.source == "ceda", 2),
+        else_=99,
+    )
+
     for offset in range(4):
         d = target_date - timedelta(days=offset)
         mp = (
@@ -185,7 +220,9 @@ def _get_price_on_date(db: Session, crop_id, market_id, target_date: date) -> Op
                 MarketPrice.crop_id == crop_id,
                 MarketPrice.market_id == market_id,
                 MarketPrice.price_date == d,
+                MarketPrice.source.in_(REAL_PRICE_SOURCES),
             )
+            .order_by(source_precedence.asc())
             .first()
         )
         if mp:

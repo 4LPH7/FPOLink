@@ -153,7 +153,7 @@ async def test_latest_price_and_staleness(test_db_factory):
             max_price=Decimal("140.00"),
             modal_price=Decimal("130.00"),
             price_date=ten_days_ago,
-            source="test",
+            source="ceda",
         )
         mp_salem = MarketPrice(
             crop_id=crop.id,
@@ -163,7 +163,7 @@ async def test_latest_price_and_staleness(test_db_factory):
             max_price=Decimal("145.00"),
             modal_price=Decimal("135.00"),
             price_date=today,
-            source="test",
+            source="ceda",
         )
         db.add_all([mp_erode, mp_salem])
         db.commit()

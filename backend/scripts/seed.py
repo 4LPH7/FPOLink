@@ -263,7 +263,7 @@ def seed_data():
                         MarketPrice.crop_id == turmeric.id,
                         MarketPrice.market_id == erode_mandi.id,
                         MarketPrice.price_date == price_date,
-                        MarketPrice.source == "seed",
+                        MarketPrice.source == "seed_demo",
                     )
                     .first()
                 )
@@ -280,7 +280,7 @@ def seed_data():
                         raw_unit="quintal",
                         arrival_quantity=1200.0 + (pd_item["days_ago"] * 50),
                         price_date=price_date,
-                        source="seed",
+                        source="seed_demo",
                     )
                     db.add(mp)
                     db.commit()

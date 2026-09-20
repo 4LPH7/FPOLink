@@ -49,23 +49,33 @@ class IngestionService:
 
         for crop_name in crops:
             for district in districts:
-                try:
-                    records = self.registry.fetch_prices(
-                        crop=crop_name,
-                        district=district,
-                        start_date=start_date,
-                        end_date=end_date,
+                # Select target providers: specific source or all available independent providers
+                if source:
+                    target_prov = self.registry.get_provider(source)
+                    active_providers = (
+                        [target_prov] if target_prov and target_prov.is_available() else []
                     )
-                    total_fetched += len(records)
+                else:
+                    active_providers = [p for p in self.registry.providers if p.is_available()]
 
-                    stored = self._store_records(records)
-                    total_stored += stored
+                for provider in active_providers:
+                    try:
+                        records = provider.fetch_prices(
+                            crop=crop_name,
+                            district=district,
+                            start_date=start_date,
+                            end_date=end_date,
+                        )
+                        total_fetched += len(records)
 
-                except Exception as e:
-                    total_errors += 1
-                    err_msg = f"Error ingesting {crop_name}/{district}: {e}"
-                    error_details.append(err_msg)
-                    logger.error(err_msg)
+                        stored = self._store_records(records)
+                        total_stored += stored
+
+                    except Exception as e:
+                        total_errors += 1
+                        err_msg = f"Error ingesting {crop_name}/{district} from {provider.source_name}: {e}"
+                        error_details.append(err_msg)
+                        logger.error(err_msg)
 
         duration = (datetime.now(timezone.utc) - start_time).total_seconds()
 

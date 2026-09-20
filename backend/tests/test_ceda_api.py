@@ -119,3 +119,50 @@ def test_ceda_fetch_prices_contract(ceda_provider):
     assert rec.max_price == Decimal("140.00")
     assert rec.raw_price == Decimal("13000")
     assert rec.raw_unit == "quintal"
+
+
+@respx.mock
+def test_ceda_retries_on_504(ceda_provider):
+    """Verify provider retries on 504 Gateway Timeout before failing."""
+    ceda_provider.reset_circuit()
+    route = respx.get(f"{CEDA_API_BASE_URL}/agmarknet/commodities").respond(
+        status_code=504,
+        text="Gateway Timeout",
+    )
+
+    items = ceda_provider.get_commodities()
+    assert items == []
+    # 1 initial attempt + 2 retries = 3 calls
+    assert route.call_count == 3
+
+
+@respx.mock
+def test_ceda_circuit_breaker_fast_fails():
+    """Verify circuit breaker trips after consecutive failures and fast-fails."""
+    provider = CEDAAPIProvider(api_key="test_key", max_retries=0)
+    provider.reset_circuit()
+    provider.failure_threshold = 2
+    provider.cooldown_seconds = 60.0
+
+    route = respx.get(f"{CEDA_API_BASE_URL}/agmarknet/commodities").respond(
+        status_code=500,
+        text="Internal Server Error",
+    )
+
+    # 1st failure
+    provider.get_commodities()
+    assert not provider.is_circuit_open()
+
+    # 2nd failure -> trips circuit
+    provider.get_commodities()
+    assert provider.is_circuit_open()
+
+    # 3rd call should fast-fail without hitting route
+    call_count_before = route.call_count
+    result = provider.get_commodities()
+    assert result == []
+    assert route.call_count == call_count_before, "Fast-fail must not call upstream"
+
+    # Reset circuit
+    provider.reset_circuit()
+    assert not provider.is_circuit_open()

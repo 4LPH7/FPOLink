@@ -21,13 +21,21 @@ class DataSourceRegistry:
     add only if API sources are insufficient.
     """
 
-    def __init__(self):
+    def __init__(self, allow_synthetic: bool = False):
+        self.allow_synthetic = allow_synthetic
         self.providers: List[MarketDataProvider] = [
             OGDProvider(),
             CEDAAPIProvider(),
-            CEDAProvider(),
+            CEDAProvider(allow_synthetic=allow_synthetic),
             ManualProvider(),
         ]
+
+    def get_provider(self, name: str) -> Optional[MarketDataProvider]:
+        """Get provider by source name."""
+        for p in self.providers:
+            if p.source_name == name:
+                return p
+        return None
 
     def fetch_prices(
         self,

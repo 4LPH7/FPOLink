@@ -30,9 +30,12 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
     """Create all tables before tests, drop after."""
+    require_db = os.environ.get("REQUIRE_DB", "").lower() in ("1", "true", "yes")
     try:
         Base.metadata.create_all(bind=engine)
-    except Exception:
+    except Exception as e:
+        if require_db:
+            pytest.fail(f"REQUIRE_DB is set, but database setup failed: {e}")
         yield
         return
 
@@ -46,9 +49,12 @@ def create_tables():
 @pytest.fixture()
 def db():
     """Provide a clean database session for each test."""
+    require_db = os.environ.get("REQUIRE_DB", "").lower() in ("1", "true", "yes")
     try:
         connection = engine.connect()
     except Exception as e:
+        if require_db:
+            pytest.fail(f"REQUIRE_DB is set, but database connection failed: {e}")
         pytest.skip(f"Database connection not available: {e}")
 
     transaction = connection.begin()

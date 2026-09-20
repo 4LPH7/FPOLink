@@ -129,7 +129,7 @@ def test_ceda_parser_with_published_schema():
 
 def test_ceda_parser_with_synthetic_fixture():
     fixtures_dir = os.path.join(os.path.dirname(__file__), "fixtures")
-    provider = CEDAProvider(data_dir=fixtures_dir)
+    provider = CEDAProvider(data_dir=fixtures_dir, allow_synthetic=True)
 
     # 1. Turmeric in Erode
     turmeric_records = provider.fetch_prices("turmeric", "Erode")
