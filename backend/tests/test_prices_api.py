@@ -48,7 +48,7 @@ def test_prices_and_crops_api(client, db):
                 max_price=Decimal("160.00"),
                 modal_price=Decimal(str(150.00 + (i * 2))),
                 price_date=p_date,
-                source="test_api",
+                source="ceda",
             )
             db.add(mp)
     db.commit()
