@@ -9,7 +9,7 @@ alembic==1.14.1
 
 # Validation & Settings
 pydantic==2.10.4
-pydantic-settings==2.7.1
+pydantic-settings==2.15.0
 
 # Auth (maintained replacements for passlib/python-jose)
 pwdlib[argon2]==0.2.1
