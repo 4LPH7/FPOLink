@@ -33,6 +33,21 @@ class Settings(BaseSettings):
                     "FATAL SECURITY ERROR: SECRET_KEY is set to default 'change-me-in-production' "
                     "while ENVIRONMENT is 'production'. The application refuses to start."
                 )
+            if self.WHATSAPP_ENABLED:
+                missing_wa = []
+                if not self.WHATSAPP_VERIFY_TOKEN:
+                    missing_wa.append("WHATSAPP_VERIFY_TOKEN")
+                if not self.WHATSAPP_APP_SECRET:
+                    missing_wa.append("WHATSAPP_APP_SECRET")
+                if not self.WHATSAPP_ACCESS_TOKEN:
+                    missing_wa.append("WHATSAPP_ACCESS_TOKEN")
+                if not self.WHATSAPP_PHONE_NUMBER_ID:
+                    missing_wa.append("WHATSAPP_PHONE_NUMBER_ID")
+                if missing_wa:
+                    raise ValueError(
+                        f"FATAL SECURITY ERROR: WHATSAPP_ENABLED is True in production, but the following "
+                        f"required secrets are missing: {', '.join(missing_wa)}. Refusing to start."
+                    )
         elif self.SECRET_KEY == "change-me-in-production":
             import logging
 
@@ -41,6 +56,14 @@ class Settings(BaseSettings):
                 "Set a secure, long random string in production via .env or environment variable."
             )
         return self
+
+    # WhatsApp Cloud API
+    WHATSAPP_ENABLED: bool = True  # Kill switch
+    WHATSAPP_VERIFY_TOKEN: str = ""
+    WHATSAPP_APP_SECRET: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_API_VERSION: str = "v23.0"
 
     # External Services
     TELEGRAM_BOT_TOKEN: str = ""

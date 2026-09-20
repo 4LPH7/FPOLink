@@ -19,6 +19,7 @@ from functools import lru_cache
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 
+from app.config import settings
 from app.messaging.whatsapp_cloud import WhatsAppCloudChannel, parse_webhook, verify_signature
 from app.services.bot import BotEngine
 
@@ -36,14 +37,14 @@ class WhatsAppSettings:
 
 @lru_cache
 def get_wa_settings() -> WhatsAppSettings:
-    # Fold these into your pydantic Settings class if you prefer.
-    env = os.environ.get
     return WhatsAppSettings(
-        verify_token=env("WHATSAPP_VERIFY_TOKEN", ""),
-        app_secret=env("WHATSAPP_APP_SECRET", ""),
-        access_token=env("WHATSAPP_ACCESS_TOKEN", ""),
-        phone_number_id=env("WHATSAPP_PHONE_NUMBER_ID", ""),
-        api_version=env("WHATSAPP_API_VERSION", "v23.0"),
+        verify_token=settings.WHATSAPP_VERIFY_TOKEN or os.environ.get("WHATSAPP_VERIFY_TOKEN", ""),
+        app_secret=settings.WHATSAPP_APP_SECRET or os.environ.get("WHATSAPP_APP_SECRET", ""),
+        access_token=settings.WHATSAPP_ACCESS_TOKEN or os.environ.get("WHATSAPP_ACCESS_TOKEN", ""),
+        phone_number_id=settings.WHATSAPP_PHONE_NUMBER_ID
+        or os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
+        api_version=settings.WHATSAPP_API_VERSION
+        or os.environ.get("WHATSAPP_API_VERSION", "v23.0"),
     )
 
 
@@ -57,9 +58,18 @@ def get_channel() -> WhatsAppCloudChannel:
     return _channel()
 
 
+@lru_cache
+def _bot() -> BotEngine:
+    from app.services.db_bot_services import DbBotServices
+
+    return BotEngine(DbBotServices())
+
+
 def get_bot() -> BotEngine:
-    """Wire this to a BotEngine backed by your real services (see WHATSAPP_SETUP.md)."""
-    raise HTTPException(status_code=503, detail="WhatsApp bot services not configured")
+    """Return active BotEngine or raise 503 if WhatsApp is disabled via kill switch."""
+    if not settings.WHATSAPP_ENABLED:
+        raise HTTPException(status_code=503, detail="WhatsApp bot is currently disabled")
+    return _bot()
 
 
 @router.get("/webhook")
@@ -69,6 +79,9 @@ async def verify(
     challenge: str = Query("", alias="hub.challenge"),
     cfg: WhatsAppSettings = Depends(get_wa_settings),
 ):
+    if not settings.WHATSAPP_ENABLED:
+        raise HTTPException(status_code=503, detail="WhatsApp bot is currently disabled")
+
     ok = (
         bool(cfg.verify_token)
         and mode == "subscribe"
@@ -87,6 +100,9 @@ async def receive(
     channel: WhatsAppCloudChannel = Depends(get_channel),
     bot: BotEngine = Depends(get_bot),
 ):
+    if not settings.WHATSAPP_ENABLED:
+        raise HTTPException(status_code=503, detail="WhatsApp bot is currently disabled")
+
     raw = await request.body()  # signature is over the exact raw bytes, so read before parsing
     if not verify_signature(cfg.app_secret, raw, request.headers.get("X-Hub-Signature-256")):
         raise HTTPException(status_code=403, detail="Invalid signature")

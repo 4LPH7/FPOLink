@@ -11,10 +11,10 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 
 ## Phase 1: Vertical slice, PRICE returns a real price
 - [x] T1.1 Import skeleton into the repo, CI green
-- [ ] T1.2 Migration: phone/lang/consent fields + bot tables
-- [ ] T1.3 `DbBotServices` (farmers, prices, atomic dedup, state TTL)
-- [ ] T1.4 Wire engine, settings validation, kill switch
-- [ ] T1.5 Contract tests for outgoing payloads
+- [x] T1.2 Migration: phone/lang/consent fields + bot tables
+- [x] T1.3 `DbBotServices` (farmers, prices, atomic dedup, state TTL)
+- [x] T1.4 Wire engine, settings validation, kill switch
+- [x] T1.5 Contract tests for outgoing payloads
 ### Checkpoint A: end-to-end from a real phone; CI green; no secrets in repo
 - [ ] Reviewed by human
 

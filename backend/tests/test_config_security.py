@@ -19,6 +19,7 @@ def test_production_accepts_strong_secret_key():
     settings = Settings(
         ENVIRONMENT="production",
         SECRET_KEY="a-secure-random-production-key-32-chars-long",
+        WHATSAPP_ENABLED=False,
     )
     assert settings.ENVIRONMENT == "production"
     assert settings.SECRET_KEY == "a-secure-random-production-key-32-chars-long"

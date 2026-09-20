@@ -36,10 +36,8 @@ numpy==2.2.1
 # Features
 holidays==0.63
 
-# Telegram
-python-telegram-bot==21.9
-
-# Testing & Linting
+# WhatsApp & Testing
+respx==0.23.1
 pytest==8.3.4
 pytest-asyncio==0.25.0
 ruff==0.8.4

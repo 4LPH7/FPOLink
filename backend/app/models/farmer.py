@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, Float, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -13,10 +13,15 @@ class Farmer(Base, TimestampMixin):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id"), nullable=False)
+    phone = Column(String(10), unique=True, index=True, nullable=True)
     village = Column(String(100), nullable=False)
     taluk = Column(String(100), nullable=False)
     district = Column(String(100), default="Erode")
     farm_area_acres = Column(Float, nullable=False)
+    lang = Column(String(10), nullable=False, default="ta")
+    alerts_opt_in = Column(Boolean, nullable=False, default=False)
+    alerts_opt_in_at = Column(DateTime(timezone=True), nullable=True)
+    alerts_opt_out_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User")
     fpo = relationship("FPO", back_populates="farmers")
