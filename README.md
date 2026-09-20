@@ -26,21 +26,21 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
                            │
                      FastAPI Backend
                            │
-       ┌───────────────────┼───────────────────┐
-       │                   │                   │
-  PostgreSQL 16     Background Worker     Notifications
-   (21 Tables)        (APScheduler)       (Telegram Bot)
-       │                   │
-       │              Daily ETL:
-       │              ├── data.gov.in (OGD)
-       │              ├── CEDA Agri-Market (Ashoka Univ)
-       │              ├── Open-Meteo & NASA POWER
-       │              └── TN Festival Features
-       │
-   ML Forecasting
-   ├── Baselines (Seasonal Naive)
-   ├── statsforecast (ETS / ARIMA)
-   └── LightGBM (Quantile intervals)
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+   PostgreSQL 16     Background Worker     Notifications
+    (21 Tables)        (APScheduler)    (WhatsApp Cloud API)
+        │                   │
+        │              Daily ETL:
+        │              ├── data.gov.in (OGD)
+        │              ├── CEDA Agri-Market (Ashoka Univ)
+        │              ├── Open-Meteo & NASA POWER
+        │              └── TN Festival Features
+        │
+    ML Forecasting
+    ├── Baselines (Seasonal Naive)
+    ├── statsforecast (ETS / ARIMA)
+    └── LightGBM (Quantile intervals)
 ```
 
 ## Modules
@@ -53,7 +53,7 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
 | **Farmer Directory** | Farmer registration, farm land tracking, bilingual preferences | **Active** |
 | **Data Ingestion (ETL)** | CEDA historical backfill, OGD API, Open-Meteo & NASA POWER weather | **Active** |
 | **Harvest Aggregation** | Aggregate individual farmer harvests into bulk batches | In Progress |
-| **Telegram Bot** | Free verified phone authentication, price checks, alerts | Planned (W2) |
+| **WhatsApp Bot** | Meta Cloud API webhook, inbound prices, harvest flow, utility digest | Planned (W2) |
 | **Price Forecasting** | Model ladder (statsforecast → LightGBM) with hold/sell ranges | Planned (W4) |
 | **Buyer Module** | Purchase requirements and order matching | Deferred (v0.2) |
 
@@ -70,8 +70,13 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
 | ML & Stats | `statsforecast`, `lightgbm`, `mapie` | Scalable forecasting with prediction intervals |
 | Feature Eng | `holidays` + curated TN festival calendar | Seasonal demand & arrival indicators |
 | Anomaly Detection | Median Absolute Deviation (MAD) | Robust against spiky agricultural price data |
+| Messaging | WhatsApp Cloud API (Meta) | Official Graph API integration, inbound-first, zero cost |
 | External Feeds | OGD API, CEDA bulk data, Open-Meteo | Zero mandatory paid APIs |
 | Containers | Docker Compose | Reproducible development & deployment |
+
+> [!NOTE]
+> **Single Source of Truth for Progress**:
+> Refer to [tasks/todo.md](tasks/todo.md) for the active task checklist, and [tasks/plan.md](tasks/plan.md) for detailed architecture and acceptance criteria.
 
 ## Quick Start
 
@@ -115,12 +120,14 @@ docker compose exec backend python scripts/check_market_coverage.py --crop turme
 | Frontend Dashboard | http://localhost:3000 (after Day 8) |
 | PostgreSQL | localhost:5432 |
 
-### Default Credentials (Development Only)
+### Database Seeding & Authentication
 
-| Role | Phone | Password |
-|---|---|---|
-| Admin | `9999900000` | `admin123` (development only) |
-| Farmer 1 | `9876543210` | `farmer123` |
+Run the database seeder to populate initial reference records (crops, varieties, markets):
+```bash
+docker compose exec backend python scripts/seed.py
+```
+- In development, seed accounts are created for local smoke testing.
+- Outside development (`ENVIRONMENT=production`), default passwords are **strictly refused**. If `SEED_ADMIN_PASSWORD` is not set in the environment, a cryptographically secure 16-character password is generated at runtime and printed once to standard output.
 
 > [!IMPORTANT]
 > **Production Security Rules**:
@@ -152,6 +159,12 @@ docker compose exec backend python scripts/check_market_coverage.py --crop turme
 ```text
 fpolink/
 ├── .github/workflows/ci.yml # Automated CI (pytest, alembic check, ruff, docker smoke)
+├── docs/
+│   ├── data-provenance.md   # Data verification ledger (real vs synthetic datasets)
+│   └── WHATSAPP_SETUP.md    # Meta WhatsApp Cloud API integration guide
+├── tasks/
+│   ├── plan.md              # Detailed implementation plan & acceptance criteria
+│   └── todo.md              # Single source of truth task checklist
 ├── backend/
 │   ├── alembic/             # Versioned schema migrations
 │   │   └── versions/        # Migration scripts (0001_initial_schema.py)
@@ -168,6 +181,7 @@ fpolink/
 │   │   └── worker.py        # Dedicated background scheduler process
 │   ├── scripts/
 │   │   ├── backfill_ceda.py # Historical data backfill script
+│   │   ├── check_market_coverage.py # Mandi monthly reporting audit
 │   │   └── seed.py          # Idempotent development database seeder
 │   ├── tests/               # Pytest suite (auth, units, parsers, ingestion, APIs)
 │   ├── Dockerfile

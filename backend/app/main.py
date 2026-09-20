@@ -4,7 +4,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, auth, buyers, crops, farmers, fpo, harvest, predictions, prices
+from app.api import (
+    admin,
+    auth,
+    buyers,
+    crops,
+    farmers,
+    fpo,
+    harvest,
+    predictions,
+    prices,
+    whatsapp,
+)
 from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +52,7 @@ app.include_router(harvest.router)
 app.include_router(buyers.router)
 app.include_router(predictions.router)
 app.include_router(admin.router)
+app.include_router(whatsapp.router)
 
 
 @app.get("/api/health")
