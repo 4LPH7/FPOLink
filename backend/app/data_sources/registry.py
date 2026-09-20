@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from app.data_sources.base import MarketDataProvider, PriceRecord
 from app.data_sources.ceda import CEDAProvider
+from app.data_sources.ceda_api import CEDAAPIProvider
 from app.data_sources.manual import ManualProvider
 from app.data_sources.ogd import OGDProvider
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class DataSourceRegistry:
     """Manages data source providers with fallback chain.
 
-    Priority: OGD (live API) → CEDA (historical) → Manual
+    Priority: OGD (live API) → CEDA API (live) → CEDA (historical CSV) → Manual
     Agmarknet scraping is intentionally omitted as default —
     add only if API sources are insufficient.
     """
@@ -23,6 +24,7 @@ class DataSourceRegistry:
     def __init__(self):
         self.providers: List[MarketDataProvider] = [
             OGDProvider(),
+            CEDAAPIProvider(),
             CEDAProvider(),
             ManualProvider(),
         ]
