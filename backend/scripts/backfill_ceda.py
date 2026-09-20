@@ -43,6 +43,12 @@ def main():
     parser.add_argument("--district", type=str, default="Erode", help="District to filter")
     parser.add_argument("--start-date", type=str, default=None, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", type=str, default=None, help="End date (YYYY-MM-DD)")
+    parser.add_argument(
+        "--source",
+        type=str,
+        default=None,
+        help="Source tag for records (default: auto-detect 'ceda' or 'ceda_synthetic')",
+    )
     args = parser.parse_args()
 
     # Ensure tables exist
@@ -60,7 +66,7 @@ def main():
     end = date.fromisoformat(args.end_date) if args.end_date else None
 
     # Fetch from CEDA
-    provider = CEDAProvider(data_dir=args.csv_path)
+    provider = CEDAProvider(data_dir=args.csv_path, source_name=args.source)
     records = provider.fetch_prices(
         crop=args.crop,
         district=args.district,

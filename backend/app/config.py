@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,22 +18,29 @@ class Settings(BaseSettings):
                 return v.replace(old, "postgresql+psycopg://", 1)
         return v
 
+    ENVIRONMENT: str = "development"
+
     # Authentication
     SECRET_KEY: str = "change-me-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    @field_validator("SECRET_KEY")
-    @classmethod
-    def warn_default_secret_key(cls, v: str) -> str:
-        if v == "change-me-in-production":
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.ENVIRONMENT.lower() == "production":
+            if self.SECRET_KEY == "change-me-in-production":
+                raise ValueError(
+                    "FATAL SECURITY ERROR: SECRET_KEY is set to default 'change-me-in-production' "
+                    "while ENVIRONMENT is 'production'. The application refuses to start."
+                )
+        elif self.SECRET_KEY == "change-me-in-production":
             import logging
 
             logging.getLogger("app.config").warning(
                 "SECURITY WARNING: SECRET_KEY is set to default 'change-me-in-production'. "
                 "Set a secure, long random string in production via .env or environment variable."
             )
-        return v
+        return self
 
     # External Services
     TELEGRAM_BOT_TOKEN: str = ""

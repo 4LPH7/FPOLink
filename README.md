@@ -115,17 +115,38 @@ docker compose exec backend python scripts/check_market_coverage.py --crop turme
 | Frontend Dashboard | http://localhost:3000 (after Day 8) |
 | PostgreSQL | localhost:5432 |
 
-### Default Credentials (Seed)
+### Default Credentials (Development Only)
 
 | Role | Phone | Password |
 |---|---|---|
-| Admin | `9999900000` | `admin123` (or value of `SEED_ADMIN_PASSWORD`) |
+| Admin | `9999900000` | `admin123` (development only) |
 | Farmer 1 | `9876543210` | `farmer123` |
 
-> [!NOTE]
-> In production, configure `SEED_ADMIN_PASSWORD` and a long, random `SECRET_KEY` in your `.env` file before running the seed script.
+> [!IMPORTANT]
+> **Production Security Rules**:
+> - If `ENVIRONMENT=production`, the application **strictly refuses to start** if `SECRET_KEY` remains the default `'change-me-in-production'`.
+> - If `ENVIRONMENT=production`, `seed.py` **refuses to use any default admin password**. If `SEED_ADMIN_PASSWORD` is not set in the environment, a cryptographically secure 16-character password is generated, printed once to standard output, and never saved in plaintext.
 
-## Project Structure
+## Data Sourcing: Real vs. Synthetic Fixtures
+
+> [!NOTE]
+> All files in `backend/tests/fixtures/*_synthetic.*` and `ml/datasets/*_synthetic.*` are **synthetic fixtures** crafted to model published government and academic schemas for deterministic unit testing. They must not be mistaken for verified ground-truth agricultural observations.
+
+### Obtaining Real Mandi Data
+1. **Daily Agmarknet Prices (Live Ingestion)**:
+   - Register for a free developer account at [data.gov.in](https://data.gov.in/).
+   - Obtain your user API key from your data.gov.in dashboard.
+   - Configure `OGD_API_KEY=your_key_here` in your `.env` file.
+   - The default Agmarknet mandi daily price resource is `9ef84268-d588-465a-a308-a864a43d0070`.
+2. **Historical Training Data (CEDA Ashoka University)**:
+   - Visit the official [CEDA Agri Market Data Portal](https://agrimarket.ceda.ashoka.edu.in/).
+   - Filter by State: *Tamil Nadu*, District: *Erode*, Commodities: *Turmeric, Banana*.
+   - Export the CSV file and place it in `ml/datasets/ceda_erode_turmeric.csv`.
+   - Run the backfill script:
+     ```bash
+     python backend/scripts/backfill_ceda.py --csv-path ml/datasets/ceda_erode_turmeric.csv --crop turmeric --district Erode --source ceda
+     ```
+   - The ingestion service tags real extracts as `source='ceda'` and synthetic samples as `source='ceda_synthetic'` to guarantee that test/sample records never contaminate ML training series.
 
 ```text
 fpolink/

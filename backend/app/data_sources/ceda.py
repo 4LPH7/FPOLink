@@ -27,8 +27,9 @@ class CEDAProvider(MarketDataProvider):
 
     source_name = "ceda"
 
-    def __init__(self, data_dir: str = "ml/datasets"):
+    def __init__(self, data_dir: str = "ml/datasets", source_name: Optional[str] = None):
         self.data_dir = data_dir
+        self.source_name = source_name
 
     def fetch_prices(
         self,
@@ -51,12 +52,23 @@ class CEDAProvider(MarketDataProvider):
             logger.warning(f"No CEDA CSV found for {crop} in {district}")
             return records
 
-        logger.info(f"Parsing CEDA CSV: {csv_path}")
+        # Tag synthetic or sample data to prevent contaminating ML datasets
+        source = self.source_name
+        if not source:
+            lower_path = csv_path.lower()
+            if "synthetic" in lower_path or "sample" in lower_path:
+                source = "ceda_synthetic"
+            else:
+                source = "ceda"
+
+        logger.info(f"Parsing CEDA CSV: {csv_path} (source: {source})")
         try:
             with open(csv_path, "r", encoding="utf-8-sig") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    record = self._parse_row(row, crop, district, start_date, end_date)
+                    record = self._parse_row(
+                        row, crop, district, start_date, end_date, source=source
+                    )
                     if record:
                         records.append(record)
         except Exception as e:
@@ -88,6 +100,7 @@ class CEDAProvider(MarketDataProvider):
         district: str,
         start_date: Optional[date],
         end_date: Optional[date],
+        source: str = "ceda",
     ) -> Optional[PriceRecord]:
         """Parse a single CSV row into a PriceRecord."""
         try:
@@ -158,7 +171,7 @@ class CEDAProvider(MarketDataProvider):
                 raw_unit="quintal",
                 arrival_quantity=arrival,
                 price_date=price_date,
-                source="ceda",
+                source=source,
                 raw_payload=dict(row),
             )
         except Exception as e:

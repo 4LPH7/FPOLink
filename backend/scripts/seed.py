@@ -40,11 +40,26 @@ def seed_data():
         admin_phone = "9999900000"
         admin = db.query(User).filter(User.phone == admin_phone).first()
         if not admin:
-            admin_password = os.environ.get("SEED_ADMIN_PASSWORD", "admin123")
-            if admin_password == "admin123":
-                print(
-                    "! [SECURITY NOTICE] Using default password 'admin123'. Set SEED_ADMIN_PASSWORD in production."
-                )
+            env = os.environ.get("ENVIRONMENT", "development").lower()
+            admin_password = os.environ.get("SEED_ADMIN_PASSWORD")
+            if not admin_password:
+                if env != "development":
+                    import secrets
+
+                    admin_password = secrets.token_urlsafe(16)
+                    print("=" * 60)
+                    print(
+                        "! [PRODUCTION SECURITY] No SEED_ADMIN_PASSWORD provided outside development."
+                    )
+                    print(f"! Generated one-time Admin Password: {admin_password}")
+                    print("! Store this password securely now; it will not be displayed again.")
+                    print("=" * 60)
+                else:
+                    admin_password = "admin123"
+                    print(
+                        "! [DEVELOPMENT NOTICE] Using default password 'admin123'. "
+                        "Outside development, set SEED_ADMIN_PASSWORD or a random one will be generated."
+                    )
             admin = User(
                 name="Admin",
                 phone=admin_phone,
@@ -59,7 +74,11 @@ def seed_data():
             db.add(admin)
             db.commit()
             db.refresh(admin)
-            display_pwd = "admin123" if admin_password == "admin123" else "[CUSTOM FROM ENV]"
+            display_pwd = (
+                "admin123"
+                if (env == "development" and admin_password == "admin123")
+                else "[SECURE/GENERATED]"
+            )
             print(f"✓ Admin user created (phone: {admin_phone}, password: {display_pwd})")
         else:
             print("· Admin user already exists")

@@ -73,7 +73,7 @@ def test_ceda_parser_with_sample_csv():
         assert record.raw_payload is not None
 
 
-def test_ceda_parser_with_real_fixture():
+def test_ceda_parser_with_synthetic_fixture():
     fixtures_dir = os.path.join(os.path.dirname(__file__), "fixtures")
     provider = CEDAProvider(data_dir=fixtures_dir)
 
@@ -91,7 +91,7 @@ def test_ceda_parser_with_real_fixture():
     assert r0.max_price == Decimal("162")
     assert r0.price_date == date(2024, 1, 15)
     assert r0.arrival_quantity == 125.5
-    assert r0.source == "ceda"
+    assert r0.source == "ceda_synthetic"
 
     # Verify variety parsing across records
     varieties = {r.variety_name for r in turmeric_records}
@@ -135,9 +135,9 @@ def test_ogd_record_parser():
     assert parsed.source == "ogd"
 
 
-def test_ogd_parser_with_real_fixture():
+def test_ogd_parser_with_synthetic_fixture():
     fixtures_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response.json"
+        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response_synthetic.json"
     )
     with open(fixtures_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -166,7 +166,7 @@ def test_ogd_parser_with_real_fixture():
 
 def test_ogd_fetch_prices_mocked():
     fixtures_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response.json"
+        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response_synthetic.json"
     )
     with open(fixtures_path, "r", encoding="utf-8") as f:
         fixture_data = json.load(f)
