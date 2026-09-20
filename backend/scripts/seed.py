@@ -40,12 +40,17 @@ def seed_data():
         admin_phone = "9999900000"
         admin = db.query(User).filter(User.phone == admin_phone).first()
         if not admin:
+            admin_password = os.environ.get("SEED_ADMIN_PASSWORD", "admin123")
+            if admin_password == "admin123":
+                print(
+                    "! [SECURITY NOTICE] Using default password 'admin123'. Set SEED_ADMIN_PASSWORD in production."
+                )
             admin = User(
                 name="Admin",
                 phone=admin_phone,
                 email="admin@fpolink.local",
                 role=UserRole.ADMIN,
-                hashed_password=hash_password("admin123"),
+                hashed_password=hash_password(admin_password),
                 is_active=True,
                 language_preference="en",
                 consent_given=True,
@@ -54,7 +59,8 @@ def seed_data():
             db.add(admin)
             db.commit()
             db.refresh(admin)
-            print("✓ Admin user created (phone: 9999900000, password: admin123)")
+            display_pwd = "admin123" if admin_password == "admin123" else "[CUSTOM FROM ENV]"
+            print(f"✓ Admin user created (phone: {admin_phone}, password: {display_pwd})")
         else:
             print("· Admin user already exists")
 

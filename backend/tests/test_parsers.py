@@ -1,9 +1,12 @@
 """Tests for data source parsers and feature generators using fixtures."""
 
 import csv
+import json
+import os
 import tempfile
 from datetime import date
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 from app.data_sources.ceda import CEDAProvider
 from app.data_sources.holidays_tn import (
@@ -70,6 +73,45 @@ def test_ceda_parser_with_sample_csv():
         assert record.raw_payload is not None
 
 
+def test_ceda_parser_with_real_fixture():
+    fixtures_dir = os.path.join(os.path.dirname(__file__), "fixtures")
+    provider = CEDAProvider(data_dir=fixtures_dir)
+
+    # 1. Turmeric in Erode
+    turmeric_records = provider.fetch_prices("turmeric", "Erode")
+    assert len(turmeric_records) == 6
+
+    # Verify first turmeric record
+    r0 = turmeric_records[0]
+    assert r0.crop_name == "turmeric"
+    assert r0.market_name == "Erode"
+    assert r0.variety_name == "Finger"
+    assert r0.modal_price == Decimal("154")  # 15400 / 100
+    assert r0.min_price == Decimal("145")
+    assert r0.max_price == Decimal("162")
+    assert r0.price_date == date(2024, 1, 15)
+    assert r0.arrival_quantity == 125.5
+    assert r0.source == "ceda"
+
+    # Verify variety parsing across records
+    varieties = {r.variety_name for r in turmeric_records}
+    assert "Finger" in varieties
+    assert "Bulb" in varieties
+
+    # Verify market parsing across records
+    markets = {r.market_name for r in turmeric_records}
+    assert "Erode" in markets
+    assert "Perundurai" in markets
+
+    # 2. Banana in Erode
+    banana_records = provider.fetch_prices("banana", "Erode")
+    assert len(banana_records) == 3
+    banana_varieties = {r.variety_name for r in banana_records}
+    assert "Poovan" in banana_varieties
+    assert "Nendran" in banana_varieties
+    assert banana_records[0].modal_price == Decimal("25")  # 2500 / 100
+
+
 def test_ogd_record_parser():
     provider = OGDProvider(api_key="test_key")
     sample_record = {
@@ -91,6 +133,55 @@ def test_ogd_record_parser():
     assert parsed.modal_price == Decimal("140")
     assert parsed.price_date == date(2026, 1, 15)
     assert parsed.source == "ogd"
+
+
+def test_ogd_parser_with_real_fixture():
+    fixtures_path = os.path.join(
+        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response.json"
+    )
+    with open(fixtures_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    provider = OGDProvider(api_key="mock_key")
+    records = []
+    for raw in data.get("records", []):
+        parsed = provider._parse_record(raw, "turmeric", "Erode")
+        if parsed:
+            records.append(parsed)
+
+    # 3 turmeric records match
+    assert len(records) == 3
+    varieties = {r.variety_name for r in records}
+    assert "Finger" in varieties
+    assert "Bulb" in varieties
+    assert "Local" in varieties
+
+    # Check price conversion
+    finger_record = next(r for r in records if r.variety_name == "Finger")
+    assert finger_record.modal_price == Decimal("151")  # 15100 / 100
+    assert finger_record.min_price == Decimal("142")
+    assert finger_record.max_price == Decimal("158")
+    assert finger_record.price_date == date(2026, 1, 15)
+
+
+def test_ogd_fetch_prices_mocked():
+    fixtures_path = os.path.join(
+        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response.json"
+    )
+    with open(fixtures_path, "r", encoding="utf-8") as f:
+        fixture_data = json.load(f)
+
+    provider = OGDProvider(api_key="real_mock_key")
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = fixture_data
+    mock_resp.raise_for_status.return_value = None
+
+    with patch("httpx.Client.get", return_value=mock_resp):
+        records = provider.fetch_prices("turmeric", "Erode")
+        assert len(records) == 3
+        assert all(r.district == "Erode" for r in records)
+        assert all(r.source == "ogd" for r in records)
 
 
 def test_tn_festival_features():

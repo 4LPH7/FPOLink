@@ -89,37 +89,77 @@ class OGDProvider(MarketDataProvider):
     def _parse_record(self, record: dict, crop: str, district: str) -> Optional[PriceRecord]:
         """Parse an OGD API record into a PriceRecord."""
         try:
-            # OGD prices are typically in Rs/quintal
-            raw_modal = Decimal(str(record.get("Modal_x0020_Price", record.get("Modal Price", 0))))
-            raw_min = Decimal(str(record.get("Min_x0020_Price", record.get("Min Price", 0))))
-            raw_max = Decimal(str(record.get("Max_x0020_Price", record.get("Max Price", 0))))
+            from app.data_sources.ceda import CEDAProvider
 
-            if raw_modal <= 0:
+            record_commodity = self._get_field(
+                record, ["commodity", "Commodity", "COMMODITY", "Crop", "crop"]
+            )
+            if record_commodity and crop.lower() not in record_commodity.lower():
                 return None
+
+            record_district = self._get_field(record, ["district", "District", "DISTRICT"])
+            if record_district and district.lower() not in record_district.lower():
+                return None
+
+            raw_modal_str = self._get_field(
+                record,
+                [
+                    "modal_price",
+                    "Modal_Price",
+                    "Modal Price",
+                    "Modal_x0020_Price",
+                    "Modal",
+                    "modalPrice",
+                ],
+            )
+            raw_min_str = self._get_field(
+                record,
+                ["min_price", "Min_Price", "Min Price", "Min_x0020_Price", "Minimum", "minPrice"],
+            )
+            raw_max_str = self._get_field(
+                record,
+                ["max_price", "Max_Price", "Max Price", "Max_x0020_Price", "Maximum", "maxPrice"],
+            )
+
+            raw_modal = CEDAProvider._parse_decimal(raw_modal_str)
+            if raw_modal is None or raw_modal <= 0:
+                return None
+
+            raw_min = CEDAProvider._parse_decimal(raw_min_str)
+            raw_max = CEDAProvider._parse_decimal(raw_max_str)
 
             # Convert quintal to kg
             quintal_to_kg = Decimal("100")
             modal_price = raw_modal / quintal_to_kg
-            min_price = raw_min / quintal_to_kg
-            max_price = raw_max / quintal_to_kg
+            min_price = (raw_min / quintal_to_kg) if raw_min else modal_price
+            max_price = (raw_max / quintal_to_kg) if raw_max else modal_price
 
             # Parse date
-            date_str = record.get("Arrival_Date", record.get("Arrival Date", ""))
-            from app.data_sources.ceda import CEDAProvider
+            date_str = self._get_field(
+                record,
+                ["arrival_date", "Arrival_Date", "Arrival Date", "Date", "date", "Price Date"],
+            )
+            if not date_str:
+                return None
 
             price_date = CEDAProvider._parse_date(date_str)
             if not price_date:
                 return None
 
-            market = record.get("Market", record.get("Market Center", district))
-            variety = record.get("Variety", None)
+            market = (
+                self._get_field(
+                    record, ["market", "Market", "Market Center", "MARKET", "market_center"]
+                )
+                or district
+            )
+            variety = self._get_field(record, ["variety", "Variety", "VARIETY"])
 
             return PriceRecord(
                 crop_name=crop.lower(),
                 variety_name=variety,
-                market_name=market,
-                district=district,
-                state="Tamil Nadu",
+                market_name=market.strip(),
+                district=district.strip(),
+                state=self._get_field(record, ["state", "State", "STATE"]) or "Tamil Nadu",
                 min_price=min_price,
                 max_price=max_price,
                 modal_price=modal_price,
@@ -132,3 +172,18 @@ class OGDProvider(MarketDataProvider):
         except Exception as e:
             logger.debug(f"Skipping OGD record: {e}")
             return None
+
+    @staticmethod
+    def _get_field(record: dict, keys: list) -> Optional[str]:
+        """Case-tolerant field retriever."""
+        for key in keys:
+            if key in record and record[key] is not None:
+                val = str(record[key]).strip()
+                if val:
+                    return val
+        # Case-insensitive scan
+        record_lower = {k.lower(): str(v).strip() for k, v in record.items() if v is not None}
+        for key in keys:
+            if key.lower() in record_lower and record_lower[key.lower()]:
+                return record_lower[key.lower()]
+        return None

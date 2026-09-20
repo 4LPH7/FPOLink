@@ -46,7 +46,11 @@ def create_tables():
 @pytest.fixture()
 def db():
     """Provide a clean database session for each test."""
-    connection = engine.connect()
+    try:
+        connection = engine.connect()
+    except Exception as e:
+        pytest.skip(f"Database connection not available: {e}")
+
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
 

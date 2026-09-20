@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def warn_default_secret_key(cls, v: str) -> str:
+        if v == "change-me-in-production":
+            import logging
+
+            logging.getLogger("app.config").warning(
+                "SECURITY WARNING: SECRET_KEY is set to default 'change-me-in-production'. "
+                "Set a secure, long random string in production via .env or environment variable."
+            )
+        return v
+
     # External Services
     TELEGRAM_BOT_TOKEN: str = ""
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"

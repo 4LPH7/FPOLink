@@ -1,0 +1,76 @@
+{
+  "index_name": "9ef84268-d588-465a-a308-a864a43d0070",
+  "title": "Current Daily Price of Various Commodities from various Markets (Mandi)",
+  "desc": "Current Daily Price of Various Commodities from various Markets (Mandi)",
+  "org_type": "Central",
+  "org": [
+    "Ministry of Agriculture and Farmers Welfare",
+    "Department of Agriculture and Cooperation"
+  ],
+  "sector": [
+    "Agriculture"
+  ],
+  "count": 5,
+  "limit": "1000",
+  "offset": "0",
+  "total": 5,
+  "version": "2.2.0",
+  "visualizable": "1",
+  "records": [
+    {
+      "state": "Tamil Nadu",
+      "district": "Erode",
+      "market": "Erode",
+      "commodity": "Turmeric",
+      "variety": "Finger",
+      "arrival_date": "15/01/2026",
+      "min_price": "14200",
+      "max_price": "15800",
+      "modal_price": "15100"
+    },
+    {
+      "state": "Tamil Nadu",
+      "district": "Erode",
+      "market": "Perundurai",
+      "commodity": "Turmeric",
+      "variety": "Bulb",
+      "arrival_date": "15/01/2026",
+      "min_price": "12800",
+      "max_price": "13900",
+      "modal_price": "13400"
+    },
+    {
+      "state": "Tamil Nadu",
+      "district": "Erode",
+      "market": "Gobichettipalayam",
+      "commodity": "Banana",
+      "variety": "Poovan",
+      "arrival_date": "15/01/2026",
+      "min_price": "2200",
+      "max_price": "2700",
+      "modal_price": "2400"
+    },
+    {
+      "state": "Tamil Nadu",
+      "district": "Erode",
+      "market": "Sathyamangalam",
+      "commodity": "Banana",
+      "variety": "Nendran",
+      "arrival_date": "16/01/2026",
+      "min_price": "3100",
+      "max_price": "3600",
+      "modal_price": "3350"
+    },
+    {
+      "state": "Tamil Nadu",
+      "district": "Erode",
+      "market": "Erode",
+      "commodity": "Turmeric",
+      "variety": "Local",
+      "arrival_date": "16/01/2026",
+      "min_price": "13000",
+      "max_price": "14500",
+      "modal_price": "13800"
+    }
+  ]
+}

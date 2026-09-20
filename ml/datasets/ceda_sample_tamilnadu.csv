@@ -1,0 +1,10 @@
+State,District,Market,Commodity,Variety,Grade,Min Price,Max Price,Modal Price,Date,Arrival
+Tamil Nadu,Erode,Erode,Turmeric,Finger,FAQ,14500,16200,15400,2024-01-15,125.5
+Tamil Nadu,Erode,Erode,Turmeric,Bulb,FAQ,12800,14000,13500,2024-01-15,95.0
+Tamil Nadu,Erode,Perundurai,Turmeric,Finger,FAQ,14200,15900,15100,2024-01-16,80.0
+Tamil Nadu,Erode,Perundurai,Turmeric,Bulb,FAQ,12500,13800,13200,2024-01-16,60.5
+Tamil Nadu,Erode,Gobichettipalayam,Banana,Poovan,FAQ,2200,2800,2500,2024-01-15,110.0
+Tamil Nadu,Erode,Sathyamangalam,Banana,Nendran,FAQ,3200,3900,3600,2024-01-16,75.0
+Tamil Nadu,Erode,Erode,Turmeric,Finger,FAQ,14800,16500,15600,2024-02-15,140.0
+Tamil Nadu,Erode,Erode,Turmeric,Bulb,FAQ,13000,14200,13700,2024-02-15,88.0
+Tamil Nadu,Erode,Gobichettipalayam,Banana,Nendran,FAQ,3400,4100,3800,2024-02-15,65.0

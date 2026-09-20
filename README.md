@@ -76,7 +76,9 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
 ## Quick Start
 
 ### Prerequisites
-- [Docker](https://www.docker.com/) and Docker Compose
+- [Docker](https://www.docker.com/) and Docker Compose (recommended)
+- Or **PostgreSQL 15+** if running standalone (PostgreSQL 15+ is strictly required for `NULLS NOT DISTINCT` unique constraints on variety-aware price dedup).
+- Python 3.11+ / 3.12+
 - Git
 
 ### Setup
@@ -89,14 +91,18 @@ cd FPOLink
 # 2. Copy environment file
 cp .env.example .env
 
-# 3. Start stack (PostgreSQL, Backend API, Scheduler Worker)
+# 3. Start stack (PostgreSQL 16, Backend API, Scheduler Worker)
 docker compose up -d --build postgres backend worker
 
 # 4. Run database migrations
 docker compose exec backend alembic upgrade head
 
 # 5. Seed initial reference data (Admin, Crops, Varieties, Markets, Prices)
+# Optionally set SEED_ADMIN_PASSWORD in .env or pass as env var
 docker compose exec backend python scripts/seed.py
+
+# 6. (Optional) Check mandi price reporting coverage
+docker compose exec backend python scripts/check_market_coverage.py --crop turmeric --district Erode
 ```
 
 ### Access
@@ -113,8 +119,11 @@ docker compose exec backend python scripts/seed.py
 
 | Role | Phone | Password |
 |---|---|---|
-| Admin | `9999900000` | `admin123` |
+| Admin | `9999900000` | `admin123` (or value of `SEED_ADMIN_PASSWORD`) |
 | Farmer 1 | `9876543210` | `farmer123` |
+
+> [!NOTE]
+> In production, configure `SEED_ADMIN_PASSWORD` and a long, random `SECRET_KEY` in your `.env` file before running the seed script.
 
 ## Project Structure
 
