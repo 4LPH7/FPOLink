@@ -30,7 +30,7 @@ lightgbm==4.5.0
 statsforecast==2.0.1
 mapie==0.9.1
 joblib==1.4.2
-pandas==2.2.3
+pandas==3.0.5
 numpy==2.2.1
 
 # Features
