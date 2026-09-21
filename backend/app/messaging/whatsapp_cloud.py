@@ -47,6 +47,17 @@ def parse_webhook(payload: dict) -> list[InboundMessage]:
                         kind, text = "button", inter["button_reply"].get("id", "")
                     elif inter.get("type") == "list_reply":
                         kind, text = "list", inter["list_reply"].get("id", "")
+                elif mtype in (
+                    "audio",
+                    "voice",
+                    "image",
+                    "document",
+                    "video",
+                    "sticker",
+                    "location",
+                    "contacts",
+                ):
+                    kind = mtype
                 out.append(InboundMessage(m.get("id", ""), wa_id, kind, text, names.get(wa_id, "")))
     return out
 

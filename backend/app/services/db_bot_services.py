@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from app.database import SessionLocal
 from app.models.crop import Crop
 from app.models.farmer import Farmer as DbFarmer
-from app.models.harvest import Harvest
+from app.models.harvest import Harvest, HarvestGrade
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.prediction import Prediction
@@ -240,27 +240,48 @@ class DbBotServices:
                 return f"{district} வானிலை ({w.forecast_date}): {w.condition or 'மிதமான வானிலை'}, வெப்பநிலை: {w.temp_min:.0f}°C - {w.temp_max:.0f}°C, மழை: {w.rainfall_mm:.1f}mm"
             return f"{district} Weather ({w.forecast_date}): {w.condition or 'Normal'}, Temp: {w.temp_min:.0f}°C - {w.temp_max:.0f}°C, Rain: {w.rainfall_mm:.1f}mm"
 
-    async def submit_harvest(self, farmer_id: str, crop: str, qty_kg: Decimal, grade: str) -> None:
-        """Create harvest record from WhatsApp chat flow."""
+    async def submit_harvest(
+        self,
+        farmer_id: str,
+        crop: str,
+        qty_kg: Decimal,
+        grade: str,
+        source_message_id: Optional[str] = None,
+    ) -> None:
+        """Create harvest record from WhatsApp chat flow with idempotency."""
         with self.db_factory() as db:
+            if source_message_id:
+                existing = (
+                    db.query(Harvest).filter(Harvest.source_message_id == source_message_id).first()
+                )
+                if existing:
+                    return
+
             # Find crop id
             crop_obj = db.query(Crop).filter(Crop.name.ilike(f"{crop}%")).first()
             crop_id = crop_obj.id if crop_obj else None
             if not crop_id:
-                # Create or fallback
                 new_crop = Crop(name=crop.lower(), tamil_name=crop, unit="kg")
                 db.add(new_crop)
                 db.commit()
                 db.refresh(new_crop)
                 crop_id = new_crop.id
 
+            clean_grade = grade.upper() if grade else "A"
+            grade_enum = (
+                HarvestGrade[clean_grade]
+                if clean_grade in HarvestGrade.__members__
+                else HarvestGrade.A
+            )
+
             harvest = Harvest(
                 farmer_id=UUID(farmer_id),
                 crop_id=crop_id,
                 quantity_kg=float(qty_kg),
-                quality_grade=grade.upper(),
+                grade=grade_enum,
                 harvest_date=date.today(),
                 status="SUBMITTED",
+                source_message_id=source_message_id,
             )
             db.add(harvest)
             db.commit()

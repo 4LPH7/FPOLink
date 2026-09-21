@@ -62,6 +62,9 @@ T = {
             "• Opt out: reply STOP anytime to disable price alerts."
         ),
         "unavailable": "This is not available yet.",
+        "media_unsupported": "Sorry, FPOLink cannot process audio or media. Please send your message as text or tap the buttons.",
+        "too_many_retries": "Too many invalid attempts. Let's start over.",
+        "rate_limit_exceeded": "Too many messages sent. Please wait a few minutes before trying again.",
         "b_price": "Price",
         "b_forecast": "Forecast",
         "b_harvest": "Harvest",
@@ -91,6 +94,9 @@ T = {
             "• நிறுத்த: எச்சரிக்கைகளை நிறுத்த எப்போது வேண்டுமானாலும் STOP அல்லது 'நிறுத்து' என்று அனுப்பலாம்."
         ),
         "unavailable": "இது இன்னும் கிடைக்கவில்லை.",
+        "media_unsupported": "மன்னிக்கவும், FPOLink ஆடியோ அல்லது மீடியாவை ஏற்க முடியாது. தயவுசெய்து தட்டச்சு செய்யவும் அல்லது பொத்தான்களை அழுத்தவும்.",
+        "too_many_retries": "தவறான முயற்சிகள் அதிகம். மீண்டும் தொடங்குவோம்.",
+        "rate_limit_exceeded": "அதிக செய்திகள் அனுப்பப்பட்டுள்ளன. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.",
         "b_price": "விலை",
         "b_forecast": "கணிப்பு",
         "b_harvest": "அறுவடை",
@@ -145,7 +151,12 @@ class BotServices(Protocol):
     async def weather_text(self, district: str, lang: str) -> str | None: ...
 
     async def submit_harvest(
-        self, farmer_id: str, crop: str, qty_kg: Decimal, grade: str
+        self,
+        farmer_id: str,
+        crop: str,
+        qty_kg: Decimal,
+        grade: str,
+        source_message_id: str | None = None,
     ) -> None: ...
 
     async def set_alerts(self, farmer_id: str, on: bool) -> None:
@@ -241,9 +252,18 @@ def format_price(p: PriceInfo, lang: str) -> str:
 
 
 class BotEngine:
-    def __init__(self, services: BotServices, crops: tuple[str, ...] = ("turmeric", "banana")):
+    def __init__(
+        self,
+        services: BotServices,
+        crops: tuple[str, ...] = ("turmeric", "banana"),
+        rate_limit_max: int = 30,
+        rate_limit_window_seconds: float = 600.0,
+    ):
         self.svc = services
         self.crops = crops
+        self.rate_limit_max = rate_limit_max
+        self.rate_limit_window_seconds = rate_limit_window_seconds
+        self._rate_limits: dict[str, list[float]] = {}
 
     async def handle(self, msg: InboundMessage, ch: MessageChannel) -> None:
         """Entry point for background tasks: never raises."""
@@ -255,6 +275,35 @@ class BotEngine:
     async def _handle(self, msg: InboundMessage, ch: MessageChannel) -> None:
         if not await self.svc.first_time(msg.message_id):
             return  # duplicate delivery
+
+        # Rate limiting per wa_id (T3.3)
+        now_mono = time.monotonic()
+        history = self._rate_limits.setdefault(msg.wa_id, [])
+        history[:] = [
+            t_stamp for t_stamp in history if now_mono - t_stamp < self.rate_limit_window_seconds
+        ]
+        if len(history) >= self.rate_limit_max:
+            if len(history) == self.rate_limit_max:
+                warn = f"{T['ta']['rate_limit_exceeded']}\n{T['en']['rate_limit_exceeded']}"
+                await ch.send_text(msg.wa_id, warn)
+                history.append(now_mono)
+            return
+        history.append(now_mono)
+
+        # Media fallback for non-text/button payloads (T3.3)
+        if msg.kind in (
+            "audio",
+            "voice",
+            "image",
+            "document",
+            "video",
+            "sticker",
+            "location",
+            "contacts",
+        ):
+            fallback = f"{T['ta']['media_unsupported']}\n{T['en']['media_unsupported']}"
+            await ch.send_text(msg.wa_id, fallback)
+            return
 
         farmer = await self.svc.find_farmer(normalize_phone(msg.wa_id))
         if farmer is None:
@@ -376,27 +425,60 @@ class BotEngine:
         if state.step == "crop":
             crop = text.split(":", 1)[1] if text.startswith("crop:") else detect_crop(text)
             if crop not in self.crops:
+                retries = state.data.get("retries", 0) + 1
+                if retries >= 3:
+                    await self.svc.set_state(to, None)
+                    await ch.send_text(to, t["too_many_retries"])
+                    farmer = await self.svc.find_farmer(normalize_phone(to))
+                    if farmer:
+                        await self._menu(msg, ch, farmer, t)
+                    return
+                state.data["retries"] = retries
+                await self.svc.set_state(to, state)
                 await self._ask_crop(msg, ch, t, lang)
                 return
             state.data["crop"], state.step = crop, "qty"
+            state.data["retries"] = 0
             await self.svc.set_state(to, state)
             await ch.send_text(to, t["ask_qty"])
 
         elif state.step == "qty":
             qty = parse_qty(text)
             if qty is None:
+                retries = state.data.get("retries", 0) + 1
+                if retries >= 3:
+                    await self.svc.set_state(to, None)
+                    await ch.send_text(to, t["too_many_retries"])
+                    farmer = await self.svc.find_farmer(normalize_phone(to))
+                    if farmer:
+                        await self._menu(msg, ch, farmer, t)
+                    return
+                state.data["retries"] = retries
+                await self.svc.set_state(to, state)
                 await ch.send_text(to, t["bad_qty"])
                 return
             state.data["qty"], state.step = str(qty), "grade"
+            state.data["retries"] = 0
             await self.svc.set_state(to, state)
             await ch.send_buttons(to, t["ask_grade"], [Button(f"grade:{g}", g) for g in "ABC"])
 
         elif state.step == "grade":
             raw = text.split(":", 1)[1] if text.startswith("grade:") else text.upper()
             if raw not in ("A", "B", "C"):
+                retries = state.data.get("retries", 0) + 1
+                if retries >= 3:
+                    await self.svc.set_state(to, None)
+                    await ch.send_text(to, t["too_many_retries"])
+                    farmer = await self.svc.find_farmer(normalize_phone(to))
+                    if farmer:
+                        await self._menu(msg, ch, farmer, t)
+                    return
+                state.data["retries"] = retries
+                await self.svc.set_state(to, state)
                 await ch.send_buttons(to, t["ask_grade"], [Button(f"grade:{g}", g) for g in "ABC"])
                 return
             state.data["grade"], state.step = raw, "confirm"
+            state.data["retries"] = 0
             await self.svc.set_state(to, state)
             await ch.send_buttons(
                 to,
@@ -416,6 +498,7 @@ class BotEngine:
                     crop=state.data["crop"],
                     qty_kg=Decimal(state.data["qty"]),
                     grade=state.data["grade"],
+                    source_message_id=msg.message_id,
                 )
                 await self.svc.set_state(to, None)
                 await ch.send_text(
@@ -461,6 +544,7 @@ class InMemoryServices:
         self.seen: set[str] = set()
         self.states: dict[str, ConvState] = {}
         self.harvests: list[tuple[str, str, Decimal, str]] = []
+        self.harvest_ids: set[str] = set()
         self.alerts: dict[str, bool] = {}
         self.notices: set[str] = set()
         self._notice_claims: dict[str, float] = {}
@@ -483,7 +567,11 @@ class InMemoryServices:
     async def weather_text(self, district: str, lang: str) -> str | None:
         return None
 
-    async def submit_harvest(self, farmer_id, crop, qty_kg, grade) -> None:
+    async def submit_harvest(self, farmer_id, crop, qty_kg, grade, source_message_id=None) -> None:
+        if source_message_id:
+            if source_message_id in self.harvest_ids:
+                return
+            self.harvest_ids.add(source_message_id)
         self.harvests.append((farmer_id, crop, qty_kg, grade))
 
     async def set_alerts(self, farmer_id: str, on: bool) -> None:

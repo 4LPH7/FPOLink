@@ -27,9 +27,9 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T2.4 FPO/district scoping
 
 ## Phase 3: Harvest by chat
-- [ ] T3.1 Harvest service + API (idempotent by message id)
-- [ ] T3.2 Wire harvest flow to the service
-- [ ] T3.3 Rate limit, unsupported types, retry caps
+- [x] T3.1 Harvest service + API (idempotent by message id)
+- [x] T3.2 Wire harvest flow to the service
+- [x] T3.3 Rate limit, unsupported types, retry caps
 ### Checkpoint B: harvest submitted by chat is visible to FPO staff
 - [ ] Reviewed by human
 

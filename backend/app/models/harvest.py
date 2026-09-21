@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Column, Date, Enum, Float, ForeignKey, Text
+from sqlalchemy import Column, Date, Enum, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -15,10 +15,10 @@ class HarvestGrade(str, enum.Enum):
 
 
 class HarvestStatus(str, enum.Enum):
-    SUBMITTED = "submitted"
-    VERIFIED = "verified"
-    AGGREGATED = "aggregated"
-    SOLD = "sold"
+    SUBMITTED = "SUBMITTED"
+    VERIFIED = "VERIFIED"
+    AGGREGATED = "AGGREGATED"
+    SOLD = "SOLD"
 
 
 class Harvest(Base, TimestampMixin):
@@ -31,6 +31,7 @@ class Harvest(Base, TimestampMixin):
     grade = Column(Enum(HarvestGrade), nullable=False)
     harvest_date = Column(Date, nullable=False)
     status = Column(Enum(HarvestStatus), default=HarvestStatus.SUBMITTED)
+    source_message_id = Column(String(128), unique=True, nullable=True, index=True)
     notes = Column(Text, nullable=True)
 
     farmer = relationship("Farmer", back_populates="harvests")
