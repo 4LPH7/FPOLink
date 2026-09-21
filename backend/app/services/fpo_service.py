@@ -10,7 +10,7 @@ from app.models.crop import Crop
 from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.models.fpo import FPO
-from app.models.harvest import Harvest
+from app.models.harvest import Harvest, HarvestStatus
 from app.models.order import Order
 from app.schemas.fpo import FPOCreate, FPOUpdate
 
@@ -67,7 +67,7 @@ def get_dashboard_stats(db: Session, fpo_id: UUID) -> dict:
     active_harvests = (
         db.query(func.sum(Harvest.quantity_kg))
         .join(Farmer, Harvest.farmer_id == Farmer.id)
-        .filter(Farmer.fpo_id == fpo_id, Harvest.status == "submitted")
+        .filter(Farmer.fpo_id == fpo_id, Harvest.status == HarvestStatus.SUBMITTED)
         .scalar()
     ) or 0.0
 
