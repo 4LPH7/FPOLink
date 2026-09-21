@@ -5,7 +5,7 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 ## Phase 0: De-risk external dependencies (start now, in parallel)
 - [ ] T0.1 Answer the open questions (number, Meta owner, pilot FPO)
 - [ ] T0.2 Meta test setup and first successful send
-- [ ] T0.3 Capture real webhook payloads as fixtures (+ provenance ledger)
+- [ ] T0.3 Sanitized fixtures derived from captured real Meta webhook payloads (+ provenance ledger)
 - [ ] T0.4 Submit `daily_price_digest` templates (ta, en) for approval
 - [ ] T0.5 Real price data loaded (CEDA before Sept 27) + coverage audit
 
@@ -17,8 +17,8 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T1.5 Contract tests for outgoing payloads
 ### Checkpoint A: end-to-end from a real phone; CI green; no secrets in repo
 > [!NOTE]
-> Checkpoint A remains open: explicitly requires real phone testing, captured real Meta webhook payload fixtures for T0.3, and verified real market price backfill for T0.5 before marking the checkpoint complete.
-- [ ] Checkpoint A verified by human with real phone testing, captured real Meta webhook payload fixtures (T0.3), and verified real market price backfill (T0.5)
+> Checkpoint A remains open: explicitly requires real phone testing, sanitized fixtures derived from captured real Meta webhook payloads for T0.3, and verified real market price backfill for T0.5 before marking the checkpoint complete.
+- [ ] Checkpoint A verified by human with real phone testing, sanitized fixtures derived from captured real Meta webhook payloads (T0.3), and verified real market price backfill (T0.5)
 
 ## Phase 2: Onboarding, identity, consent
 - [x] T2.1 wa.me invite link endpoint
