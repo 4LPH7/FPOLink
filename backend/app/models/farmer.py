@@ -22,6 +22,7 @@ class Farmer(Base, TimestampMixin):
     alerts_opt_in = Column(Boolean, nullable=False, default=False)
     alerts_opt_in_at = Column(DateTime(timezone=True), nullable=True)
     alerts_opt_out_at = Column(DateTime(timezone=True), nullable=True)
+    notice_sent_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User")
     fpo = relationship("FPO", back_populates="farmers")

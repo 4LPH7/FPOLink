@@ -1,7 +1,10 @@
 {
   "app": {
     "name": "FPOLink TN",
-    "tagline": "FPO டிஜிட்டல் செயல்பாட்டு அமைப்பு"
+    "tagline": "FPO டிஜிட்டல் செயல்பாட்டு அமைப்பு",
+    "district": "ஈரோடு மாவட்டம்",
+    "sync_status": "நேரலை தரவு இணைப்பு",
+    "bot_status": "வாட்ஸ்அப் பாட் தயார் நிலையில்"
   },
   "nav": {
     "dashboard": "கட்டுப்பாட்டு பலகை",
@@ -12,6 +15,7 @@
     "buyers": "கொள்முதலாளர்கள்",
     "orders": "ஆர்டர்கள்",
     "predictions": "முன்கணிப்புகள்",
+    "alerts": "எச்சரிக்கைகள்",
     "settings": "அமைப்புகள்"
   },
   "dashboard": {
@@ -21,7 +25,26 @@
     "market_prices": "சந்தை விலைகள்",
     "price_forecast": "விலை முன்கணிப்பு",
     "alerts": "எச்சரிக்கைகள்",
-    "supply_summary": "சரக்கு சுருக்கம்"
+    "supply_summary": "சரக்கு சுருக்கம்",
+    "turmeric_rate": "மஞ்சள் மண்டி விலை",
+    "banana_rate": "வாழை மண்டி விலை",
+    "bot_active": "வாட்ஸ்அப் பாட்",
+    "bot_status_live": "செயலில் உள்ளது",
+    "active_farmers_sub": "12 புதிய சேர்க்கை",
+    "today_sub": "மஞ்சள் & வாழை விளைச்சல்",
+    "per_quintal": "குவிண்டால்",
+    "hold_signal": "நிறுத்தி வைக்கவும் (HOLD)",
+    "sell_signal": "விற்பனை செய்யவும் (SELL)",
+    "neutral_signal": "சீரான நிலை (NEUTRAL)",
+    "signal_title": "ML விலை சிக்னல் பரிந்துரை",
+    "timeframe_7d": "7 நாட்கள்",
+    "timeframe_30d": "30 நாட்கள்",
+    "timeframe_90d": "90 நாட்கள்"
+  },
+  "crops": {
+    "turmeric": "மஞ்சள்",
+    "banana": "வாழை",
+    "coconut": "தேங்காய்"
   },
   "farmer": {
     "name": "பெயர்",
@@ -32,7 +55,10 @@
     "expected_harvest": "எதிர்பார்க்கப்படும் அறுவடை",
     "expected_harvest_date": "எதிர்பார்க்கப்படும் அறுவடை தேதி",
     "add_farmer": "விவசாயி சேர்",
-    "farmer_list": "விவசாயிகள் பட்டியல்"
+    "farmer_list": "விவசாயிகள் பட்டியல்",
+    "send_invite": "WhatsApp அழைப்பு",
+    "consent_verified": "DPDP ஒப்புதல் பெறப்பட்டது",
+    "consent_pending": "ஒப்புதல் நிலுவையில்"
   },
   "harvest": {
     "submit": "அறுவடை சமர்ப்பி",
@@ -41,16 +67,33 @@
     "grade": "தரம்",
     "date": "அறுவடை தேதி",
     "submit_button": "சமர்ப்பி",
-    "history": "அறுவடை வரலாறு"
+    "history": "அறுவடை வரலாறு",
+    "pooled_stock": "மொத்த தொகுக்கப்பட்ட விளைச்சல்",
+    "commercial_batch": "வணிக விற்பனை தொகுதி"
   },
   "price": {
     "market_price": "சந்தை விலை",
     "min_price": "குறைந்தபட்ச விலை",
     "max_price": "அதிகபட்ச விலை",
-    "modal_price": "சராசரி விலை",
-    "trend": "போக்கு",
+    "modal_price": "சராசரி மாதிரி விலை",
+    "trend": "விலை போக்கு",
     "forecast": "முன்கணிப்பு",
-    "history": "விலை வரலாறு"
+    "history": "விலை வரலாறு",
+    "source": "மூலம்",
+    "mandi": "ஒழுங்குமுறை விற்பனைக்கூடம்",
+    "date": "தேதி",
+    "change": "தினசரி மாற்றம்",
+    "anomaly": "விலை முரண்பாடு (MAD)",
+    "verified_source": "சரிபார்க்கப்பட்ட மூலம்"
+  },
+  "alerts_panel": {
+    "title": "நிகழ்நேர எச்சரிக்கைகள் மற்றும் அறிவிப்புகள்",
+    "anomaly_title": "விலை முரண்பாடு கண்டறியப்பட்டது",
+    "weather_title": "வானிலை எச்சரிக்கை",
+    "security_title": "DPDP தரவு பாதுகாப்பு",
+    "pipeline_title": "தானியங்கி தரவு ஒருங்கிணைப்பு",
+    "dismiss": "மறை",
+    "view_details": "விவரங்களை காண்க"
   },
   "buyer": {
     "name": "கொள்முதலாளர் பெயர்",
@@ -74,6 +117,7 @@
     "per_kg": "/கிலோ",
     "per_unit": "/அலகு",
     "kg": "கிலோ",
-    "acres": "ஏக்கர்"
+    "acres": "ஏக்கர்",
+    "all": "அனைத்தும்"
   }
 }

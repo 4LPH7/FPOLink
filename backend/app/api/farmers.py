@@ -7,10 +7,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
+from app.config import settings
 from app.database import get_db
 from app.models.farmer import Farmer
 from app.models.user import User
-from app.schemas.farmer import FarmerCreate, FarmerListResponse, FarmerResponse, FarmerUpdate
+from app.schemas.farmer import (
+    FarmerCreate,
+    FarmerListResponse,
+    FarmerResponse,
+    FarmerUpdate,
+    WhatsAppInviteResponse,
+)
 from app.services.farmer_service import (
     create_farmer,
     get_farmer,
@@ -63,6 +70,7 @@ def create(
         alerts_opt_in=farmer.alerts_opt_in,
         alerts_opt_in_at=farmer.alerts_opt_in_at,
         alerts_opt_out_at=farmer.alerts_opt_out_at,
+        notice_sent_at=farmer.notice_sent_at,
         created_at=farmer.created_at,
     )
 
@@ -96,6 +104,7 @@ def list_all(
                 alerts_opt_in=f.alerts_opt_in,
                 alerts_opt_in_at=f.alerts_opt_in_at,
                 alerts_opt_out_at=f.alerts_opt_out_at,
+                notice_sent_at=f.notice_sent_at,
                 created_at=f.created_at,
             )
             for f in farmers
@@ -130,6 +139,7 @@ def get_one(
         alerts_opt_in=farmer.alerts_opt_in,
         alerts_opt_in_at=farmer.alerts_opt_in_at,
         alerts_opt_out_at=farmer.alerts_opt_out_at,
+        notice_sent_at=farmer.notice_sent_at,
         created_at=farmer.created_at,
     )
 
@@ -180,5 +190,34 @@ def update(
         alerts_opt_in=farmer.alerts_opt_in,
         alerts_opt_in_at=farmer.alerts_opt_in_at,
         alerts_opt_out_at=farmer.alerts_opt_out_at,
+        notice_sent_at=farmer.notice_sent_at,
         created_at=farmer.created_at,
+    )
+
+
+@router.get("/{farmer_id}/whatsapp-invite", response_model=WhatsAppInviteResponse)
+@router.get("/detail/{farmer_id}/whatsapp-invite", response_model=WhatsAppInviteResponse)
+def get_whatsapp_invite(
+    farmer_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
+):
+    """Generate wa.me invite link with prefilled greeting for farmer onboarding (T2.1)."""
+    from urllib.parse import quote
+
+    farmer = get_farmer(db, UUID(farmer_id))
+    if not farmer:
+        raise HTTPException(status_code=404, detail="Farmer not found")
+
+    phone = farmer.phone or (farmer.user.phone if farmer.user else "")
+    bot_phone = settings.WHATSAPP_BOT_PHONE or "919876543210"
+
+    greeting = "வணக்கம்" if farmer.lang == "ta" else "Hi"
+    invite_url = f"https://wa.me/{bot_phone}?text={quote(greeting)}"
+
+    return WhatsAppInviteResponse(
+        farmer_id=str(farmer.id),
+        phone=phone,
+        bot_phone=bot_phone,
+        invite_url=invite_url,
     )

@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Protocol
 
@@ -53,6 +53,13 @@ T = {
         "cancelled": "Cancelled.",
         "alerts_on": "Price alerts are ON. Send ALERTS OFF to stop.",
         "alerts_off": "Price alerts are OFF.",
+        "notice": (
+            "Welcome to FPOLink! 🌾\n"
+            "This service provides daily mandi prices, weather updates, and harvest aggregation for your FPO.\n"
+            "• Data protection: your phone number and harvest details are securely stored under the DPDP Act.\n"
+            "• Support: contact your FPO coordinator for help.\n"
+            "• Opt out: reply STOP anytime to disable price alerts."
+        ),
         "unavailable": "This is not available yet.",
         "b_price": "Price",
         "b_forecast": "Forecast",
@@ -75,6 +82,13 @@ T = {
         "cancelled": "ரத்து செய்யப்பட்டது.",
         "alerts_on": "விலை எச்சரிக்கைகள் இயக்கத்தில் உள்ளன. நிறுத்த ALERTS OFF என்று அனுப்பவும்.",
         "alerts_off": "விலை எச்சரிக்கைகள் நிறுத்தப்பட்டன.",
+        "notice": (
+            "FPOLink-க்கு நல்வரவு! 🌾\n"
+            "இந்த சேவை உங்கள் FPO-க்கான தினசரி மண்டி விலைகள், வானிலை தகவல்கள் மற்றும் அறுவடை விவரங்களை வழங்குகிறது.\n"
+            "• தரவு பாதுகாப்பு: உங்கள் தொலைபேசி எண் மற்றும் அறுவடை விவரங்கள் DPDP சட்டத்தின்படி பாதுகாக்கப்படுகின்றன.\n"
+            "• உதவிக்கு: உங்கள் FPO ஒருங்கிணைப்பாளரைத் தொடர்பு கொள்ளவும்.\n"
+            "• நிறுத்த: எச்சரிக்கைகளை நிறுத்த எப்போது வேண்டுமானாலும் STOP அல்லது 'நிறுத்து' என்று அனுப்பலாம்."
+        ),
         "unavailable": "இது இன்னும் கிடைக்கவில்லை.",
         "b_price": "விலை",
         "b_forecast": "கணிப்பு",
@@ -95,6 +109,8 @@ class Farmer:
     district: str
     lang: str = "ta"  # "ta" | "en"
     alerts_opt_in: bool = False
+    notice_sent_at: datetime | None = None
+    fpo_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -121,7 +137,7 @@ class BotServices(Protocol):
 
     async def find_farmer(self, phone10: str) -> Farmer | None: ...
 
-    async def latest_price(self, crop: str) -> PriceInfo | None: ...
+    async def latest_price(self, crop: str, district: str | None = None) -> PriceInfo | None: ...
 
     async def forecast_text(self, crop: str, lang: str) -> str | None: ...
 
@@ -133,6 +149,9 @@ class BotServices(Protocol):
 
     async def set_alerts(self, farmer_id: str, on: bool) -> None:
         """Store opt-in/out with a timestamp (consent evidence for DPDP / WhatsApp opt-in)."""
+
+    async def mark_notice_sent(self, farmer_id: str) -> None:
+        """Record timestamp when first-contact DPDP notice was sent."""
 
     async def get_state(self, wa_id: str) -> ConvState | None: ...
 
@@ -160,6 +179,9 @@ def _match(token: str, keyword: str) -> bool:
 
 def detect_intent(text: str) -> str | None:
     toks = _tokens(text)
+    # Check STOP or ALERTS OFF first (T2.3)
+    if any(t in ("stop", "halt") or _match(t, "நிறுத்து") for t in toks):
+        return "alerts_off"
     if any(_match(t, "alerts") or _match(t, "எச்சரிக்கை") for t in toks):
         off = any(t in ("off", "stop") or _match(t, "நிறுத்து") for t in toks)
         return "alerts_off" if off else "alerts_on"
@@ -237,6 +259,19 @@ class BotEngine:
         intent = self._intent(msg)
         state = await self.svc.get_state(msg.wa_id)
 
+        # First-contact notice (T2.2)
+        if farmer.notice_sent_at is None:
+            await self.svc.mark_notice_sent(farmer.id)
+            await ch.send_text(msg.wa_id, t["notice"])
+
+        # Consent and STOP works from ANY state (T2.3)
+        if intent in ("alerts_off", "alerts_on"):
+            if intent == "alerts_off":
+                await self.svc.set_state(msg.wa_id, None)
+            await self.svc.set_alerts(farmer.id, intent == "alerts_on")
+            await ch.send_text(msg.wa_id, t[intent])
+            return
+
         if intent == "cancel":
             await self.svc.set_state(msg.wa_id, None)
             await ch.send_text(msg.wa_id, t["cancelled"])
@@ -250,7 +285,7 @@ class BotEngine:
             return
 
         if intent == "price":
-            await self._price(msg, ch, t, lang)
+            await self._price(msg, ch, t, lang, district=farmer.district)
         elif intent == "forecast":
             await self._forecast(msg, ch, t, lang)
         elif intent == "weather":
@@ -259,9 +294,6 @@ class BotEngine:
         elif intent == "harvest":
             await self.svc.set_state(msg.wa_id, ConvState("crop"))
             await self._ask_crop(msg, ch, t, lang)
-        elif intent in ("alerts_on", "alerts_off"):
-            await self.svc.set_alerts(farmer.id, intent == "alerts_on")
-            await ch.send_text(msg.wa_id, t[intent])
         else:
             await ch.send_text(msg.wa_id, t["unknown"])
 
@@ -289,12 +321,12 @@ class BotEngine:
             ],
         )
 
-    async def _price(self, msg, ch, t, lang) -> None:
+    async def _price(self, msg, ch, t, lang, district: str = "Erode") -> None:
         crop = detect_crop(msg.text) if msg.kind == "text" else None
         crops = (crop,) if crop else self.crops
         lines = []
         for c in crops:
-            p = await self.svc.latest_price(c)
+            p = await self.svc.latest_price(c, district=district)
             lines.append(
                 format_price(p, lang) if p else t["no_price"].format(crop=crop_name(c, lang))
             )
@@ -412,6 +444,7 @@ class InMemoryServices:
         self.states: dict[str, ConvState] = {}
         self.harvests: list[tuple[str, str, Decimal, str]] = []
         self.alerts: dict[str, bool] = {}
+        self.notices: set[str] = set()
 
     async def first_time(self, message_id: str) -> bool:
         if message_id in self.seen:
@@ -422,7 +455,7 @@ class InMemoryServices:
     async def find_farmer(self, phone10: str) -> Farmer | None:
         return self.farmers.get(phone10)
 
-    async def latest_price(self, crop: str) -> PriceInfo | None:
+    async def latest_price(self, crop: str, district: str | None = None) -> PriceInfo | None:
         return self.prices.get(crop)
 
     async def forecast_text(self, crop: str, lang: str) -> str | None:
@@ -436,6 +469,23 @@ class InMemoryServices:
 
     async def set_alerts(self, farmer_id: str, on: bool) -> None:
         self.alerts[farmer_id] = on
+
+    async def mark_notice_sent(self, farmer_id: str) -> None:
+        self.notices.add(farmer_id)
+        for phone, f in list(self.farmers.items()):
+            if f.id == farmer_id:
+                from datetime import datetime, timezone
+
+                self.farmers[phone] = Farmer(
+                    id=f.id,
+                    name=f.name,
+                    district=f.district,
+                    lang=f.lang,
+                    alerts_opt_in=f.alerts_opt_in,
+                    notice_sent_at=datetime.now(timezone.utc),
+                    fpo_id=f.fpo_id,
+                )
+                break
 
     async def get_state(self, wa_id: str) -> ConvState | None:
         return self.states.get(wa_id)

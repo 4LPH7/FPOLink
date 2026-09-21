@@ -1,189 +1,171 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import en from "@/lib/i18n/en.json";
 import ta from "@/lib/i18n/ta.json";
+import Navbar from "@/components/Navbar";
+import StatCard from "@/components/StatCard";
+import PriceChart from "@/components/PriceChart";
+import AlertPanel from "@/components/AlertPanel";
+import MandiPricesTable from "@/components/MandiPricesTable";
+import AggregationSummary from "@/components/AggregationSummary";
+import FarmerInviteCard from "@/components/FarmerInviteCard";
+import Footer from "@/components/Footer";
 import {
   TrendingUp,
   Users,
   Sprout,
   Store,
-  Calendar,
-  Languages,
-  ArrowUpRight,
   ShieldCheck,
   Smartphone,
+  Sparkles,
+  ArrowRight,
+  Layers,
 } from "lucide-react";
 
 export default function Home() {
   const [lang, setLang] = useState<"ta" | "en">("ta");
+  const [activeTab, setActiveTab] = useState("dashboard");
+
   const t = lang === "ta" ? ta : en;
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      {/* Top Navigation */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-xl shadow-sm">
-              F
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 selection:bg-green-100 selection:text-green-900">
+      {/* Top App Bar & Language Switcher */}
+      <Navbar
+        lang={lang}
+        setLang={setLang}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        t={t}
+      />
+
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8 flex-1">
+        {/* Welcome Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center space-x-2 text-xs font-semibold text-green-700 uppercase tracking-wider mb-1">
+              <span>🌾 {t.app.district}</span>
+              <span>•</span>
+              <span>{t.app.sync_status}</span>
             </div>
-            <div>
-              <span className="font-bold text-lg text-gray-900 tracking-tight">
-                FPOLink TN
-              </span>
-              <span className="ml-2 text-xs bg-green-100 text-green-800 font-semibold px-2 py-0.5 rounded-full">
-                ஈரோடு / Erode
-              </span>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+              {lang === "ta" ? "கொடுமுடி உழவர் உற்பத்தியாளர் நிறுவனம்" : "Kodumudi Farmer Producer Organization"}
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 max-w-3xl">
+              {lang === "ta"
+                ? "ஈரோடு மாவட்ட உழவர் உற்பத்தியாளர் நிறுவனங்களுக்கான நேரலை மண்டி விலை நுண்ணறிவு, தானியங்கி முரண்பாடு எச்சரிக்கைகள், மற்றும் அறுவடை ஒருங்கிணைப்பு தளம்."
+                : "Real-time mandi price intelligence, MAD anomaly telemetry, and grade-sorted harvest aggregation for Erode District FPOs."}
+            </p>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setLang(lang === "ta" ? "en" : "ta")}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors"
-            >
-              <Languages className="w-4 h-4 mr-1.5 text-gray-500" />
-              {lang === "ta" ? "English" : "தமிழ்"}
-            </button>
+          <div className="flex items-center space-x-2">
             <a
-              href="/login"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm transition-colors"
+              href="https://wa.me/919876543210?text=%E0%AE%B5%E0%AE%A3%E0%AE%95%E0%AF%8D%E0%AE%95%E0%AE%AE%E0%AF%8D"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all active:scale-95"
             >
-              {lang === "ta" ? "உள்நுழை" : "Sign In"}
+              <Smartphone className="w-4 h-4 mr-2" />
+              {lang === "ta" ? "WhatsApp பாட் திறக்க" : "Open WhatsApp Bot"}
             </a>
           </div>
         </div>
-      </header>
 
-      {/* Hero / Stat Overview */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            {t.app.tagline}
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {lang === "ta"
-              ? "ஈரோடு மாவட்ட உழவர் உற்பத்தியாளர் நிறுவனங்களுக்கான டிஜிட்டல் விலை நுண்ணறிவு மற்றும் அறுவடை தளம்"
-              : "Digital price intelligence and harvest aggregation for Erode Farmer Producer Organizations"}
-          </p>
-        </div>
+        {/* Primary KPI Overview Cards */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <StatCard
+            title={t.dashboard.members}
+            value="1,250"
+            subtitle={lang === "ta" ? "ஈரோடு & கொடுமுடி" : "Erode & Kodumudi"}
+            change="+12%"
+            changeType="positive"
+            icon={Users}
+            iconColor="text-green-600 bg-green-50"
+          />
 
-        {/* Primary Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                {t.dashboard.members}
-              </span>
-              <Users className="w-5 h-5 text-green-600" />
+          <StatCard
+            title={t.dashboard.todays_produce}
+            value="8,400 kg"
+            subtitle={lang === "ta" ? "மஞ்சள் & வாழை" : "Turmeric & Banana"}
+            change="+8.4%"
+            changeType="positive"
+            icon={Sprout}
+            iconColor="text-yellow-600 bg-yellow-50"
+          />
+
+          <StatCard
+            title={t.dashboard.turmeric_rate}
+            value="₹12,480"
+            subtitle="பெருந்துறை மண்டி (Perundurai)"
+            change="+2.4%"
+            changeType="positive"
+            icon={TrendingUp}
+            iconColor="text-emerald-600 bg-emerald-50"
+            badge="Agmarknet"
+          />
+
+          <StatCard
+            title={t.dashboard.banana_rate}
+            value="₹2,920"
+            subtitle="கொடுமுடி மண்டி (Kodumudi)"
+            change="+1.8%"
+            changeType="positive"
+            icon={TrendingUp}
+            iconColor="text-blue-600 bg-blue-50"
+            badge="Agmarknet"
+          />
+        </section>
+
+        {/* Dynamic Tab Views */}
+        {(activeTab === "dashboard" || activeTab === "prices") && (
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+            {/* Interactive Price Chart (Spans 2 Columns) */}
+            <div className="lg:col-span-2 space-y-6">
+              <PriceChart lang={lang} t={t} />
+              <MandiPricesTable lang={lang} t={t} />
             </div>
-            <p className="text-2xl font-bold text-gray-900 mt-2">1,250</p>
-            <span className="text-xs text-green-600 font-medium flex items-center mt-1">
-              <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> +12%{" "}
-              {lang === "ta" ? "இந்த மாதம்" : "this month"}
-            </span>
-          </div>
 
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                {t.dashboard.todays_produce}
-              </span>
-              <Sprout className="w-5 h-5 text-yellow-600" />
+            {/* Alert & Notice Panel (Spans 1 Column) */}
+            <div className="space-y-6">
+              <AlertPanel lang={lang} t={t} />
+              <AggregationSummary lang={lang} t={t} />
             </div>
-            <p className="text-2xl font-bold text-gray-900 mt-2">8,400 kg</p>
-            <span className="text-xs text-gray-500 mt-1 block">
-              {lang === "ta" ? "மஞ்சள் & வாழை" : "Turmeric & Banana"}
-            </span>
-          </div>
+          </section>
+        )}
 
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                {lang === "ta" ? "மஞ்சள் விலை (ஈரோடு)" : "Turmeric Mandi Rate"}
-              </span>
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mt-2">₹12,050 / q</p>
-            <span className="text-xs text-green-600 font-medium flex items-center mt-1">
-              <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> +3.5% (Agmarknet)
-            </span>
-          </div>
+        {activeTab === "aggregation" && (
+          <section className="space-y-6">
+            <AggregationSummary lang={lang} t={t} />
+            <MandiPricesTable lang={lang} t={t} />
+          </section>
+        )}
 
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                {lang === "ta" ? "வாட்ஸ்அப் பாட்" : "WhatsApp Bot"}
-              </span>
-              <Smartphone className="w-5 h-5 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mt-2">
-              {lang === "ta" ? "செயலில்" : "Active"}
-            </p>
-            <span className="text-xs text-gray-500 mt-1 block">
-              {lang === "ta" ? "விலை, வானிலை, அறுவடை" : "Prices, Weather, Harvest"}
-            </span>
-          </div>
-        </div>
+        {activeTab === "farmers" && (
+          <section className="space-y-6">
+            <FarmerInviteCard lang={lang} t={t} />
+            <AggregationSummary lang={lang} t={t} />
+          </section>
+        )}
 
-        {/* Feature Overview Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-700 mb-4">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg">
-              {t.dashboard.market_prices}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-              {lang === "ta"
-                ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்கள் மற்றும் மண்டிகளின் தினசரி மாதிரி, குறைந்தபட்ச மற்றும் அதிகபட்ச விலைகள்."
-                : "Real daily modal, min, and max wholesale prices from Erode regulated markets and mandis."}
-            </p>
-          </div>
+        {activeTab === "alerts" && (
+          <section className="space-y-6">
+            <AlertPanel lang={lang} t={t} />
+            <PriceChart lang={lang} t={t} />
+          </section>
+        )}
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-700 mb-4">
-              <Store className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg">
-              {t.nav.aggregation}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-              {lang === "ta"
-                ? "விவசாயிகளின் சிறிய விளைச்சல்களை தரவாரியாக (Grade A/B/C) தொகுத்து மொத்தமாக விற்பனை செய்தல்."
-                : "Aggregate smallholder farm harvests into uniform, grade-sorted wholesale commercial batches."}
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 mb-4">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg">
-              DPDP Act & {lang === "ta" ? "பாதுகாப்பு" : "Security"}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-              {lang === "ta"
-                ? "விவசாயிகளின் தனிநபர் தரவு பாதுகாப்பு, வெளிப்படையான ஒப்புதல் மற்றும் பாதுகாப்பான Argon2id அங்கீகாரம்."
-                : "Compliant consent logging, phone masking, and cryptographic Argon2id password authentication."}
-            </p>
-          </div>
-        </div>
-      </section>
+        {/* Farmer Onboarding & WhatsApp Invite Hub (Always visible on dashboard bottom) */}
+        {activeTab === "dashboard" && (
+          <section>
+            <FarmerInviteCard lang={lang} t={t} />
+          </section>
+        )}
+      </main>
 
       {/* Footer */}
-      <footer className="mt-auto bg-white border-t border-gray-200 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500">
-          <p>FPOLink TN © 2026. MIT License.</p>
-          <p className="mt-2 sm:mt-0">
-            {lang === "ta"
-              ? "தமிழ்நாடு உழவர் உற்பத்தியாளர் நிறுவனங்களுக்காக அர்ப்பணிக்கப்பட்டது"
-              : "Dedicated to Farmer Producer Organizations of Tamil Nadu"}
-          </p>
-        </div>
-      </footer>
-    </main>
+      <Footer lang={lang} />
+    </div>
   );
 }

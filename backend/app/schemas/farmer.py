@@ -44,9 +44,17 @@ class FarmerResponse(BaseModel):
     alerts_opt_in: bool = False
     alerts_opt_in_at: Optional[datetime] = None
     alerts_opt_out_at: Optional[datetime] = None
+    notice_sent_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WhatsAppInviteResponse(BaseModel):
+    farmer_id: str
+    phone: str
+    bot_phone: str
+    invite_url: str
 
 
 class FarmerListResponse(BaseModel):

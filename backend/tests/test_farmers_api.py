@@ -92,3 +92,14 @@ def test_farmer_crud_and_search(client):
     assert update_res.status_code == 200
     assert update_res.json()["farm_area_acres"] == 4.0
     assert update_res.json()["village"] == "North Kodumudi"
+
+    # 8. WhatsApp invite link (T2.1)
+    invite_res = client.get(
+        f"/api/farmers/{farmer_id}/whatsapp-invite",
+        headers=admin_headers,
+    )
+    assert invite_res.status_code == 200
+    invite_data = invite_res.json()
+    assert invite_data["farmer_id"] == farmer_id
+    assert "wa.me" in invite_data["invite_url"]
+    assert "text=" in invite_data["invite_url"]

@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     WHATSAPP_APP_SECRET: str = ""
     WHATSAPP_ACCESS_TOKEN: str = ""
     WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_BOT_PHONE: str = "919876543210"
     WHATSAPP_API_VERSION: str = "v23.0"
 
     # External Services

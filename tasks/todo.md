@@ -21,10 +21,10 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [ ] Checkpoint A verified by human with real device and live prices
 
 ## Phase 2: Onboarding, identity, consent
-- [ ] T2.1 wa.me invite link endpoint
-- [ ] T2.2 First-contact notice
-- [ ] T2.3 ALERTS ON/OFF and STOP from any state
-- [ ] T2.4 FPO/district scoping
+- [x] T2.1 wa.me invite link endpoint
+- [x] T2.2 First-contact notice
+- [x] T2.3 ALERTS ON/OFF and STOP from any state
+- [x] T2.4 FPO/district scoping
 
 ## Phase 3: Harvest by chat
 - [ ] T3.1 Harvest service + API (idempotent by message id)

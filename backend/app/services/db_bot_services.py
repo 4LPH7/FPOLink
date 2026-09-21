@@ -79,7 +79,18 @@ class DbBotServices:
                 district=farmer.district or "Erode",
                 lang=farmer.lang or "ta",
                 alerts_opt_in=bool(farmer.alerts_opt_in),
+                notice_sent_at=farmer.notice_sent_at,
+                fpo_id=str(farmer.fpo_id) if farmer.fpo_id else None,
             )
+
+    async def mark_notice_sent(self, farmer_id: str) -> None:
+        """Record timestamp when first-contact DPDP notice was sent."""
+        now = datetime.now(timezone.utc)
+        with self.db_factory() as db:
+            farmer = db.query(DbFarmer).filter(DbFarmer.id == UUID(farmer_id)).first()
+            if farmer:
+                farmer.notice_sent_at = now
+                db.commit()
 
     async def latest_price(
         self, crop: str, district: Optional[str] = "Erode"

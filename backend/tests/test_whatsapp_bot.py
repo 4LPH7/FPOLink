@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -42,10 +42,11 @@ class FakeChannel:
 
 
 def make_services():
+    now = datetime.now(timezone.utc)
     return InMemoryServices(
         farmers={
-            "9876543210": Farmer("f1", "Muthu", "Erode", "ta"),
-            "9000000001": Farmer("f2", "Ravi", "Erode", "en"),
+            "9876543210": Farmer("f1", "Muthu", "Erode", "ta", notice_sent_at=now),
+            "9000000001": Farmer("f2", "Ravi", "Erode", "en", notice_sent_at=now),
         },
         prices={
             "turmeric": PriceInfo(
