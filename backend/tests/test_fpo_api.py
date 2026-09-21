@@ -35,7 +35,7 @@ def test_fpo_lifecycle_and_dashboard(client):
 
     # 3. Unauthorized creation without token
     anon_res = client.post("/api/fpos/", json=fpo_payload)
-    assert anon_res.status_code == 403
+    assert anon_res.status_code == 401
 
     # 4. List FPOs
     list_res = client.get("/api/fpos/")

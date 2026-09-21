@@ -134,7 +134,7 @@ class TestProtectedRoutes:
 
     def test_me_unauthenticated(self, client: TestClient):
         response = client.get("/api/auth/me")
-        assert response.status_code == 403  # No auth header
+        assert response.status_code == 401  # No auth header -> 401 Unauthorized
 
     def test_me_invalid_token(self, client: TestClient):
         response = client.get(
