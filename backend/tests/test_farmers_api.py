@@ -119,7 +119,7 @@ def test_farmer_crud_and_search(client):
             "consent_given": True,
         },
     )
-    assert other_staff_res.status_code == 200
+    assert other_staff_res.status_code == 201
     other_staff_token = other_staff_res.json()["access_token"]
     other_staff_headers = {"Authorization": f"Bearer {other_staff_token}"}
 
