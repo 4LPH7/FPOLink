@@ -1,109 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Store,
-  Search,
-  Filter,
-  ArrowUpRight,
-  ArrowDownRight,
-  ShieldCheck,
-  Calendar,
-  ExternalLink,
-} from "lucide-react";
+import { Store, Search, ShieldCheck, ArrowUpRight, ArrowDownRight, Minus, ExternalLink } from "lucide-react";
+import { MANDI_DATA, type MandiRow } from "@/lib/marketData";
 
 interface MandiPricesTableProps {
   lang: "ta" | "en";
   t: any;
 }
-
-interface MandiRow {
-  id: string;
-  cropEn: string;
-  cropTa: string;
-  mandiEn: string;
-  mandiTa: string;
-  district: string;
-  modal: number;
-  min: number;
-  max: number;
-  change: number;
-  date: string;
-  source: "ogd" | "ceda";
-}
-
-const MANDI_DATA: MandiRow[] = [
-  {
-    id: "m1",
-    cropEn: "Turmeric (Finger)",
-    cropTa: "மஞ்சள் (விரலி)",
-    mandiEn: "Perundurai Regulated Market",
-    mandiTa: "பெருந்துறை ஒழுங்குமுறை விற்பனைக்கூடம்",
-    district: "Erode",
-    modal: 12480,
-    min: 11700,
-    max: 13000,
-    change: 2.4,
-    date: "2026-09-21",
-    source: "ogd",
-  },
-  {
-    id: "m2",
-    cropEn: "Turmeric (Bulb)",
-    cropTa: "மஞ்சள் (கிழங்கு)",
-    mandiEn: "Erode Semmampalayam Market",
-    mandiTa: "ஈரோடு செம்மாம்பாளையம் சந்தை",
-    district: "Erode",
-    modal: 11650,
-    min: 10900,
-    max: 12150,
-    change: 1.2,
-    date: "2026-09-21",
-    source: "ogd",
-  },
-  {
-    id: "m3",
-    cropEn: "Banana (Nendran)",
-    cropTa: "வாழை (நேந்திரன்)",
-    mandiEn: "Kodumudi Regulated Market",
-    mandiTa: "கொடுமுடி ஒழுங்குமுறை விற்பனைக்கூடம்",
-    district: "Erode",
-    modal: 2920,
-    min: 2700,
-    max: 3200,
-    change: 1.8,
-    date: "2026-09-21",
-    source: "ogd",
-  },
-  {
-    id: "m4",
-    cropEn: "Banana (Poovan)",
-    cropTa: "வாழை (பூவன்)",
-    mandiEn: "Gobichettipalayam Market",
-    mandiTa: "கோபிசெட்டிபாளையம் சந்தை",
-    district: "Erode",
-    modal: 2450,
-    min: 2200,
-    max: 2700,
-    change: -0.8,
-    date: "2026-09-20",
-    source: "ceda",
-  },
-  {
-    id: "m5",
-    cropEn: "Coconut (De-husked)",
-    cropTa: "தேங்காய் (மட்டை உரித்தது)",
-    mandiEn: "Erode Regulated Market",
-    mandiTa: "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடம்",
-    district: "Erode",
-    modal: 2850,
-    min: 2600,
-    max: 3100,
-    change: 0.5,
-    date: "2026-09-21",
-    source: "ogd",
-  },
-];
 
 export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -128,14 +32,19 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
       {/* Table Header & Controls */}
       <div className="p-5 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-bold text-gray-900 tracking-tight flex items-center">
-            <Store className="w-5 h-5 text-green-600 mr-2" />
-            {lang === "ta" ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் தினசரி விலை நிலவரம்" : "Erode Mandi Daily Auction Rates"}
-          </h3>
+          <div className="flex items-center space-x-2">
+            <h3 className="text-base font-bold text-gray-900 tracking-tight flex items-center">
+              <Store className="w-5 h-5 text-green-600 mr-2" />
+              {lang === "ta" ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் தினசரி விலை நிலவரம்" : "Erode Mandi Daily Auction Rates"}
+            </h3>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+              {lang === "ta" ? "மாதிரி குறிப்புத் தரவு" : "Sample Reference Data"}
+            </span>
+          </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {lang === "ta"
-              ? "Agmarknet (OGD) மற்றும் CEDA வழியாக சரிபார்க்கப்பட்ட அதிகாரப்பூர்வ விலைகள்"
-              : "Directly synchronized through Agmarknet (OGD) and CEDA portals"}
+              ? "மாதிரி குறிப்புத் தரவு (செப்டம்பர் 2026) — Agmarknet (OGD) மற்றும் CEDA வடிவமைப்பின்படி"
+              : "Sample reference rates (September 2026) — formatted to Agmarknet (OGD) & CEDA schemas"}
           </p>
         </div>
 

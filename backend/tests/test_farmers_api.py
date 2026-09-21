@@ -78,8 +78,12 @@ def test_farmer_crud_and_search(client):
     assert len(search_data["farmers"]) >= 1
     assert search_data["farmers"][0]["name"] == "Palanisamy G"
 
-    # 6. Get farmer details
-    detail_res = client.get(f"/api/farmers/detail/{farmer_id}")
+    # 6. Unauthenticated request should return 401
+    unauth_res = client.get(f"/api/farmers/detail/{farmer_id}")
+    assert unauth_res.status_code == 401
+
+    # Authorized admin request
+    detail_res = client.get(f"/api/farmers/detail/{farmer_id}", headers=admin_headers)
     assert detail_res.status_code == 200
     assert detail_res.json()["village"] == "Kodumudi"
 
@@ -103,3 +107,32 @@ def test_farmer_crud_and_search(client):
     assert invite_data["farmer_id"] == farmer_id
     assert "wa.me" in invite_data["invite_url"]
     assert "text=" in invite_data["invite_url"]
+
+    # 9. Test cross-FPO authorization: fpo_staff from a different FPO gets 403
+    other_staff_res = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Other FPO Staff",
+            "phone": "9444444444",
+            "password": "staffpassword",
+            "role": "fpo_staff",
+            "consent_given": True,
+        },
+    )
+    assert other_staff_res.status_code == 200
+    other_staff_token = other_staff_res.json()["access_token"]
+    other_staff_headers = {"Authorization": f"Bearer {other_staff_token}"}
+
+    # Accessing farmer from another FPO should return 403
+    forbidden_detail = client.get(
+        f"/api/farmers/detail/{farmer_id}",
+        headers=other_staff_headers,
+    )
+    assert forbidden_detail.status_code == 403
+
+    # Generating invite for farmer from another FPO should return 403
+    forbidden_invite = client.get(
+        f"/api/farmers/{farmer_id}/whatsapp-invite",
+        headers=other_staff_headers,
+    )
+    assert forbidden_invite.status_code == 403

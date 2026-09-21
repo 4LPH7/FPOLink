@@ -143,6 +143,68 @@ export default function Navbar({
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Strip (below md breakpoint) */}
+        <nav
+          aria-label="Mobile Navigation"
+          className="md:hidden flex items-center overflow-x-auto py-2 border-t border-gray-100 gap-1.5"
+        >
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center space-x-1 ${
+              activeTab === "dashboard"
+                ? "bg-green-50 text-green-700 font-semibold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>{t.nav.dashboard}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("prices")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center space-x-1 ${
+              activeTab === "prices"
+                ? "bg-green-50 text-green-700 font-semibold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>{t.nav.prices}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("aggregation")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center space-x-1 ${
+              activeTab === "aggregation"
+                ? "bg-green-50 text-green-700 font-semibold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            }`}
+          >
+            <Sprout className="w-3.5 h-3.5" />
+            <span>{t.nav.aggregation}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("farmers")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center space-x-1 ${
+              activeTab === "farmers"
+                ? "bg-green-50 text-green-700 font-semibold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>{t.nav.farmers}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("alerts")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center space-x-1 ${
+              activeTab === "alerts"
+                ? "bg-green-50 text-green-700 font-semibold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            }`}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>{t.nav.alerts}</span>
+          </button>
+        </nav>
       </div>
     </header>
   );

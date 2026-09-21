@@ -11,6 +11,7 @@ import MandiPricesTable from "@/components/MandiPricesTable";
 import AggregationSummary from "@/components/AggregationSummary";
 import FarmerInviteCard from "@/components/FarmerInviteCard";
 import Footer from "@/components/Footer";
+import { getLatestMarketRates } from "@/lib/marketData";
 import {
   TrendingUp,
   Users,
@@ -28,6 +29,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const t = lang === "ta" ? ta : en;
+  const marketRates = getLatestMarketRates();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 selection:bg-green-100 selection:text-green-900">
@@ -59,22 +61,12 @@ export default function Home() {
                 : "Real-time mandi price intelligence, MAD anomaly telemetry, and grade-sorted harvest aggregation for Erode District FPOs."}
             </p>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <a
-              href="https://wa.me/919876543210?text=%E0%AE%B5%E0%AE%A3%E0%AE%95%E0%AF%8D%E0%AE%95%E0%AE%AE%E0%AF%8D"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all active:scale-95"
-            >
-              <Smartphone className="w-4 h-4 mr-2" />
-              {lang === "ta" ? "WhatsApp பாட் திறக்க" : "Open WhatsApp Bot"}
-            </a>
-          </div>
+          {/* Decorative background blur ring */}
+          <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full bg-green-500/20 blur-3xl pointer-events-none" />
         </div>
 
         {/* Primary KPI Overview Cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <StatCard
             title={t.dashboard.members}
             value="1,250"
@@ -97,10 +89,10 @@ export default function Home() {
 
           <StatCard
             title={t.dashboard.turmeric_rate}
-            value="₹12,480"
-            subtitle="பெருந்துறை மண்டி (Perundurai)"
-            change="+2.4%"
-            changeType="positive"
+            value={marketRates.turmeric.rate}
+            subtitle={`${lang === "ta" ? marketRates.turmeric.mandiTa : marketRates.turmeric.mandiEn} (${marketRates.turmeric.date})`}
+            change={marketRates.turmeric.change}
+            changeType={marketRates.turmeric.changeType}
             icon={TrendingUp}
             iconColor="text-emerald-600 bg-emerald-50"
             badge="Agmarknet"
@@ -108,10 +100,10 @@ export default function Home() {
 
           <StatCard
             title={t.dashboard.banana_rate}
-            value="₹2,920"
-            subtitle="கொடுமுடி மண்டி (Kodumudi)"
-            change="+1.8%"
-            changeType="positive"
+            value={marketRates.banana.rate}
+            subtitle={`${lang === "ta" ? marketRates.banana.mandiTa : marketRates.banana.mandiEn} (${marketRates.banana.date})`}
+            change={marketRates.banana.change}
+            changeType={marketRates.banana.changeType}
             icon={TrendingUp}
             iconColor="text-blue-600 bg-blue-50"
             badge="Agmarknet"
@@ -144,7 +136,7 @@ export default function Home() {
 
         {activeTab === "farmers" && (
           <section className="space-y-6">
-            <FarmerInviteCard lang={lang} t={t} />
+            <FarmerInviteCard lang={lang} t={t} onNavigateFarmerList={() => setActiveTab("farmers")} />
             <AggregationSummary lang={lang} t={t} />
           </section>
         )}
@@ -159,7 +151,7 @@ export default function Home() {
         {/* Farmer Onboarding & WhatsApp Invite Hub (Always visible on dashboard bottom) */}
         {activeTab === "dashboard" && (
           <section>
-            <FarmerInviteCard lang={lang} t={t} />
+            <FarmerInviteCard lang={lang} t={t} onNavigateFarmerList={() => setActiveTab("farmers")} />
           </section>
         )}
       </main>

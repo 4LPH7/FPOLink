@@ -63,26 +63,31 @@ class WhatsAppCloudChannel:
         self._headers = {"Authorization": f"Bearer {access_token}"}
         self._client = client or httpx.AsyncClient(timeout=10)
 
-    async def _post(self, to: str, payload: dict) -> None:
+    async def _post(self, to: str, payload: dict) -> bool:
         body = {"messaging_product": "whatsapp", "to": to, **payload}
         try:
             resp = await self._client.post(self._url, json=body, headers=self._headers)
+        except httpx.TimeoutException:
+            log.warning("WhatsApp send timeout to %s", mask(to))
+            raise
         except httpx.HTTPError:
             log.exception("WhatsApp send error to %s", mask(to))
-            return
+            return False
         if resp.status_code >= 400:
             # Never log the token; body may say why (template not approved, window closed...)
             log.error("WhatsApp send %s to %s: %s", resp.status_code, mask(to), resp.text[:300])
+            return False
+        return True
 
-    async def send_text(self, to: str, body: str) -> None:
-        await self._post(to, {"type": "text", "text": {"body": body[:MAX_TEXT]}})
+    async def send_text(self, to: str, body: str) -> bool:
+        return await self._post(to, {"type": "text", "text": {"body": body[:MAX_TEXT]}})
 
-    async def send_buttons(self, to: str, body: str, buttons: list[Button]) -> None:
+    async def send_buttons(self, to: str, body: str, buttons: list[Button]) -> bool:
         rows = [
             {"type": "reply", "reply": {"id": b.id, "title": b.title[:MAX_BUTTON_TITLE]}}
             for b in buttons[:MAX_BUTTONS]
         ]
-        await self._post(
+        return await self._post(
             to,
             {
                 "type": "interactive",
@@ -94,14 +99,14 @@ class WhatsAppCloudChannel:
             },
         )
 
-    async def send_template(self, to: str, name: str, lang: str, params: list[str]) -> None:
+    async def send_template(self, to: str, name: str, lang: str, params: list[str]) -> bool:
         """Business-initiated message (e.g. daily digest). Template must be approved by Meta."""
         components = []
         if params:
             components.append(
                 {"type": "body", "parameters": [{"type": "text", "text": p} for p in params]}
             )
-        await self._post(
+        return await self._post(
             to,
             {
                 "type": "template",

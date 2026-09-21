@@ -6,6 +6,8 @@ stale detection, DPDP consent tracking, and conversation state TTL.
 
 from __future__ import annotations
 
+import asyncio
+import time
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -38,6 +40,8 @@ class DbBotServices:
         self.db_factory = db_factory
         self.stale_days_threshold = stale_days_threshold
         self.state_ttl = timedelta(minutes=state_ttl_minutes)
+        self._notice_claims: dict[str, float] = {}
+        self._claims_lock = asyncio.Lock()
 
     async def first_time(self, message_id: str) -> bool:
         """Atomically record message_id; returns False if already seen (Meta retries webhooks)."""
@@ -83,14 +87,41 @@ class DbBotServices:
                 fpo_id=str(farmer.fpo_id) if farmer.fpo_id else None,
             )
 
-    async def mark_notice_sent(self, farmer_id: str) -> None:
-        """Record timestamp when first-contact DPDP notice was sent."""
+    async def claim_notice(self, farmer_id: str, lease_seconds: float = 60.0) -> bool:
+        """Atomically claim notice sending lease for farmer. Return True if claim acquired."""
+        now_mono = time.monotonic()
+        async with self._claims_lock:
+            with self.db_factory() as db:
+                farmer = db.query(DbFarmer).filter(DbFarmer.id == UUID(farmer_id)).first()
+                if not farmer or farmer.notice_sent_at is not None:
+                    return False
+
+            claim_exp = self._notice_claims.get(farmer_id)
+            if claim_exp is not None and now_mono < claim_exp:
+                return False
+
+            self._notice_claims[farmer_id] = now_mono + lease_seconds
+            return True
+
+    async def mark_notice_delivered(self, farmer_id: str) -> None:
+        """Record timestamp when first-contact DPDP notice was confirmed delivered."""
         now = datetime.now(timezone.utc)
-        with self.db_factory() as db:
-            farmer = db.query(DbFarmer).filter(DbFarmer.id == UUID(farmer_id)).first()
-            if farmer:
-                farmer.notice_sent_at = now
-                db.commit()
+        async with self._claims_lock:
+            self._notice_claims.pop(farmer_id, None)
+            with self.db_factory() as db:
+                farmer = db.query(DbFarmer).filter(DbFarmer.id == UUID(farmer_id)).first()
+                if farmer:
+                    farmer.notice_sent_at = now
+                    db.commit()
+
+    async def release_notice_claim(self, farmer_id: str) -> None:
+        """Release leased claim after send failure so future inbound messages can retry."""
+        async with self._claims_lock:
+            self._notice_claims.pop(farmer_id, None)
+
+    async def mark_notice_sent(self, farmer_id: str) -> None:
+        """Record timestamp when first-contact DPDP notice was sent (alias to mark_notice_delivered)."""
+        await self.mark_notice_delivered(farmer_id)
 
     async def latest_price(
         self, crop: str, district: Optional[str] = "Erode"

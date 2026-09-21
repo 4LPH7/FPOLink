@@ -20,49 +20,36 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
+import { TURMERIC_DATA_30D, BANANA_DATA_30D } from "@/lib/marketData";
 
 interface PriceChartProps {
   lang: "ta" | "en";
   t: any;
 }
 
-// 30-Day Historical Data Points for Erode Mandis (Turmeric & Banana)
-const TURMERIC_DATA_30D = [
-  { date: "08/20", dateTa: "ஆக 20", modal: 11400, min: 10800, max: 11900, mandi: "பெருந்துறை", anomaly: false },
-  { date: "08/23", dateTa: "ஆக 23", modal: 11550, min: 10900, max: 12050, mandi: "செம்மாம்பாளையம்", anomaly: false },
-  { date: "08/26", dateTa: "ஆக 26", modal: 11600, min: 11000, max: 12100, mandi: "பெருந்துறை", anomaly: false },
-  { date: "08/29", dateTa: "ஆக 29", modal: 11750, min: 11100, max: 12250, mandi: "பெருந்துறை", anomaly: false },
-  { date: "09/01", dateTa: "செப் 01", modal: 11800, min: 11150, max: 12300, mandi: "கோபிசெட்டிபாளையம்", anomaly: false },
-  { date: "09/04", dateTa: "செப் 04", modal: 11920, min: 11200, max: 12400, mandi: "பெருந்துறை", anomaly: false },
-  { date: "09/07", dateTa: "செப் 07", modal: 12100, min: 11400, max: 12600, mandi: "செம்மாம்பாளையம்", anomaly: false },
-  { date: "09/10", dateTa: "செப் 10", modal: 12050, min: 11300, max: 12550, mandi: "பெருந்துறை", anomaly: false },
-  { date: "09/13", dateTa: "செப் 13", modal: 12850, min: 12100, max: 13400, mandi: "பெருந்துறை", anomaly: true }, // MAD Anomaly spike
-  { date: "09/16", dateTa: "செப் 16", modal: 12200, min: 11500, max: 12700, mandi: "கொடுமுடி", anomaly: false },
-  { date: "09/19", dateTa: "செப் 19", modal: 12350, min: 11650, max: 12850, mandi: "பெருந்துறை", anomaly: false },
-  { date: "09/21", dateTa: "செப் 21", modal: 12480, min: 11700, max: 13000, mandi: "பெருந்துறை", anomaly: false },
-];
-
-const BANANA_DATA_30D = [
-  { date: "08/20", dateTa: "ஆக 20", modal: 2650, min: 2400, max: 2850, mandi: "கொடுமுடி", anomaly: false },
-  { date: "08/23", dateTa: "ஆக 23", modal: 2700, min: 2450, max: 2900, mandi: "ஈரோடு", anomaly: false },
-  { date: "08/26", dateTa: "ஆக 26", modal: 2680, min: 2400, max: 2880, mandi: "கொடுமுடி", anomaly: false },
-  { date: "08/29", dateTa: "ஆக 29", modal: 2720, min: 2500, max: 2950, mandi: "பெருந்துறை", anomaly: false },
-  { date: "09/01", dateTa: "செப் 01", modal: 2750, min: 2500, max: 3000, mandi: "ஈரோடு", anomaly: false },
-  { date: "09/04", dateTa: "செப் 04", modal: 2790, min: 2550, max: 3050, mandi: "கொடுமுடி", anomaly: false },
-  { date: "09/07", dateTa: "செப் 07", modal: 2820, min: 2600, max: 3100, mandi: "கோபிசெட்டிபாளையம்", anomaly: false },
-  { date: "09/10", dateTa: "செப் 10", modal: 2800, min: 2550, max: 3050, mandi: "ஈரோடு", anomaly: false },
-  { date: "09/13", dateTa: "செப் 13", modal: 2840, min: 2600, max: 3120, mandi: "கொடுமுடி", anomaly: false },
-  { date: "09/16", dateTa: "செப் 16", modal: 2860, min: 2650, max: 3150, mandi: "பெருந்துறை", anomaly: false },
-  { date: "09/19", dateTa: "செப் 19", modal: 2890, min: 2680, max: 3180, mandi: "ஈரோடு", anomaly: false },
-  { date: "09/21", dateTa: "செப் 21", modal: 2920, min: 2700, max: 3200, mandi: "கொடுமுடி", anomaly: false },
-];
-
 export default function PriceChart({ lang, t }: PriceChartProps) {
   const [selectedCrop, setSelectedCrop] = useState<"turmeric" | "banana">("turmeric");
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
 
   const fullData = selectedCrop === "turmeric" ? TURMERIC_DATA_30D : BANANA_DATA_30D;
-  const chartData = timeframe === "7d" ? fullData.slice(-4) : fullData;
+
+  const chartData = React.useMemo(() => {
+    if (timeframe !== "7d") return fullData;
+    const parseItemDate = (dStr: string) => {
+      const [m, d] = dStr.split("/").map(Number);
+      return new Date(2026, m - 1, d).getTime();
+    };
+    const latestTime = parseItemDate(fullData[fullData.length - 1].date);
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return fullData.filter((item) => latestTime - parseItemDate(item.date) <= sevenDaysMs);
+  }, [fullData, timeframe]);
+
+  const chartDataWithRange = React.useMemo(() => {
+    return chartData.map((d) => ({
+      ...d,
+      range: [d.min, d.max],
+    }));
+  }, [chartData]);
 
   const latestPoint = chartData[chartData.length - 1];
   const previousPoint = chartData[chartData.length - 2] || chartData[0];
@@ -206,7 +193,7 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
       {/* Chart Canvas */}
       <div className="h-72 sm:h-80 w-full mt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={chartDataWithRange} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="modalGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#16a34a" stopOpacity={0.35} />
@@ -273,10 +260,10 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
               }}
             />
 
-            {/* Max / Min Band */}
+            {/* Floating Min / Max Range Band */}
             <Area
               type="monotone"
-              dataKey="max"
+              dataKey="range"
               stroke="#86efac"
               strokeWidth={1}
               strokeDasharray="2 2"
@@ -310,7 +297,9 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
           </span>
         </div>
         <span className="text-[11px] text-gray-400">
-          {lang === "ta" ? "கடைசியாக புதுப்பிக்கப்பட்டது: இன்று காலை 06:00 IST (Agmarknet & CEDA)" : "Last updated: Today 06:00 IST (Agmarknet & CEDA verified)"}
+          {lang === "ta"
+            ? `கடைசியாக புதுப்பிக்கப்பட்டது: ${latestPoint.dateTa}, 06:00 IST (Agmarknet & CEDA)`
+            : `Last updated: ${latestPoint.date}, 06:00 IST (Agmarknet & CEDA verified)`}
         </span>
       </div>
     </div>

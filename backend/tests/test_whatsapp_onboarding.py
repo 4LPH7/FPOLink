@@ -6,6 +6,7 @@ import json
 from datetime import date
 from decimal import Decimal
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -219,3 +220,83 @@ def test_t2_4_unregistered_number_gets_zero_data():
     assert "₹" not in reply
     assert "Erode" not in reply
     assert "not registered" in reply.lower() or "பதிவு செய்யப்படவில்லை" in reply
+
+
+@pytest.mark.anyio
+async def test_notice_atomic_claim_concurrency_and_retry():
+    """Verify claim_notice only allows one concurrent sender, and failure leaves notice retryable."""
+    svc = InMemoryServices(
+        farmers={"9876543210": Farmer("f1", "Periyasamy", "Erode", "ta", notice_sent_at=None)}
+    )
+
+    # 1. First caller acquires claim
+    assert await svc.claim_notice("f1", lease_seconds=60.0) is True
+
+    # 2. Concurrent caller cannot acquire while claim is active
+    assert await svc.claim_notice("f1", lease_seconds=60.0) is False
+
+    # 3. Known failure releases claim
+    await svc.release_notice_claim("f1")
+    farmer = await svc.find_farmer("9876543210")
+    assert farmer.notice_sent_at is None
+
+    # 4. Next caller can now acquire claim again
+    assert await svc.claim_notice("f1", lease_seconds=60.0) is True
+
+    # 5. Successful delivery marks it delivered and clears lease
+    await svc.mark_notice_delivered("f1")
+    farmer_delivered = await svc.find_farmer("9876543210")
+    assert farmer_delivered.notice_sent_at is not None
+
+    # 6. Once delivered, claim_notice always returns False
+    assert await svc.claim_notice("f1") is False
+
+
+class FailingChannel(MockChannel):
+    def __init__(self, fail_first_n: int = 1):
+        super().__init__()
+        self.fail_count = 0
+        self.fail_first_n = fail_first_n
+
+    async def send_text(self, to, body):
+        if self.fail_count < self.fail_first_n:
+            self.fail_count += 1
+            return False  # Meta rejection
+        return await super().send_text(to, body)
+
+
+def test_bot_handles_send_failure_and_retries_notice():
+    """Verify BotEngine releases claim on channel failure so subsequent message retries."""
+    svc = InMemoryServices(
+        farmers={"9876543210": Farmer("f1", "Periyasamy", "Erode", "ta", notice_sent_at=None)},
+        prices={
+            "turmeric": PriceInfo(
+                "turmeric", Decimal("120"), Decimal("110"), Decimal("130"), "Erode", date.today()
+            ),
+        },
+    )
+    ch = FailingChannel(fail_first_n=1)
+    engine = BotEngine(svc)
+
+    app = FastAPI()
+    app.include_router(wa.router)
+    app.dependency_overrides[wa.get_wa_settings] = lambda: wa.WhatsAppSettings(
+        VERIFY, SECRET, "tok", "123", "v23.0"
+    )
+    app.dependency_overrides[wa.get_channel] = lambda: ch
+    app.dependency_overrides[wa.get_bot] = lambda: engine
+    client = TestClient(app)
+
+    # First attempt: send_text fails (Meta returns False)
+    resp1 = post_webhook(client, build_payload("919876543210", "வணக்கம்", "msg-fail-1"))
+    assert resp1.status_code == 200
+    assert "f1" not in svc.notices
+    farmer1 = svc.farmers["9876543210"]
+    assert farmer1.notice_sent_at is None
+
+    # Second attempt: send_text succeeds, notice is sent and delivered
+    resp2 = post_webhook(client, build_payload("919876543210", "வணக்கம்", "msg-ok-2"))
+    assert resp2.status_code == 200
+    assert "f1" in svc.notices
+    farmer2 = svc.farmers["9876543210"]
+    assert farmer2.notice_sent_at is not None

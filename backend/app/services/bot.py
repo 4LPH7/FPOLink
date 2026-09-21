@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -150,6 +151,15 @@ class BotServices(Protocol):
     async def set_alerts(self, farmer_id: str, on: bool) -> None:
         """Store opt-in/out with a timestamp (consent evidence for DPDP / WhatsApp opt-in)."""
 
+    async def claim_notice(self, farmer_id: str, lease_seconds: float = 60.0) -> bool:
+        """Atomically claim notice lease. Returns True only if claim was acquired."""
+
+    async def mark_notice_delivered(self, farmer_id: str) -> None:
+        """Record timestamp when first-contact DPDP notice was confirmed delivered."""
+
+    async def release_notice_claim(self, farmer_id: str) -> None:
+        """Release leased claim after send failure so future inbound messages can retry."""
+
     async def mark_notice_sent(self, farmer_id: str) -> None:
         """Record timestamp when first-contact DPDP notice was sent."""
 
@@ -261,8 +271,16 @@ class BotEngine:
 
         # First-contact notice (T2.2)
         if farmer.notice_sent_at is None:
-            await self.svc.mark_notice_sent(farmer.id)
-            await ch.send_text(msg.wa_id, t["notice"])
+            if await self.svc.claim_notice(farmer.id):
+                try:
+                    sent = await ch.send_text(msg.wa_id, t["notice"])
+                    if sent is not False:
+                        await self.svc.mark_notice_delivered(farmer.id)
+                    else:
+                        await self.svc.release_notice_claim(farmer.id)
+                except Exception:
+                    await self.svc.release_notice_claim(farmer.id)
+                    raise
 
         # Consent and STOP works from ANY state (T2.3)
         if intent in ("alerts_off", "alerts_on"):
@@ -445,6 +463,7 @@ class InMemoryServices:
         self.harvests: list[tuple[str, str, Decimal, str]] = []
         self.alerts: dict[str, bool] = {}
         self.notices: set[str] = set()
+        self._notice_claims: dict[str, float] = {}
 
     async def first_time(self, message_id: str) -> bool:
         if message_id in self.seen:
@@ -470,7 +489,23 @@ class InMemoryServices:
     async def set_alerts(self, farmer_id: str, on: bool) -> None:
         self.alerts[farmer_id] = on
 
-    async def mark_notice_sent(self, farmer_id: str) -> None:
+    async def claim_notice(self, farmer_id: str, lease_seconds: float = 60.0) -> bool:
+        if farmer_id in self.notices:
+            return False
+        for f in self.farmers.values():
+            if f.id == farmer_id and f.notice_sent_at is not None:
+                return False
+
+        now_mono = time.monotonic()
+        claim_exp = self._notice_claims.get(farmer_id)
+        if claim_exp is not None and now_mono < claim_exp:
+            return False
+
+        self._notice_claims[farmer_id] = now_mono + lease_seconds
+        return True
+
+    async def mark_notice_delivered(self, farmer_id: str) -> None:
+        self._notice_claims.pop(farmer_id, None)
         self.notices.add(farmer_id)
         for phone, f in list(self.farmers.items()):
             if f.id == farmer_id:
@@ -486,6 +521,12 @@ class InMemoryServices:
                     fpo_id=f.fpo_id,
                 )
                 break
+
+    async def release_notice_claim(self, farmer_id: str) -> None:
+        self._notice_claims.pop(farmer_id, None)
+
+    async def mark_notice_sent(self, farmer_id: str) -> None:
+        await self.mark_notice_delivered(farmer_id)
 
     async def get_state(self, wa_id: str) -> ConvState | None:
         return self.states.get(wa_id)

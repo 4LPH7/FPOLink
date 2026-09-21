@@ -10,7 +10,8 @@ from app.api.deps import require_role
 from app.config import settings
 from app.database import get_db
 from app.models.farmer import Farmer
-from app.models.user import User
+from app.models.fpo import FPO
+from app.models.user import User, UserRole
 from app.schemas.farmer import (
     FarmerCreate,
     FarmerListResponse,
@@ -27,6 +28,25 @@ from app.services.farmer_service import (
 from app.utils.phone import normalise_phone
 
 router = APIRouter(prefix="/api/farmers", tags=["farmers"])
+
+
+def _enforce_farmer_fpo_scope(db: Session, current_user: User, fpo_id: UUID) -> None:
+    """Ensure fpo_staff can only access farmers within their permitted FPOs. Admin has global access."""
+    if current_user.role == UserRole.ADMIN or current_user.role.value == "admin":
+        return
+
+    permitted_fpos = {
+        row[0] for row in db.query(FPO.id).filter(FPO.contact_phone == current_user.phone).all()
+    }
+    user_fpo = getattr(current_user, "fpo_id", None)
+    if user_fpo:
+        permitted_fpos.add(user_fpo if isinstance(user_fpo, UUID) else UUID(str(user_fpo)))
+
+    if fpo_id not in permitted_fpos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not authorized to access farmers outside their permitted FPO",
+        )
 
 
 @router.post("/{fpo_id}", status_code=status.HTTP_201_CREATED)
@@ -115,15 +135,17 @@ def list_all(
     )
 
 
-@router.get("/detail/{farmer_id}")
+@router.get("/detail/{farmer_id}", response_model=FarmerResponse)
 def get_one(
     farmer_id: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
 ):
     """Get farmer details."""
     farmer = get_farmer(db, UUID(farmer_id))
     if not farmer:
         raise HTTPException(status_code=404, detail="Farmer not found")
+    _enforce_farmer_fpo_scope(db, current_user, farmer.fpo_id)
     return FarmerResponse(
         id=str(farmer.id),
         user_id=str(farmer.user_id),
@@ -144,7 +166,7 @@ def get_one(
     )
 
 
-@router.put("/detail/{farmer_id}")
+@router.put("/detail/{farmer_id}", response_model=FarmerResponse)
 def update(
     farmer_id: str,
     data: FarmerUpdate,
@@ -152,6 +174,11 @@ def update(
     current_user: User = Depends(require_role(["admin", "fpo_staff"])),
 ):
     """Update farmer details."""
+    target_farmer = get_farmer(db, UUID(farmer_id))
+    if not target_farmer:
+        raise HTTPException(status_code=404, detail="Farmer not found")
+    _enforce_farmer_fpo_scope(db, current_user, target_farmer.fpo_id)
+
     if data.phone:
         try:
             norm_phone = normalise_phone(data.phone)
@@ -208,6 +235,8 @@ def get_whatsapp_invite(
     farmer = get_farmer(db, UUID(farmer_id))
     if not farmer:
         raise HTTPException(status_code=404, detail="Farmer not found")
+
+    _enforce_farmer_fpo_scope(db, current_user, farmer.fpo_id)
 
     phone = farmer.phone or (farmer.user.phone if farmer.user else "")
     bot_phone = settings.WHATSAPP_BOT_PHONE or "919876543210"

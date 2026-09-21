@@ -14,6 +14,7 @@ import {
 interface FarmerInviteCardProps {
   lang: "ta" | "en";
   t: any;
+  onNavigateFarmerList?: () => void;
 }
 
 const SAMPLE_FARMERS = [
@@ -58,16 +59,41 @@ const SAMPLE_FARMERS = [
   },
 ];
 
-export default function FarmerInviteCard({ lang, t }: FarmerInviteCardProps) {
+export default function FarmerInviteCard({
+  lang,
+  t,
+  onNavigateFarmerList,
+}: FarmerInviteCardProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [inviteUrls, setInviteUrls] = useState<Record<string, string>>({});
 
   const getInviteUrl = (farmerId: string) => {
+    if (inviteUrls[farmerId]) {
+      return inviteUrls[farmerId];
+    }
     const greeting = lang === "ta" ? "வணக்கம்" : "Hi";
-    return `https://wa.me/919876543210?text=${encodeURIComponent(greeting)}`;
+    const botPhone = process.env.NEXT_PUBLIC_WHATSAPP_BOT_PHONE || "919876543210";
+    return `https://wa.me/${botPhone}?text=${encodeURIComponent(`${greeting} [FARMER:${farmerId}]`)}`;
   };
 
-  const handleCopy = (id: string) => {
-    const url = getInviteUrl(id);
+  const fetchInviteUrl = async (farmerId: string) => {
+    try {
+      const res = await fetch(`/api/farmers/${farmerId}/whatsapp-invite`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.invite_url) {
+          setInviteUrls((prev) => ({ ...prev, [farmerId]: data.invite_url }));
+          return data.invite_url;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    return getInviteUrl(farmerId);
+  };
+
+  const handleCopy = async (id: string) => {
+    const url = await fetchInviteUrl(id);
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -160,7 +186,10 @@ export default function FarmerInviteCard({ lang, t }: FarmerInviteCardProps) {
             ? "அனைத்து அழைப்புகளும் DPDP ஒப்புதல் விதிகளுக்கு உட்பட்டவை."
             : "All onboarding interactions comply with DPDP Act consent regulations."}
         </span>
-        <button className="text-green-700 font-bold hover:underline">
+        <button
+          onClick={onNavigateFarmerList}
+          className="text-green-700 font-bold hover:underline transition-colors active:scale-95 cursor-pointer"
+        >
           {t.farmer.farmer_list} →
         </button>
       </div>

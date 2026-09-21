@@ -67,13 +67,18 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
             <Bell className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-gray-900 tracking-tight">
-              {t.alerts_panel.title}
-            </h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-base font-bold text-gray-900 tracking-tight">
+                {t.alerts_panel.title}
+              </h3>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                {lang === "ta" ? "மாதிரி தொலைநிலைத் தரவு" : "Sample Telemetry"}
+              </span>
+            </div>
             <p className="text-xs text-gray-500">
               {lang === "ta"
-                ? "தானியங்கி முரண்பாடு ஆய்வு & வானிலை வழிகாட்டல்"
-                : "Automated anomaly flags and advisory telemetry"}
+                ? "மாதிரி செயல்பாட்டுத் தரவு (Sample Data) — தானியங்கி முரண்பாடு ஆய்வு & வானிலை வழிகாட்டல்"
+                : "Sample operational telemetry — Automated anomaly flags & advisory status"}
             </p>
           </div>
         </div>
@@ -157,7 +162,7 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
           </span>
         </div>
         <span className="text-[11px] text-gray-500 mt-1 sm:mt-0 font-medium">
-          {lang === "ta" ? "0 தவறவிட்ட கோரிக்கைகள் (Webhook Latency: 42ms)" : "0 unhandled requests (Webhook Latency: 42ms)"}
+          {lang === "ta" ? "மாதிரி அளவீடு (Sample): 0 தவறவிட்ட கோரிக்கைகள் (Latency: 42ms)" : "Sample metric: 0 unhandled requests (Latency: 42ms)"}
         </span>
       </div>
     </div>
