@@ -66,12 +66,10 @@ class CEDAProvider(MarketDataProvider):
             return records
 
         # Tag synthetic or sample data to prevent contaminating ML datasets
-        source = self.source_name
-        if not source:
-            if is_synthetic:
-                source = "ceda_synthetic"
-            else:
-                source = "ceda"
+        if is_synthetic:
+            source = "ceda_synthetic"
+        else:
+            source = self.source_name or "ceda"
 
         logger.info(f"Parsing CEDA CSV: {csv_path} (source: {source})")
         try:

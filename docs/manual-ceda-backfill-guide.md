@@ -132,7 +132,17 @@ To capture verified Meta Cloud API payloads for T0.3 contract verification:
    - Send: `"வணக்கம்"` (Tamil greeting)
    - Send: `"மஞ்சள் விலை"` (Turmeric price query)
    - Send: `"MENU"`
-7. Inspect the incoming request bodies and save the raw JSON payloads into:
-   - `backend/tests/fixtures/meta_webhook_text_real.json`
-   - `backend/tests/fixtures/meta_webhook_button_reply_real.json`
-8. Record the provenance details in [docs/data-provenance.md](docs/data-provenance.md).
+7. Inspect the incoming request bodies and redact before committing:
+   > [!CAUTION]
+   > **Prohibition on Committing Unredacted Payloads (DPDP & Security)**:
+   > Never commit raw, unredacted WhatsApp payloads containing real phone numbers, profile names, message text, or WhatsApp Business Account IDs to git.
+   - **Keep raw captures outside the repository** (e.g., in a temporary local directory outside git tracking or an ephemeral terminal tool).
+   - **Commit only sanitized fixtures** to `backend/tests/fixtures/` using the following placeholder redaction rules:
+     - Phone numbers / WhatsApp IDs: Replace with standard test masks (e.g., `"919876543210"` or `"919000000001"`).
+     - User profile names: Replace with `"Test Farmer"`.
+     - Business Account IDs & Phone Number IDs: Replace with test placeholders (e.g., `"1234567890"`).
+     - Message IDs: Replace with dummy identifiers (e.g., `"wamid.test.001"`).
+   - Target fixture files:
+     - `backend/tests/fixtures/meta_webhook_text_real.json` (redacted)
+     - `backend/tests/fixtures/meta_webhook_button_reply_real.json` (redacted)
+8. Record the provenance details in [docs/data-provenance.md](docs/data-provenance.md) documenting schema structure, capture date, and payload type without exposing real message content or user/account identifiers.

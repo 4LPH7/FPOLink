@@ -17,8 +17,8 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T1.5 Contract tests for outgoing payloads
 ### Checkpoint A: end-to-end from a real phone; CI green; no secrets in repo
 > [!NOTE]
-> Checkpoint A remains open: requires real phone testing, captured real Meta webhook payloads (T0.3), and verified real market price backfill (T0.5).
-- [ ] Checkpoint A verified by human with real device and live prices
+> Checkpoint A remains open: explicitly requires real phone testing, captured real Meta webhook payload fixtures for T0.3, and verified real market price backfill for T0.5 before marking the checkpoint complete.
+- [ ] Checkpoint A verified by human with real phone testing, captured real Meta webhook payload fixtures (T0.3), and verified real market price backfill (T0.5)
 
 ## Phase 2: Onboarding, identity, consent
 - [x] T2.1 wa.me invite link endpoint

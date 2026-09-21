@@ -91,6 +91,14 @@ def test_registry_and_ceda_provider_never_load_synthetic_in_normal_run(tmp_path)
     assert len(records_allowed) == 1
     assert records_allowed[0].source == "ceda_synthetic"
 
+    # Even if caller explicitly passes source_name="ceda", synthetic files must still be tagged as "ceda_synthetic"
+    provider_explicit_source = CEDAProvider(
+        data_dir=str(tmp_path), source_name="ceda", allow_synthetic=True
+    )
+    records_explicit = provider_explicit_source.fetch_prices("turmeric", "Erode")
+    assert len(records_explicit) == 1
+    assert records_explicit[0].source == "ceda_synthetic"
+
     # Now add a real CSV file
     with open(real_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(row_template.keys()))

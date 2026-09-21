@@ -129,9 +129,29 @@ class CEDAAPIProvider(MarketDataProvider):
                     resp.raise_for_status()
                     self._record_success()
                     return resp
-            except (httpx.TimeoutException, httpx.HTTPStatusError) as e:
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (502, 503, 504):
+                    last_exception = e
+                    logger.warning(f"CEDA API transient HTTP error: {e} (attempt {attempts})")
+                    if attempts <= self.max_retries:
+                        time.sleep(0.3 * attempts)
+                        continue
+                elif 400 <= e.response.status_code < 500:
+                    # Non-transient 4xx errors (401, 403, 422, etc.) propagate immediately
+                    # and must not increment circuit breaker failure state
+                    logger.error(
+                        f"CEDA API non-transient 4xx HTTP error {e.response.status_code}: {e}"
+                    )
+                    raise
+                else:
+                    # Other 5xx server errors (e.g. 500) are not retried but are recorded as failures
+                    last_exception = e
+                    logger.error(f"CEDA API server error {e.response.status_code}: {e}")
+                    break
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                # Keep transport-error retries separate
                 last_exception = e
-                logger.warning(f"CEDA API request error: {e} (attempt {attempts})")
+                logger.warning(f"CEDA API transport error: {e} (attempt {attempts})")
                 if attempts <= self.max_retries:
                     time.sleep(0.3 * attempts)
                     continue

@@ -166,3 +166,25 @@ def test_ceda_circuit_breaker_fast_fails():
     # Reset circuit
     provider.reset_circuit()
     assert not provider.is_circuit_open()
+
+
+@respx.mock
+def test_ceda_non_transient_4xx_propagates_immediately_without_circuit_failure(ceda_provider):
+    """Verify non-transient 4xx errors propagate immediately without retry and without tripping circuit."""
+    import httpx
+
+    ceda_provider.reset_circuit()
+    route = respx.get(f"{CEDA_API_BASE_URL}/agmarknet/commodities").respond(
+        status_code=401,
+        json={"detail": "Unauthorized API key"},
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        ceda_provider.get_commodities()
+
+    assert exc_info.value.response.status_code == 401
+    # Exactly 1 attempt — no retries for 401
+    assert route.call_count == 1
+    # Circuit breaker must remain closed and not register failure
+    assert ceda_provider.is_circuit_open() is False
+    assert ceda_provider._failure_count == 0
