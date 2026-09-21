@@ -136,14 +136,14 @@ To capture verified Meta Cloud API payloads for T0.3 contract verification:
    > [!CAUTION]
    - **Ephemeral handling and restricted temporary storage**:
      - Treat raw webhook captures as strictly ephemeral. Use restricted temporary storage outside Git (e.g., a secured temporary directory or in-memory shell buffer).
-     - Do not retain raw captures on developer storage; permanently delete all temporary captures and shell artifacts immediately after creating sanitized fixtures and the provenance record.
+     - Do not retain captures on developer storage, and delete temporary captures and shell artifacts immediately after creating sanitized fixtures and the provenance record.
      - Writing real phone numbers to persistent files, commit history, logs, or fixtures is strictly prohibited under DPDP compliance.
-   - **Commit only sanitized fixtures** to `backend/tests/fixtures/` using repository-defined, clearly synthetic non-routable values:
-     - Phone numbers / WhatsApp IDs: Replace with repository-defined, clearly synthetic non-routable test numbers (e.g., `"919876543210"` or `"919000000001"`).
+   - **Commit only sanitized fixtures** to `backend/tests/fixtures/` using repository-defined, clearly synthetic non-routable values for phone numbers, WhatsApp IDs, business account IDs, phone number IDs, and message IDs:
+     - Phone numbers / WhatsApp IDs: Replace with repository-defined, clearly synthetic non-routable values (e.g., `"919876543210"` or `"919000000001"`).
      - User profile names: Replace with `"Test Farmer"`.
-     - Business Account IDs & Phone Number IDs: Replace with repository-defined synthetic test placeholders (e.g., `"1234567890"` or `"test-phone-id-001"`).
-     - Message IDs: Replace with synthetic dummy identifiers (e.g., `"wamid.test.001"`).
-     - Contributors must verify that every value and identifier in the fixture is test-only before committing.
+     - Business Account IDs & Phone Number IDs: Replace with repository-defined, clearly synthetic non-routable values (e.g., `"1234567890"` or `"test-phone-id-001"`).
+     - Message IDs: Replace with repository-defined, clearly synthetic non-routable values (e.g., `"wamid.test.001"`).
+     - Contributors must verify every value is test-only before committing.
    - Target fixture files:
      - `backend/tests/fixtures/meta_webhook_text_real.json` (redacted)
      - `backend/tests/fixtures/meta_webhook_button_reply_real.json` (redacted)
