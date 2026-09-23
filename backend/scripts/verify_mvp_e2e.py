@@ -81,9 +81,9 @@ async def run_e2e_verification():
         print(f"  ✓ FPO: {fpo.name} ({fpo.district})")
 
         crops = db.query(Crop).all()
-        assert len(crops) >= 3, (
-            "FATAL: Expected at least 3 seeded crops (turmeric, banana, coconut)!"
-        )
+        assert (
+            len(crops) >= 3
+        ), "FATAL: Expected at least 3 seeded crops (turmeric, banana, coconut)!"
         print(f"  ✓ Crops registered: {', '.join([c.name for c in crops])}")
 
         farmer = db.query(DbFarmer).join(DbFarmer.user).filter(User.phone == "9876543210").first()
@@ -117,9 +117,9 @@ async def run_e2e_verification():
             db.query(WhatsAppInbound).filter(WhatsAppInbound.message_id == msg_id_1).first()
         )
         assert inbound_row is not None, "FATAL: Inbound message not stored in whatsapp_inbound!"
-        assert inbound_row.status == "processed", (
-            f"FATAL: Inbound status is '{inbound_row.status}', expected 'processed'"
-        )
+        assert (
+            inbound_row.status == "processed"
+        ), f"FATAL: Inbound status is '{inbound_row.status}', expected 'processed'"
         print(f"  ✓ Inbound message persisted with status='{inbound_row.status}'")
 
         # ─── Step 3: Conversational Harvest Submission ─────────
@@ -153,9 +153,9 @@ async def run_e2e_verification():
         )
         await engine.handle(msg3, ch)
 
-        assert "கிலோ" in ch.sent[-1]["body"] or "kg" in ch.sent[-1]["body"].lower(), (
-            f"FATAL: Expected quantity prompt, got: {ch.sent[-1]['body']}"
-        )
+        assert (
+            "கிலோ" in ch.sent[-1]["body"] or "kg" in ch.sent[-1]["body"].lower()
+        ), f"FATAL: Expected quantity prompt, got: {ch.sent[-1]['body']}"
         print(f"  ✓ Turn 2: Bot requested quantity -> '{ch.sent[-1]['body'][:60]}...'")
 
         # Turn 3: Farmer enters "350" kg
@@ -201,9 +201,9 @@ async def run_e2e_verification():
         )
         await engine.handle(msg6, ch)
 
-        assert "சேமிக்கப்பட்டது" in ch.sent[-1]["body"] or "saved" in ch.sent[-1]["body"].lower(), (
-            f"FATAL: Expected success confirmation, got: {ch.sent[-1]['body']}"
-        )
+        assert (
+            "சேமிக்கப்பட்டது" in ch.sent[-1]["body"] or "saved" in ch.sent[-1]["body"].lower()
+        ), f"FATAL: Expected success confirmation, got: {ch.sent[-1]['body']}"
         print(f"  ✓ Turn 5: Harvest saved confirmation sent -> '{ch.sent[-1]['body'][:60]}...'")
 
         # ─── Step 4: Verify Persistence & Data Integrity ───────
@@ -215,17 +215,17 @@ async def run_e2e_verification():
             .first()
         )
         assert harvest_row is not None, "FATAL: Harvest record not found in database!"
-        assert harvest_row.quantity_kg == Decimal("350"), (
-            f"FATAL: Expected 350 kg, got {harvest_row.quantity_kg}"
-        )
+        assert harvest_row.quantity_kg == Decimal(
+            "350"
+        ), f"FATAL: Expected 350 kg, got {harvest_row.quantity_kg}"
         status_val = (
             harvest_row.status.value
             if hasattr(harvest_row.status, "value")
             else str(harvest_row.status)
         )
-        assert status_val.upper() == "SUBMITTED", (
-            f"FATAL: Expected status 'SUBMITTED', got {harvest_row.status}"
-        )
+        assert (
+            status_val.upper() == "SUBMITTED"
+        ), f"FATAL: Expected status 'SUBMITTED', got {harvest_row.status}"
         print(f"  ✓ Harvest ID: {harvest_row.id}")
         print(f"  ✓ Quantity: {harvest_row.quantity_kg} kg")
         print(f"  ✓ Status: {harvest_row.status}")
@@ -233,9 +233,10 @@ async def run_e2e_verification():
 
         # Verify conversation state was reset
         state = db.query(ConversationState).filter(ConversationState.wa_id == "9876543210").first()
-        assert state is None or state.step in ("IDLE", "menu"), (
-            f"FATAL: ConversationState not reset to IDLE (current: {getattr(state, 'step', None)})"
-        )
+        assert state is None or state.step in (
+            "IDLE",
+            "menu",
+        ), f"FATAL: ConversationState not reset to IDLE (current: {getattr(state, 'step', None)})"
         print(f"  ✓ ConversationState cleanly reset: {getattr(state, 'step', 'CLEARED')}")
 
         # ─── Step 5: Staff Dashboard & Telemetry Alignment ─────
