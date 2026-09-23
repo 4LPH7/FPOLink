@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -95,6 +95,7 @@ class Settings(BaseSettings):
         raw = self.DEFAULT_CROPS.strip()
         if raw.startswith("[") and raw.endswith("]"):
             import json
+
             try:
                 return json.loads(raw)
             except Exception:
@@ -106,6 +107,7 @@ class Settings(BaseSettings):
         raw = self.CORS_ORIGINS.strip()
         if raw.startswith("[") and raw.endswith("]"):
             import json
+
             try:
                 return json.loads(raw)
             except Exception:

@@ -2,7 +2,7 @@
 set -e
 
 echo "[FPOLink] Waiting for database..."
-while ! python -c "from app.database import engine; from sqlalchemy import text; conn = engine.connect(); conn.execute(text('SELECT 1')); conn.close()" 2>/dev/null; do
+while ! python -c "from app.database import engine; from sqlalchemy import text; conn = engine.connect(); conn.execute(text('SELECT 1')); conn.close()"; do
     echo "[FPOLink] Database not ready, retrying in 2s..."
     sleep 2
 done

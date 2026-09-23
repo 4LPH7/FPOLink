@@ -8,23 +8,23 @@ Executes the complete named user journey:
 4. Staff Telemetry: Verify data is visible in farmer directory, harvest tables, and health check.
 """
 
-import sys
-import os
 import asyncio
-from uuid import uuid4
+import os
+import sys
 from decimal import Decimal
+from uuid import uuid4
 
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.database import SessionLocal
-from app.models.user import User
+from app.messaging.base import Button, InboundMessage
+from app.models.crop import Crop
 from app.models.farmer import Farmer as DbFarmer
 from app.models.fpo import FPO
-from app.models.crop import Crop
 from app.models.harvest import Harvest
-from app.models.whatsapp import WhatsAppInbound, ConversationState
-from app.messaging.base import InboundMessage, Button
+from app.models.user import User
+from app.models.whatsapp import ConversationState, WhatsAppInbound
 from app.services.bot import BotEngine
 from app.services.db_bot_services import DbBotServices
 
@@ -40,22 +40,26 @@ class MockChannel:
         return True
 
     async def send_buttons(self, to: str, body: str, buttons: list[Button]):
-        self.sent.append({
-            "to": to,
-            "kind": "buttons",
-            "body": body,
-            "buttons": [b.id for b in buttons],
-        })
+        self.sent.append(
+            {
+                "to": to,
+                "kind": "buttons",
+                "body": body,
+                "buttons": [b.id for b in buttons],
+            }
+        )
         return True
 
     async def send_template(self, to: str, name: str, lang: str, params: dict):
-        self.sent.append({
-            "to": to,
-            "kind": "template",
-            "name": name,
-            "lang": lang,
-            "params": params,
-        })
+        self.sent.append(
+            {
+                "to": to,
+                "kind": "template",
+                "name": name,
+                "lang": lang,
+                "params": params,
+            }
+        )
         return True
 
 
@@ -77,12 +81,16 @@ async def run_e2e_verification():
         print(f"  ✓ FPO: {fpo.name} ({fpo.district})")
 
         crops = db.query(Crop).all()
-        assert len(crops) >= 3, "FATAL: Expected at least 3 seeded crops (turmeric, banana, coconut)!"
+        assert len(crops) >= 3, (
+            "FATAL: Expected at least 3 seeded crops (turmeric, banana, coconut)!"
+        )
         print(f"  ✓ Crops registered: {', '.join([c.name for c in crops])}")
 
         farmer = db.query(DbFarmer).join(DbFarmer.user).filter(User.phone == "9876543210").first()
         assert farmer is not None, "FATAL: Seed farmer Ramasamy (9876543210) not found!"
-        print(f"  ✓ Farmer registered: {farmer.user.name if farmer.user else 'Ramasamy'} ({farmer.village})")
+        print(
+            f"  ✓ Farmer registered: {farmer.user.name if farmer.user else 'Ramasamy'} ({farmer.village})"
+        )
 
         wa_id = "919876543210"
 
@@ -105,9 +113,13 @@ async def run_e2e_verification():
         print(f"  ✓ Bot Reply [{last_outbound['kind']}]: {last_outbound['body'][:90]}...")
 
         # Check DB inbound record
-        inbound_row = db.query(WhatsAppInbound).filter(WhatsAppInbound.message_id == msg_id_1).first()
+        inbound_row = (
+            db.query(WhatsAppInbound).filter(WhatsAppInbound.message_id == msg_id_1).first()
+        )
         assert inbound_row is not None, "FATAL: Inbound message not stored in whatsapp_inbound!"
-        assert inbound_row.status == "processed", f"FATAL: Inbound status is '{inbound_row.status}', expected 'processed'"
+        assert inbound_row.status == "processed", (
+            f"FATAL: Inbound status is '{inbound_row.status}', expected 'processed'"
+        )
         print(f"  ✓ Inbound message persisted with status='{inbound_row.status}'")
 
         # ─── Step 3: Conversational Harvest Submission ─────────
@@ -206,7 +218,11 @@ async def run_e2e_verification():
         assert harvest_row.quantity_kg == Decimal("350"), (
             f"FATAL: Expected 350 kg, got {harvest_row.quantity_kg}"
         )
-        status_val = harvest_row.status.value if hasattr(harvest_row.status, "value") else str(harvest_row.status)
+        status_val = (
+            harvest_row.status.value
+            if hasattr(harvest_row.status, "value")
+            else str(harvest_row.status)
+        )
         assert status_val.upper() == "SUBMITTED", (
             f"FATAL: Expected status 'SUBMITTED', got {harvest_row.status}"
         )
