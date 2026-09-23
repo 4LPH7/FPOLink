@@ -45,3 +45,7 @@ Thumbs.db
 # Database
 *.sql.bak
 postgres_data/
+
+# Graphify
+graphify-out/cache/
+

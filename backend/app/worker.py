@@ -33,6 +33,38 @@ def run_predictions():
     logger.info("Predictions complete.")
 
 
+def run_daily_digest():
+    """Daily price digest sent to opted-in farmers at 07:30 IST (T4.2)."""
+    import asyncio
+
+    from app.api.whatsapp import get_wa_settings
+    from app.messaging.whatsapp_cloud import WhatsAppCloudChannel
+    from app.services.whatsapp_digest import DailyDigestService
+
+    logger.info("Starting WhatsApp daily digest run...")
+    cfg = get_wa_settings()
+    channel = WhatsAppCloudChannel(cfg.access_token, cfg.phone_number_id, cfg.api_version)
+    service = DailyDigestService()
+    metrics = asyncio.run(service.run_digest(channel))
+    logger.info("Daily digest completed: %s", metrics)
+
+
+def run_price_alerts():
+    """Price-move alerts sent to opted-in farmers at 07:45 IST (T4.3)."""
+    import asyncio
+
+    from app.api.whatsapp import get_wa_settings
+    from app.messaging.whatsapp_cloud import WhatsAppCloudChannel
+    from app.services.whatsapp_alerts import PriceMoveAlertService
+
+    logger.info("Starting WhatsApp price-move alerts check...")
+    cfg = get_wa_settings()
+    channel = WhatsAppCloudChannel(cfg.access_token, cfg.phone_number_id, cfg.api_version)
+    service = PriceMoveAlertService()
+    metrics = asyncio.run(service.check_and_send_alerts(channel))
+    logger.info("Price-move alerts completed: %s", metrics)
+
+
 def main():
     scheduler = BlockingScheduler(timezone="Asia/Kolkata")
 
@@ -44,6 +76,12 @@ def main():
 
     # Daily at 7 AM IST — predictions (after fresh prices)
     scheduler.add_job(run_predictions, "cron", hour=7, minute=0, id="predictions")
+
+    # Daily at 7:30 AM IST — WhatsApp price digest (T4.2)
+    scheduler.add_job(run_daily_digest, "cron", hour=7, minute=30, id="whatsapp_daily_digest")
+
+    # Daily at 7:45 AM IST — WhatsApp price-move alerts (T4.3)
+    scheduler.add_job(run_price_alerts, "cron", hour=7, minute=45, id="whatsapp_price_alerts")
 
     logger.info("FPOLink Worker started. Scheduled jobs:")
     for job in scheduler.get_jobs():

@@ -21,6 +21,16 @@ class Button:
     title: str  # WhatsApp limit: 20 characters
 
 
+@dataclass(frozen=True)
+class StatusUpdate:
+    meta_message_id: str
+    recipient_id: str
+    status: str  # sent, delivered, read, failed
+    timestamp: str | None = None
+    errors: list[dict] | None = None
+
+
+
 class MessageChannel(Protocol):
     async def send_text(self, to: str, body: str) -> bool | None: ...
 

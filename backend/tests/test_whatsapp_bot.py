@@ -75,6 +75,12 @@ def env():
     app.dependency_overrides[wa.get_wa_settings] = lambda: cfg
     app.dependency_overrides[wa.get_channel] = lambda: channel
     app.dependency_overrides[wa.get_bot] = lambda: bot
+
+    class DummyStatusService:
+        def handle_status_update(self, update):
+            return True
+
+    app.dependency_overrides[wa.get_status_service] = DummyStatusService
     return TestClient(app), svc, channel, app
 
 

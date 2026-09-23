@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     admin,
+    admin_whatsapp,
     auth,
     buyers,
     crops,
@@ -52,6 +53,7 @@ app.include_router(harvest.router)
 app.include_router(buyers.router)
 app.include_router(predictions.router)
 app.include_router(admin.router)
+app.include_router(admin_whatsapp.router)
 app.include_router(whatsapp.router)
 
 

@@ -20,8 +20,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from fastapi.responses import PlainTextResponse
 
 from app.config import settings
-from app.messaging.whatsapp_cloud import WhatsAppCloudChannel, parse_webhook, verify_signature
+from app.messaging.whatsapp_cloud import (
+    WhatsAppCloudChannel,
+    parse_status_updates,
+    parse_webhook,
+    verify_signature,
+)
 from app.services.bot import BotEngine
+from app.services.whatsapp_status import WhatsAppStatusService
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
@@ -92,6 +98,15 @@ async def verify(
     return PlainTextResponse(challenge)
 
 
+@lru_cache
+def _status_service() -> WhatsAppStatusService:
+    return WhatsAppStatusService()
+
+
+def get_status_service() -> WhatsAppStatusService:
+    return _status_service()
+
+
 @router.post("/webhook")
 async def receive(
     request: Request,
@@ -99,6 +114,7 @@ async def receive(
     cfg: WhatsAppSettings = Depends(get_wa_settings),
     channel: WhatsAppCloudChannel = Depends(get_channel),
     bot: BotEngine = Depends(get_bot),
+    status_service: WhatsAppStatusService = Depends(get_status_service),
 ):
     if not settings.WHATSAPP_ENABLED:
         raise HTTPException(status_code=503, detail="WhatsApp bot is currently disabled")
@@ -112,6 +128,12 @@ async def receive(
         raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     # Reply 200 fast: Meta retries slow or failed webhooks. Real work happens in the background.
+    # 1. Status callbacks (sent, delivered, read, failed)
+    for update in parse_status_updates(payload):
+        background.add_task(status_service.handle_status_update, update)
+
+    # 2. Inbound messages
     for msg in parse_webhook(payload):
         background.add_task(bot.handle, msg, channel)
     return {"status": "ok"}
+

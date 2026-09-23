@@ -34,10 +34,10 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [ ] Reviewed by human
 
 ## Phase 4: Digest and alerts with cost control
-- [ ] T4.1 Status webhooks and unreachable numbers
-- [ ] T4.2 Daily digest worker job
-- [ ] T4.3 Price-move alert (max 1 per farmer per day)
-- [ ] T4.4 Usage report, monthly cap, circuit breaker
+- [x] T4.1 Status webhooks and unreachable numbers
+- [x] T4.2 Daily digest worker job
+- [x] T4.3 Price-move alert (max 1 per farmer per day)
+- [x] T4.4 Usage report, monthly cap, circuit breaker
 ### Checkpoint C: dry run with 3 test farmers
 - [ ] Reviewed by human
 

@@ -8,7 +8,7 @@ import logging
 
 import httpx
 
-from app.messaging.base import Button, InboundMessage, mask
+from app.messaging.base import Button, InboundMessage, StatusUpdate, mask
 
 log = logging.getLogger("whatsapp")
 
@@ -62,6 +62,31 @@ def parse_webhook(payload: dict) -> list[InboundMessage]:
     return out
 
 
+def parse_status_updates(payload: dict) -> list[StatusUpdate]:
+    """Extract message status updates (sent, delivered, read, failed)."""
+    out: list[StatusUpdate] = []
+    for entry in payload.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            for s in value.get("statuses", []):
+                meta_id = s.get("id", "")
+                recipient_id = s.get("recipient_id", "")
+                status = s.get("status", "")
+                timestamp = str(s.get("timestamp", ""))
+                errors = s.get("errors")
+                if meta_id and status:
+                    out.append(
+                        StatusUpdate(
+                            meta_message_id=meta_id,
+                            recipient_id=recipient_id,
+                            status=status,
+                            timestamp=timestamp,
+                            errors=errors,
+                        )
+                    )
+    return out
+
+
 class WhatsAppCloudChannel:
     def __init__(
         self,
@@ -73,9 +98,11 @@ class WhatsAppCloudChannel:
         self._url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
         self._headers = {"Authorization": f"Bearer {access_token}"}
         self._client = client or httpx.AsyncClient(timeout=10)
+        self.last_sent_message_id: str | None = None
 
     async def _post(self, to: str, payload: dict) -> bool:
         body = {"messaging_product": "whatsapp", "to": to, **payload}
+        self.last_sent_message_id = None
         try:
             resp = await self._client.post(self._url, json=body, headers=self._headers)
         except httpx.TimeoutException:
@@ -88,6 +115,13 @@ class WhatsAppCloudChannel:
             # Never log the token; body may say why (template not approved, window closed...)
             log.error("WhatsApp send %s to %s: %s", resp.status_code, mask(to), resp.text[:300])
             return False
+        try:
+            data = resp.json()
+            messages = data.get("messages", [])
+            if messages and isinstance(messages, list):
+                self.last_sent_message_id = messages[0].get("id")
+        except Exception:
+            pass
         return True
 
     async def send_text(self, to: str, body: str) -> bool:
@@ -124,3 +158,11 @@ class WhatsAppCloudChannel:
                 "template": {"name": name, "language": {"code": lang}, "components": components},
             },
         )
+
+    async def send_template_with_id(
+        self, to: str, name: str, lang: str, params: list[str]
+    ) -> tuple[bool, str | None]:
+        """Send template and return tuple of (success, meta_message_id)."""
+        ok = await self.send_template(to, name, lang, params)
+        return ok, self.last_sent_message_id
+

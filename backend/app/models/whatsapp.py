@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, String, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import Base
@@ -43,7 +43,34 @@ class OutboundMessage(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     wa_id = Column(String(50), nullable=False, index=True)
+    meta_message_id = Column(String(100), nullable=True, index=True)
     category = Column(String(50), nullable=False)  # utility, authentication, marketing, service
     template = Column(String(100), nullable=True)
     status = Column(String(50), nullable=False, default="sent")  # sent, delivered, read, failed
+    error_details = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class WhatsAppRecipientStatus(Base):
+    """Track recipient delivery health and mark unreachable numbers after repeated failures."""
+
+    __tablename__ = "whatsapp_recipient_status"
+
+    wa_id = Column(String(50), primary_key=True)
+    consecutive_failures = Column(Integer, nullable=False, default=0)
+    is_unreachable = Column(Boolean, nullable=False, default=False)
+    last_failure_at = Column(DateTime(timezone=True), nullable=True)
+    last_failure_reason = Column(String(255), nullable=True)
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+

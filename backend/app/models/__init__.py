@@ -17,8 +17,12 @@ from app.models.prediction import Prediction
 from app.models.raw_ingest import RawIngest
 from app.models.user import User
 from app.models.variety import Variety
-from app.models.weather import WeatherData
-from app.models.whatsapp import ConversationState, OutboundMessage, WhatsAppInbound
+from app.models.whatsapp import (
+    ConversationState,
+    OutboundMessage,
+    WhatsAppInbound,
+    WhatsAppRecipientStatus,
+)
 
 __all__ = [
     "Base",
@@ -46,4 +50,5 @@ __all__ = [
     "WhatsAppInbound",
     "ConversationState",
     "OutboundMessage",
+    "WhatsAppRecipientStatus",
 ]

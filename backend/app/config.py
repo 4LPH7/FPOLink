@@ -66,6 +66,16 @@ class Settings(BaseSettings):
     WHATSAPP_BOT_PHONE: str = "919876543210"
     WHATSAPP_API_VERSION: str = "v23.0"
 
+    # WhatsApp Pricing & Cost Control (T4.4)
+    WHATSAPP_RATE_SERVICE_INR: float = 0.00
+    WHATSAPP_RATE_UTILITY_INR: float = 0.35
+    WHATSAPP_RATE_MARKETING_INR: float = 0.85
+    WHATSAPP_RATE_AUTH_INR: float = 0.15
+    WHATSAPP_MONTHLY_SEND_CAP: int = 5000
+    WHATSAPP_MONTHLY_BUDGET_INR: float = 2000.0
+    WHATSAPP_MAX_CONSECUTIVE_FAILURES: int = 3
+    WHATSAPP_PRICE_MOVE_THRESHOLD_PCT: float = 5.0
+
     # External Services
     TELEGRAM_BOT_TOKEN: str = ""
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
