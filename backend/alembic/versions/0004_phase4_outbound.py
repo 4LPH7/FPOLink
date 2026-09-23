@@ -1,6 +1,6 @@
 """Phase 4: Outbound message tracking and recipient reputation
 
-Revision ID: 0004_phase4_outbound_and_recipient_reputation
+Revision ID: 0004_phase4_outbound
 Revises: 0003_harvest_source_message_id
 Create Date: 2026-09-23 10:30:00.000000
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0004_phase4_outbound_and_recipient_reputation"
+revision: str = "0004_phase4_outbound"
 down_revision: Union[str, None] = "0003_harvest_source_message_id"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
