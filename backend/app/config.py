@@ -18,22 +18,6 @@ class Settings(BaseSettings):
                 return v.replace(old, "postgresql+psycopg://", 1)
         return v
 
-    @field_validator("DEFAULT_CROPS", "CORS_ORIGINS", mode="after")
-    @classmethod
-    def parse_string_list(cls, v):
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return []
-            if v.startswith("[") and v.endswith("]"):
-                import json
-                try:
-                    return json.loads(v)
-                except Exception:
-                    pass
-            return [x.strip() for x in v.split(",") if x.strip()]
-        return v
-
     ENVIRONMENT: str = "development"
 
     # Authentication
@@ -101,10 +85,32 @@ class Settings(BaseSettings):
     # Geography & Scope
     STATE: str = "Tamil Nadu"
     DEFAULT_DISTRICT: str = "Erode"
-    DEFAULT_CROPS: Union[List[str], str] = ["turmeric", "banana", "coconut"]
+    DEFAULT_CROPS: str = "turmeric,banana,coconut"
 
     # CORS
-    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000"]
+    CORS_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def default_crops_list(self) -> List[str]:
+        raw = self.DEFAULT_CROPS.strip()
+        if raw.startswith("[") and raw.endswith("]"):
+            import json
+            try:
+                return json.loads(raw)
+            except Exception:
+                pass
+        return [c.strip() for c in raw.split(",") if c.strip()]
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        raw = self.CORS_ORIGINS.strip()
+        if raw.startswith("[") and raw.endswith("]"):
+            import json
+            try:
+                return json.loads(raw)
+            except Exception:
+                pass
+        return [c.strip() for c in raw.split(",") if c.strip()]
 
     # Sentry (optional error monitoring)
     SENTRY_DSN: Optional[str] = None

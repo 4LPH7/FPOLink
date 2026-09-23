@@ -207,5 +207,5 @@ class DailyDigestService:
         )
         crops = [farm.crop.name for farm in farms if farm.crop and farm.crop.name]
         if not crops:
-            crops = list(settings.DEFAULT_CROPS)
+            crops = list(settings.default_crops_list)
         return crops

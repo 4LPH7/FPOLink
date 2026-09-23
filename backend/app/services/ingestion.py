@@ -38,7 +38,7 @@ class IngestionService:
         """
         from app.config import settings
 
-        crops = crops or settings.DEFAULT_CROPS
+        crops = crops or settings.default_crops_list
         districts = districts or [settings.DEFAULT_DISTRICT]
 
         start_time = datetime.now(timezone.utc)
