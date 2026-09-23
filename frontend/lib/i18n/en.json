@@ -16,6 +16,8 @@
     "orders": "Orders",
     "predictions": "Predictions",
     "alerts": "Alerts",
+    "admin": "Ingestion Ops",
+    "whatsapp": "WhatsApp Bot",
     "settings": "Settings"
   },
   "dashboard": {

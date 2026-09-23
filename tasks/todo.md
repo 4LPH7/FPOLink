@@ -50,6 +50,27 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 ### Checkpoint D: staging E2E with a real phone
 - [ ] Reviewed by human
 
-## Phase 6: Pilot
-- [ ] T6.1 Run 2-week pilot (10-20 farmers, one FPO)
-- [ ] T6.2 Tamil copy review and expand/adjust/stop decision
+## Phase 6: Frontend UX Foundation
+- [x] T6.1 Install Tailwind + shadcn/ui (copy-in primitives: Button, Card, Badge, Table, Input, Tabs, Separator, Sheet)
+- [x] T6.2 Define design tokens (emerald palette, HSL variables, Tamil typography line-height scale 1.7)
+- [x] T6.3 Build responsive App Shell (collapsible desktop sidebar, sticky header with district/bot badge, content frame)
+- [x] T6.4 Persistent Language Switcher (Tamil default, English toggle, localStorage persisted via useLanguage())
+- [x] T6.5 Responsive breakpoints (desktop-first layout, tablet slide-over drawer down to 768px)
+- [x] T6.6 Exit criteria wireframe shell routes (`/`, `/prices`, `/farmers`, `/admin`, `/whatsapp`)
+
+## Phase 7: Core Screens
+- [ ] T7.1 Price/market dashboard (forecast chart, CEDA/OGD freshness indicator, primary price front-and-center)
+- [ ] T7.2 Farmer records (list/search/filter, DPDP consent status prominent per record)
+- [ ] T7.3 Ingestion/admin status (CEDA/weather/NASA POWER adapter health, last-run telemetry)
+- [ ] T7.4 WhatsApp bot activity (read-only view into conversation_state and inbound logs)
+
+## Phase 8: Vercel Deploy + Wiring
+- [ ] T8.1 Decide Hobby vs Pro tier terms
+- [ ] T8.2 Connect repo -> Vercel with auto-deploy on push to main
+- [ ] T8.3 Environment wiring (NEXT_PUBLIC_API_URL -> Cloudflare Tunnel)
+- [ ] T8.4 CORS update (Vercel production + preview domains on FastAPI allow-list)
+- [ ] T8.5 Custom domain (optional)
+
+## Final: Pilot
+- [ ] 2-week pilot with 10–20 farmers from one FPO
+- [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision

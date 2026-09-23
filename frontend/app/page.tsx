@@ -1,163 +1,108 @@
 "use client";
 
-import React, { useState } from "react";
-import en from "@/lib/i18n/en.json";
-import ta from "@/lib/i18n/ta.json";
-import Navbar from "@/components/Navbar";
+import React from "react";
+import Link from "next/link";
+import { useLanguage } from "@/lib/i18n/context";
 import StatCard from "@/components/StatCard";
 import PriceChart from "@/components/PriceChart";
 import AlertPanel from "@/components/AlertPanel";
-import MandiPricesTable from "@/components/MandiPricesTable";
 import AggregationSummary from "@/components/AggregationSummary";
 import FarmerInviteCard from "@/components/FarmerInviteCard";
-import Footer from "@/components/Footer";
-import { getLatestMarketRates } from "@/lib/marketData";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   Users,
-  Sprout,
   Store,
-  ShieldCheck,
   Smartphone,
-  Sparkles,
   ArrowRight,
+  ShieldCheck,
+  Activity,
   Layers,
 } from "lucide-react";
 
-export default function Home() {
-  const [lang, setLang] = useState<"ta" | "en">("ta");
-  const [activeTab, setActiveTab] = useState("dashboard");
-
-  const t = lang === "ta" ? ta : en;
-  const marketRates = getLatestMarketRates();
+export default function DashboardHome() {
+  const { lang, t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 selection:bg-green-100 selection:text-green-900">
-      {/* Top App Bar & Language Switcher */}
-      <Navbar
-        lang={lang}
-        setLang={setLang}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        t={t}
-      />
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8 flex-1">
-        {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2 text-xs font-semibold text-green-700 uppercase tracking-wider mb-1">
-              <span>🌾 {t.app.district}</span>
-              <span>•</span>
-              <span>{t.app.sync_status}</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              {lang === "ta" ? "கொடுமுடி உழவர் உற்பத்தியாளர் நிறுவனம்" : "Kodumudi Farmer Producer Organization"}
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1 max-w-3xl">
-              {lang === "ta"
-                ? "ஈரோடு மாவட்ட உழவர் உற்பத்தியாளர் நிறுவனங்களுக்கான நேரலை மண்டி விலை நுண்ணறிவு, தானியங்கி முரண்பாடு எச்சரிக்கைகள், மற்றும் அறுவடை ஒருங்கிணைப்பு தளம்."
-                : "Real-time mandi price intelligence, MAD anomaly telemetry, and grade-sorted harvest aggregation for Erode District FPOs."}
-            </p>
+    <div className="space-y-6">
+      {/* Welcome Banner */}
+      <div className="rounded-xl bg-gradient-to-r from-emerald-800 via-emerald-700 to-green-800 p-6 text-white shadow-xs relative overflow-hidden">
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-white/15 text-emerald-100 text-xs font-semibold backdrop-blur-xs">
+            <span>🌾 {t.app.district}</span>
+            <span>•</span>
+            <span>{t.app.sync_status}</span>
           </div>
-          {/* Decorative background blur ring */}
-          <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full bg-green-500/20 blur-3xl pointer-events-none" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            {lang === "ta"
+              ? "கொடுமுடி உழவர் உற்பத்தியாளர் நிறுவனம்"
+              : "Kodumudi Farmer Producer Organization"}
+          </h1>
+          <p className="text-xs sm:text-sm text-emerald-100/90 leading-tamil-relaxed">
+            {lang === "ta"
+              ? "ஈரோடு மாவட்ட உழவர் உற்பத்தியாளர் நிறுவனங்களுக்கான நேரலை மண்டி விலை நுண்ணறிவு, தானியங்கி முரண்பாடு எச்சரிக்கைகள், மற்றும் அறுவடை ஒருங்கிணைப்பு தளம்."
+              : "Real-time mandi price intelligence, MAD anomaly telemetry, and grade-sorted harvest aggregation for Erode District FPOs."}
+          </p>
         </div>
+      </div>
 
-        {/* Primary KPI Overview Cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <StatCard
-            title={t.dashboard.members}
-            value="1,250"
-            subtitle={lang === "ta" ? "ஈரோடு & கொடுமுடி" : "Erode & Kodumudi"}
-            change="+12%"
-            changeType="positive"
-            icon={Users}
-            iconColor="text-green-600 bg-green-50"
-          />
+      {/* Primary KPI Overview Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title={t.dashboard.members}
+          value="1,250"
+          subtitle={lang === "ta" ? "ஈரோடு & கொடுமுடி" : "Erode & Kodumudi"}
+          change="+12%"
+          changeType="positive"
+          icon={Users}
+          iconColor="text-emerald-700 bg-emerald-50 dark:bg-emerald-950"
+        />
+        <StatCard
+          title={t.dashboard.turmeric_rate}
+          value="₹12,350"
+          subtitle={lang === "ta" ? "பெருந்துறை மண்டி (நேற்று: ₹12,200)" : "Perundurai (Prev: ₹12,200)"}
+          change="+1.2%"
+          changeType="positive"
+          icon={TrendingUp}
+          iconColor="text-amber-700 bg-amber-50 dark:bg-amber-950"
+          badge={t.dashboard.hold_signal}
+        />
+        <StatCard
+          title={t.dashboard.todays_produce}
+          value="4.8 Tonnes"
+          subtitle={lang === "ta" ? "மஞ்சள் (3.2T) • வாழை (1.6T)" : "Turmeric (3.2T) • Banana (1.6T)"}
+          change="+24%"
+          changeType="positive"
+          icon={Store}
+          iconColor="text-blue-700 bg-blue-50 dark:bg-blue-950"
+        />
+        <StatCard
+          title={t.dashboard.bot_active}
+          value={t.dashboard.bot_status_live}
+          subtitle={lang === "ta" ? "98.4% விடை நேரம் (<2 விநாடி)" : "98.4% uptime (<2s latency)"}
+          icon={Smartphone}
+          iconColor="text-emerald-700 bg-emerald-50 dark:bg-emerald-950"
+          badge="Live"
+        />
+      </section>
 
-          <StatCard
-            title={t.dashboard.todays_produce}
-            value="8,400 kg"
-            subtitle={lang === "ta" ? "மஞ்சள் & வாழை" : "Turmeric & Banana"}
-            change="+8.4%"
-            changeType="positive"
-            icon={Sprout}
-            iconColor="text-yellow-600 bg-yellow-50"
-          />
+      {/* Main Grid: Forecast & Alert Telemetry */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <PriceChart lang={lang} t={t} />
+        </div>
+        <div className="space-y-6">
+          <AlertPanel lang={lang} t={t} />
+          <AggregationSummary lang={lang} t={t} />
+        </div>
+      </section>
 
-          <StatCard
-            title={t.dashboard.turmeric_rate}
-            value={marketRates.turmeric.rate}
-            subtitle={`${lang === "ta" ? marketRates.turmeric.mandiTa : marketRates.turmeric.mandiEn} (${marketRates.turmeric.date})`}
-            change={marketRates.turmeric.change}
-            changeType={marketRates.turmeric.changeType}
-            icon={TrendingUp}
-            iconColor="text-emerald-600 bg-emerald-50"
-            badge="Agmarknet"
-          />
-
-          <StatCard
-            title={t.dashboard.banana_rate}
-            value={marketRates.banana.rate}
-            subtitle={`${lang === "ta" ? marketRates.banana.mandiTa : marketRates.banana.mandiEn} (${marketRates.banana.date})`}
-            change={marketRates.banana.change}
-            changeType={marketRates.banana.changeType}
-            icon={TrendingUp}
-            iconColor="text-blue-600 bg-blue-50"
-            badge="Agmarknet"
-          />
-        </section>
-
-        {/* Dynamic Tab Views */}
-        {(activeTab === "dashboard" || activeTab === "prices") && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* Interactive Price Chart (Spans 2 Columns) */}
-            <div className="lg:col-span-2 space-y-6">
-              <PriceChart lang={lang} t={t} />
-              <MandiPricesTable lang={lang} t={t} />
-            </div>
-
-            {/* Alert & Notice Panel (Spans 1 Column) */}
-            <div className="space-y-6">
-              <AlertPanel lang={lang} t={t} />
-              <AggregationSummary lang={lang} t={t} />
-            </div>
-          </section>
-        )}
-
-        {activeTab === "aggregation" && (
-          <section className="space-y-6">
-            <AggregationSummary lang={lang} t={t} />
-            <MandiPricesTable lang={lang} t={t} />
-          </section>
-        )}
-
-        {activeTab === "farmers" && (
-          <section className="space-y-6">
-            <FarmerInviteCard lang={lang} t={t} onNavigateFarmerList={() => setActiveTab("farmers")} />
-            <AggregationSummary lang={lang} t={t} />
-          </section>
-        )}
-
-        {activeTab === "alerts" && (
-          <section className="space-y-6">
-            <AlertPanel lang={lang} t={t} />
-            <PriceChart lang={lang} t={t} />
-          </section>
-        )}
-
-        {/* Farmer Onboarding & WhatsApp Invite Hub (Always visible on dashboard bottom) */}
-        {activeTab === "dashboard" && (
-          <section>
-            <FarmerInviteCard lang={lang} t={t} onNavigateFarmerList={() => setActiveTab("farmers")} />
-          </section>
-        )}
-      </main>
-
-      {/* Footer */}
-      <Footer lang={lang} />
+      {/* Farmer Onboarding Hub */}
+      <section>
+        <FarmerInviteCard lang={lang} t={t} onNavigateFarmerList={() => {}} />
+      </section>
     </div>
   );
 }
