@@ -134,3 +134,13 @@ def test_purge_empty_tables_no_error(test_db_factory):
     assert purge_inbound(retention_days=7, db_factory=test_db_factory) == 0
     assert purge_conversation_state(ttl_hours=24, db_factory=test_db_factory) == 0
     assert purge_outbound(retention_months=12, db_factory=test_db_factory) == 0
+
+
+def test_worker_run_data_retention(test_db_factory):
+    """Verify app.worker.run_data_retention executes without error."""
+    from unittest.mock import patch
+
+    from app.worker import run_data_retention
+
+    with patch("app.services.retention.SessionLocal", test_db_factory):
+        run_data_retention()

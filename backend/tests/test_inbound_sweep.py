@@ -1,6 +1,7 @@
 """Tests for at-least-once message processing sweep and status lifecycle (T5.4)."""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine
@@ -165,3 +166,58 @@ async def test_bot_engine_marks_processed_on_success(test_db_factory):
         row = db.query(WhatsAppInbound).filter_by(message_id="msg_engine_ok").first()
         assert row is not None
         assert row.status == "processed"
+
+
+@pytest.mark.anyio
+async def test_bot_engine_marks_failed_on_exception(test_db_factory):
+    """Verify BotEngine marks status='failed' if an unhandled exception occurs in handler."""
+    services = DbBotServices(db_factory=test_db_factory)
+    engine = BotEngine(services=services)
+
+    with patch.object(
+        services, "find_farmer", side_effect=RuntimeError("Simulated crash mid-processing")
+    ):
+        msg = InboundMessage(
+            message_id="msg_engine_fail",
+            wa_id="919999999999",
+            kind="text",
+            text="hello",
+        )
+        # Entry point never raises
+        await engine.handle(msg, DummyChannel())
+
+    with test_db_factory() as db:
+        row = db.query(WhatsAppInbound).filter_by(message_id="msg_engine_fail").first()
+        assert row is not None
+        assert row.status == "failed"
+
+
+def test_sweep_emits_sentry_alert_on_exhaustion(test_db_factory):
+    """Verify Sentry capture_message is called with level='error' on retry exhaustion."""
+    now = datetime.now(timezone.utc)
+    with test_db_factory() as db:
+        exhausted = WhatsAppInbound(
+            message_id="msg_sentry_alert",
+            status="received",
+            retry_count=2,
+            received_at=now - timedelta(minutes=10),
+        )
+        db.add(exhausted)
+        db.commit()
+
+    mock_sentry = MagicMock()
+    with patch.dict("sys.modules", {"sentry_sdk": mock_sentry}):
+        metrics = sweep_stuck_inbound(db_factory=test_db_factory)
+        assert metrics["marked_failed"] == 1
+        mock_sentry.capture_message.assert_called_once()
+        args, kwargs = mock_sentry.capture_message.call_args
+        assert "msg_sentry_alert" in args[0]
+        assert kwargs["level"] == "error"
+
+
+def test_worker_run_inbound_sweep(test_db_factory):
+    """Verify app.worker.run_inbound_sweep runs without error."""
+    from app.worker import run_inbound_sweep
+
+    with patch("app.services.inbound_sweep.SessionLocal", test_db_factory):
+        run_inbound_sweep()

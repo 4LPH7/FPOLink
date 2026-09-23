@@ -1,7 +1,6 @@
-"""Tests for health check endpoint and observability components (T5.5)."""
-
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -32,3 +31,64 @@ def test_health_check_db_failure():
         assert data["status"] == "degraded"
         assert data["db"] == "error"
         assert "Connection refused" in data["detail"]
+
+
+@pytest.mark.anyio
+async def test_sentry_init_in_lifespan_when_dsn_configured():
+    """Verify lifespan initializes Sentry when SENTRY_DSN is set."""
+    from app.main import lifespan
+
+    mock_sentry = MagicMock()
+    with patch("app.config.settings.SENTRY_DSN", "https://mock@sentry.io/123"):
+        with patch.dict("sys.modules", {"sentry_sdk": mock_sentry}):
+            async with lifespan(app):
+                mock_sentry.init.assert_called_once()
+                _, kwargs = mock_sentry.init.call_args
+                assert kwargs["dsn"] == "https://mock@sentry.io/123"
+
+
+@pytest.mark.anyio
+async def test_sentry_skipped_when_dsn_empty():
+    """Verify lifespan skips Sentry when SENTRY_DSN is None or empty."""
+    from app.main import lifespan
+
+    mock_sentry = MagicMock()
+    with patch("app.config.settings.SENTRY_DSN", None):
+        with patch.dict("sys.modules", {"sentry_sdk": mock_sentry}):
+            async with lifespan(app):
+                mock_sentry.init.assert_not_called()
+
+
+def test_env_example_contains_all_critical_settings():
+    """Verify .env.example contains all critical Settings fields (T5.7 Nyquist check)."""
+    import pathlib
+
+    repo_root = pathlib.Path(__file__).resolve().parent.parent.parent
+    env_example = (repo_root / ".env.example").read_text(encoding="utf-8")
+
+    critical_keys = [
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "DATABASE_URL",
+        "ENVIRONMENT",
+        "SECRET_KEY",
+        "WHATSAPP_ENABLED",
+        "WHATSAPP_VERIFY_TOKEN",
+        "WHATSAPP_APP_SECRET",
+        "WHATSAPP_ACCESS_TOKEN",
+        "WHATSAPP_PHONE_NUMBER_ID",
+        "WHATSAPP_BOT_PHONE",
+        "WHATSAPP_API_VERSION",
+        "WHATSAPP_RATE_SERVICE_INR",
+        "WHATSAPP_RATE_UTILITY_INR",
+        "WHATSAPP_RATE_MARKETING_INR",
+        "WHATSAPP_RATE_AUTH_INR",
+        "WHATSAPP_MONTHLY_SEND_CAP",
+        "WHATSAPP_MONTHLY_BUDGET_INR",
+        "WHATSAPP_MAX_CONSECUTIVE_FAILURES",
+        "WHATSAPP_PRICE_MOVE_THRESHOLD_PCT",
+        "SENTRY_DSN",
+    ]
+
+    for key in critical_keys:
+        assert f"{key}=" in env_example, f"Missing critical setting {key} in .env.example"
