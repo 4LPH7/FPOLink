@@ -200,3 +200,85 @@ async def test_price_move_alert_triggers_at_5_percent_and_respects_daily_limit(a
     assert metrics2["alerts_sent"] == 0
     assert metrics2["skipped"] == 1
     assert len(channel.sent_alerts) == 1  # No duplicate alert sent
+
+
+@pytest.mark.anyio
+async def test_price_drop_triggers_downward_alert(alert_db):
+    """A price drop >= 5% triggers an alert with direction 'Drop' / 'சரிவு'."""
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    channel = FakeChannel()
+
+    with alert_db() as db:
+        fpo = FPO(
+            id=uuid.uuid4(),
+            name="Erode FPO",
+            registration_number="FPO-02",
+            district="Erode",
+            village="Perundurai",
+            contact_phone="9876543210",
+        )
+        market = Market(id=uuid.uuid4(), name="Erode Mandi", district="Erode", state="Tamil Nadu")
+        onion = Crop(id=uuid.uuid4(), name="onion", tamil_name="வெங்காயம்", unit="kg")
+        db.add_all([fpo, market, onion])
+        db.flush()
+
+        u = User(
+            id=uuid.uuid4(),
+            name="Ravi",
+            phone="9876543219",
+            role=UserRole.FARMER,
+            hashed_password="pw",
+        )
+        f = Farmer(
+            id=uuid.uuid4(),
+            user_id=u.id,
+            fpo_id=fpo.id,
+            phone="9876543219",
+            village="Perundurai",
+            taluk="Perundurai",
+            district="Erode",
+            farm_area_acres=1.5,
+            lang="en",
+            alerts_opt_in=True,
+            is_unreachable=False,
+        )
+        farm = Farm(id=uuid.uuid4(), farmer_id=f.id, crop_id=onion.id, area_acres=1.5)
+        db.add_all([u, f, farm])
+
+        # Onion drops from 50 yesterday to 45 today (-10%)
+        p_prev = MarketPrice(
+            id=uuid.uuid4(),
+            crop_id=onion.id,
+            market_id=market.id,
+            district="Erode",
+            price_date=yesterday,
+            min_price=Decimal("48"),
+            max_price=Decimal("52"),
+            modal_price=Decimal("50"),
+            source="ceda",
+        )
+        p_curr = MarketPrice(
+            id=uuid.uuid4(),
+            crop_id=onion.id,
+            market_id=market.id,
+            district="Erode",
+            price_date=today,
+            min_price=Decimal("43"),
+            max_price=Decimal("47"),
+            modal_price=Decimal("45"),
+            source="ceda",
+        )
+        db.add_all([p_prev, p_curr])
+        db.commit()
+
+    service = PriceMoveAlertService(db_factory=alert_db, threshold_pct=5.0)
+    metrics = await service.check_and_send_alerts(channel, target_date=today)
+    assert metrics["alerts_sent"] == 1
+    assert len(channel.sent_alerts) == 1
+
+    alert = channel.sent_alerts[0]
+    assert alert["to"] == "919876543219"
+    assert alert["lang"] == "en"
+    assert alert["params"][1] == "Drop"  # English direction label
+    assert alert["params"][2] == "10.0%"

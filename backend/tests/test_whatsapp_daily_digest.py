@@ -244,3 +244,17 @@ async def test_daily_digest_full_flow_with_crop_matching_and_freshness(digest_db
     assert metrics2["sent"] == 0
     assert metrics2["skipped_duplicate"] == 1
     assert len(channel.sent_templates) == 1  # Still 1, nothing added!
+
+
+@pytest.mark.anyio
+async def test_daily_digest_aborts_when_circuit_breaker_tripped(digest_db, monkeypatch):
+    """Daily digest must abort immediately when circuit breaker is tripped."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "WHATSAPP_MONTHLY_SEND_CAP", 0)  # trip cap immediately
+    channel = FakeChannel()
+    service = DailyDigestService(db_factory=digest_db)
+
+    metrics = await service.run_digest(channel)
+    assert metrics["sent"] == 0
+    assert len(channel.sent_templates) == 0
