@@ -1,0 +1,42 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "100200300400500",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550123456",
+              "phone_number_id": "109876543210000"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Muthusamy"
+                },
+                "wa_id": "919876543210"
+              }
+            ],
+            "messages": [
+              {
+                "from": "919876543210",
+                "id": "wamid.HBgMOTk4NzY1NDMyMTBVAgASGBQzQTkyRDQ4MUY4NDU5OEQ1MzNGRAA=",
+                "timestamp": "1727092850",
+                "type": "image",
+                "image": {
+                  "caption": "மஞ்சள் அறுவடை படம்",
+                  "mime_type": "image/jpeg",
+                  "sha256": "7a8b9c0d1e2f...",
+                  "id": "media-image-photo-67890"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

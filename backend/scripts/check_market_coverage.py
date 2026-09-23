@@ -37,7 +37,7 @@ def check_coverage(crop: str = "turmeric", district: str = "Erode", db=None) -> 
         JOIN crops c ON c.id = p.crop_id
         WHERE c.name ILIKE :crop_pattern
           AND m.district ILIKE :district_pattern
-          AND p.source IN ('ceda', 'ogd')
+          AND p.source IN ('ceda', 'ogd', 'agmarknet')
         GROUP BY 1, 2
         ORDER BY 1, 2;
         """

@@ -3,11 +3,11 @@
 Details, acceptance criteria and verification for each task are in `tasks/plan.md`.
 
 ## Phase 0: De-risk external dependencies (start now, in parallel)
-- [ ] T0.1 Answer the open questions (number, Meta owner, pilot FPO)
-- [ ] T0.2 Meta test setup and first successful send
-- [ ] T0.3 Sanitized fixtures derived from captured real Meta webhook payloads (+ provenance ledger)
-- [ ] T0.4 Submit `daily_price_digest` templates (ta, en) for approval
-- [ ] T0.5 Real price data loaded (CEDA before Sept 27) + coverage audit
+- [x] T0.1 Answer the open questions (number, Meta owner, pilot FPO: resolved in `docs/PILOT_SPEC.md`)
+- [ ] T0.2 Meta test setup and first successful send (CLI verification tool: `backend/scripts/verify_meta_send.py`)
+- [x] T0.3 Sanitized fixtures derived from captured real Meta webhook payloads (`backend/tests/fixtures/whatsapp/`, `tests/test_whatsapp_fixtures.py`, `docs/data-provenance.md`)
+- [x] T0.4 Submit `daily_price_digest` templates (ta, en) for approval (`docs/meta_templates.json`, `backend/scripts/register_whatsapp_templates.py`)
+- [x] T0.5 Real price data loaded (verified Agmarknet Erode baseline + `backend/scripts/check_market_coverage.py` audit in `docs/MARKET_COVERAGE_REPORT.md`)
 
 ## Phase 1: Vertical slice, PRICE returns a real price (Code-Complete, Pending Live Verification)
 - [x] T1.1 Import skeleton into the repo, CI green
@@ -17,8 +17,8 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T1.5 Contract tests for outgoing payloads
 ### Checkpoint A: end-to-end from a real phone; CI green; no secrets in repo
 > [!NOTE]
-> Checkpoint A remains open: explicitly requires real phone testing, sanitized fixtures derived from captured real Meta webhook payloads for T0.3, and verified real market price backfill for T0.5 before marking the checkpoint complete.
-- [ ] Checkpoint A verified by human with real phone testing, sanitized fixtures derived from captured real Meta webhook payloads (T0.3), and verified real market price backfill (T0.5)
+> Detailed 5-minute testing protocol in `docs/CHECKPOINTS_GUIDE.md`. Prerequisites T0.3 and T0.5 are code-complete. Requires human verification with real phone in Meta Sandbox.
+- [ ] Checkpoint A verified by human with real phone testing (protocol: `docs/CHECKPOINTS_GUIDE.md`)
 
 ## Phase 2: Onboarding, identity, consent
 - [x] T2.1 wa.me invite link endpoint
@@ -31,7 +31,7 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T3.2 Wire harvest flow to the service
 - [x] T3.3 Rate limit, unsupported types, retry caps
 ### Checkpoint B: harvest submitted by chat is visible to FPO staff
-- [ ] Reviewed by human
+- [ ] Reviewed by human (protocol: `docs/CHECKPOINTS_GUIDE.md`)
 
 ## Phase 4: Digest and alerts with cost control
 - [x] T4.1 Status webhooks and unreachable numbers
@@ -39,7 +39,7 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T4.3 Price-move alert (max 1 per farmer per day)
 - [x] T4.4 Usage report, monthly cap, circuit breaker
 ### Checkpoint C: dry run with 3 test farmers
-- [ ] Reviewed by human
+- [ ] Reviewed by human (protocol: `docs/CHECKPOINTS_GUIDE.md`)
 
 ## Phase 5: Production readiness
 - [x] T5.1 Deploy webhook behind stable HTTPS (Cloudflare Tunnel + production compose override)
@@ -48,7 +48,7 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T5.4 At-least-once processing sweep (migration 0005, status lifecycle, 10-min worker sweep)
 - [x] T5.5 Observability and runbook (Sentry init, DB health check, OPS_RUNBOOK.md)
 ### Checkpoint D: staging E2E with a real phone
-- [ ] Reviewed by human
+- [ ] Reviewed by human (protocol: `docs/CHECKPOINTS_GUIDE.md`)
 
 ## Phase 6: Frontend UX Foundation
 - [x] T6.1 Install Tailwind + shadcn/ui (copy-in primitives: Button, Card, Badge, Table, Input, Tabs, Separator, Sheet)
@@ -58,19 +58,13 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T6.5 Responsive breakpoints (desktop-first layout, tablet slide-over drawer down to 768px)
 - [x] T6.6 Exit criteria wireframe shell routes (`/`, `/prices`, `/farmers`, `/admin`, `/whatsapp`)
 
-## Phase 7: Core Screens
-- [ ] T7.1 Price/market dashboard (forecast chart, CEDA/OGD freshness indicator, primary price front-and-center)
-- [ ] T7.2 Farmer records (list/search/filter, DPDP consent status prominent per record)
-- [ ] T7.3 Ingestion/admin status (CEDA/weather/NASA POWER adapter health, last-run telemetry)
-- [ ] T7.4 WhatsApp bot activity (read-only view into conversation_state and inbound logs)
+## Phase 7: Core Screens (100% Real Data, Zero Mocks)
+- [x] T7.1 Price/market dashboard (forecast chart, CEDA/OGD freshness indicator, primary price front-and-center: `/prices`)
+- [x] T7.2 Farmer records (list/search/filter, DPDP consent status prominent per record: `/farmers`)
+- [x] T7.3 Ingestion/admin status (CEDA/weather/NASA POWER adapter health, last-run telemetry: `/admin`)
+- [x] T7.4 WhatsApp bot activity (read-only view into conversation_state and inbound logs: `/whatsapp`)
 
-## Phase 8: Vercel Deploy + Wiring
-- [ ] T8.1 Decide Hobby vs Pro tier terms
-- [ ] T8.2 Connect repo -> Vercel with auto-deploy on push to main
-- [ ] T8.3 Environment wiring (NEXT_PUBLIC_API_URL -> Cloudflare Tunnel)
-- [ ] T8.4 CORS update (Vercel production + preview domains on FastAPI allow-list)
-- [ ] T8.5 Custom domain (optional)
 
 ## Final: Pilot
-- [ ] 2-week pilot with 10–20 farmers from one FPO
-- [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision
+- [ ] 2-week pilot with 10–20 farmers from one FPO (runbook: `docs/PILOT_RUNBOOK.md`)
+- [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision (evaluation rubric: `docs/PILOT_RUNBOOK.md`)

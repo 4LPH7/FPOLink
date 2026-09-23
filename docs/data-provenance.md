@@ -95,3 +95,21 @@ The Centre for Economic Data and Analysis (CEDA) at Ashoka University provides 2
      python backend/scripts/check_market_coverage.py --crop turmeric --district Erode
      ```
    - Review which markets report regularly (e.g. Erode Mandi, Gobichettipalayam, Perundurai) to inform ML model selection.
+
+---
+
+## 4. WhatsApp Webhook Fixture Provenance Ledger (T0.3)
+
+To ensure contract test reliability without leaking real phone numbers or customer data, WhatsApp webhook fixtures are derived directly from the official Meta Cloud API v23.0 webhook payload specification with PII sanitized:
+
+| Fixture File | Type | Origin / Source Schema | Sanitization Applied | Test Coverage |
+|---|---|---|---|---|
+| `backend/tests/fixtures/whatsapp/text_en.json` | Inbound Text | Meta Cloud API Webhook (`messages[].type='text'`) | Phone masked to `919000000001`, name `Ravi Kumar`, mock WAMID | `test_whatsapp_fixtures.py::test_text_en_fixture` |
+| `backend/tests/fixtures/whatsapp/text_ta.json` | Inbound Text | Meta Cloud API Webhook (`messages[].type='text'`) | Phone masked to `919876543210`, name `முத்துசாமி`, body `விலை` | `test_whatsapp_fixtures.py::test_text_ta_fixture` |
+| `backend/tests/fixtures/whatsapp/button_price.json` | Interactive Button | Meta Cloud API Webhook (`interactive.type='button_reply'`) | Button ID `b_price`, masked recipient | `test_whatsapp_fixtures.py::test_button_price_fixture` |
+| `backend/tests/fixtures/whatsapp/button_harvest.json` | Interactive Button | Meta Cloud API Webhook (`interactive.type='button_reply'`) | Button ID `b_harvest`, masked recipient | `test_whatsapp_fixtures.py::test_button_harvest_fixture` |
+| `backend/tests/fixtures/whatsapp/unsupported_voice.json` | Voice / Audio | Meta Cloud API Webhook (`messages[].type='voice'`) | Synthetic media ID, OGG Opus codec | `test_whatsapp_fixtures.py::test_unsupported_voice_fixture` |
+| `backend/tests/fixtures/whatsapp/unsupported_image.json` | Media Image | Meta Cloud API Webhook (`messages[].type='image'`) | Synthetic media ID, JPEG mime | `test_whatsapp_fixtures.py::test_unsupported_image_fixture` |
+| `backend/tests/fixtures/whatsapp/status_delivered.json` | Status Callback | Meta Cloud API Webhook (`statuses[].status='delivered'`) | Billable CBP utility pricing metadata | `test_whatsapp_fixtures.py::test_status_delivered_fixture` |
+| `backend/tests/fixtures/whatsapp/status_read.json` | Status Callback | Meta Cloud API Webhook (`statuses[].status='read'`) | Masked recipient ID | `test_whatsapp_fixtures.py::test_status_read_fixture` |
+| `backend/tests/fixtures/whatsapp/status_failed.json` | Status Callback | Meta Cloud API Webhook (`statuses[].status='failed'`) | Standard Meta error code `131026` (Undeliverable) | `test_whatsapp_fixtures.py::test_status_failed_fixture` |

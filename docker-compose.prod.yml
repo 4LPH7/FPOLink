@@ -18,6 +18,10 @@ services:
     command: ["python", "-m", "app.worker"]
     restart: always
 
+  frontend:
+    volumes: []
+    restart: always
+
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped

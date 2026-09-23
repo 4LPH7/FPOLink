@@ -1,0 +1,38 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "100200300400500",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550123456",
+              "phone_number_id": "109876543210000"
+            },
+            "statuses": [
+              {
+                "id": "wamid.HBgMOTk4NzY1NDMyMTBVAgASGBQzQTkyRDQ4MUY4NDU5OEQ1MzNBMQA=",
+                "status": "failed",
+                "timestamp": "1727092880",
+                "recipient_id": "919876543210",
+                "errors": [
+                  {
+                    "code": 131026,
+                    "title": "Message Undeliverable",
+                    "message": "Message Undeliverable",
+                    "error_data": {
+                      "details": "Recipient phone number not registered or unable to receive messages"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

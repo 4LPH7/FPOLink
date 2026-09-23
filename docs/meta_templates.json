@@ -1,0 +1,46 @@
+{
+  "templates": [
+    {
+      "name": "daily_price_digest",
+      "language": "ta",
+      "category": "UTILITY",
+      "components": [
+        {
+          "type": "BODY",
+          "text": "வணக்கம் {{1}}! இன்றைய சந்தை விலை நிலவரம்:\n\nபயிர்: {{2}}\nசந்தை: {{3}}\nமாதிரி விலை: {{4}}\n\nவிலை எச்சரிக்கைகளை நிறுத்த STOP என அனுப்பவும்.",
+          "example": {
+            "body_text": [
+              [
+                "முத்துசாமி",
+                "மஞ்சள் (Turmeric)",
+                "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடம்",
+                "₹154.50/கிலோ"
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "daily_price_digest",
+      "language": "en",
+      "category": "UTILITY",
+      "components": [
+        {
+          "type": "BODY",
+          "text": "Hello {{1}}! Today's mandi market price digest:\n\nCrop: {{2}}\nMarket: {{3}}\nModal Price: {{4}}\n\nReply STOP to unsubscribe from daily price digests.",
+          "example": {
+            "body_text": [
+              [
+                "Ravi",
+                "Turmeric",
+                "Erode Mandi",
+                "₹154.50/kg"
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
