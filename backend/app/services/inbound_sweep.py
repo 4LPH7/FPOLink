@@ -48,11 +48,20 @@ def sweep_stuck_inbound(db_factory=None) -> dict:
             if row.retry_count >= MAX_RETRIES:
                 row.status = "failed"
                 metrics["marked_failed"] += 1
-                logger.warning(
-                    "Message %s exceeded %d retries, marking failed",
+                logger.error(
+                    "WhatsApp inbound message %s exhausted %d retries, marking failed",
                     row.message_id,
                     MAX_RETRIES,
                 )
+                try:
+                    import sentry_sdk
+
+                    sentry_sdk.capture_message(
+                        f"WhatsApp inbound message {row.message_id} exhausted {MAX_RETRIES} retries and was marked failed",
+                        level="error",
+                    )
+                except Exception:
+                    pass
             else:
                 metrics["incremented"] += 1
                 logger.info(
