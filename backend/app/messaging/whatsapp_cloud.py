@@ -165,4 +165,3 @@ class WhatsAppCloudChannel:
         """Send template and return tuple of (success, meta_message_id)."""
         ok = await self.send_template(to, name, lang, params)
         return ok, self.last_sent_message_id
-

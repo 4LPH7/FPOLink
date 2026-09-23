@@ -75,9 +75,7 @@ class WhatsAppStatusService:
     ) -> None:
         """Track failure counts and mark dead/unreachable numbers to prevent money waste."""
         recip = (
-            db.query(WhatsAppRecipientStatus)
-            .filter(WhatsAppRecipientStatus.wa_id == wa_id)
-            .first()
+            db.query(WhatsAppRecipientStatus).filter(WhatsAppRecipientStatus.wa_id == wa_id).first()
         )
         if not recip:
             recip = WhatsAppRecipientStatus(

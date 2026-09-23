@@ -30,7 +30,6 @@ class StatusUpdate:
     errors: list[dict] | None = None
 
 
-
 class MessageChannel(Protocol):
     async def send_text(self, to: str, body: str) -> bool | None: ...
 

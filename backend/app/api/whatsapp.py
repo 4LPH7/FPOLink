@@ -136,4 +136,3 @@ async def receive(
     for msg in parse_webhook(payload):
         background.add_task(bot.handle, msg, channel)
     return {"status": "ok"}
-
