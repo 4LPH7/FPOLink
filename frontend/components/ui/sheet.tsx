@@ -39,6 +39,27 @@ export function Sheet({
   );
 }
 
+export function SheetTrigger({
+  asChild,
+  children,
+  onClick,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) {
+  const context = React.useContext(SheetContext);
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        onClick?.(e);
+        context?.onOpenChange(!context.open);
+      }}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function SheetContent({
   side = "left",
   className,

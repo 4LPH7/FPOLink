@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/context";
 import {
   Card,
@@ -20,50 +20,63 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Search, UserPlus, ShieldCheck, ShieldAlert, Phone } from "lucide-react";
+import {
+  Search,
+  UserPlus,
+  ShieldCheck,
+  ShieldAlert,
+  RefreshCw,
+  Phone,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
+import { getFPOs, getFarmers, Farmer, FPO } from "@/lib/api";
 
 export default function FarmersPage() {
   const { lang } = useLanguage();
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [fpos, setFpos] = useState<FPO[]>([]);
+  const [activeFpo, setActiveFpo] = useState<FPO | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [consentFilter, setConsentFilter] = useState<"all" | "granted" | "pending">("all");
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const sampleFarmers = [
-    {
-      id: "1",
-      nameTa: "முருகேசன் கே.",
-      nameEn: "Murugesan K.",
-      villageTa: "கொடுமுடி",
-      villageEn: "Kodumudi",
-      cropTa: "மஞ்சள் (3 ஏக்கர்)",
-      cropEn: "Turmeric (3 Acres)",
-      phone: "+91 98421 •••••",
-      consent: true,
-      alerts: true,
-    },
-    {
-      id: "2",
-      nameTa: "செந்தில்குமார் பி.",
-      nameEn: "Senthilkumar P.",
-      villageTa: "பெருந்துறை",
-      villageEn: "Perundurai",
-      cropTa: "வாழை (2 ஏக்கர்)",
-      cropEn: "Banana (2 Acres)",
-      phone: "+91 97892 •••••",
-      consent: true,
-      alerts: false,
-    },
-    {
-      id: "3",
-      nameTa: "பழனிச்சாமி ஆர்.",
-      nameEn: "Palanisamy R.",
-      villageTa: "மொடக்குறிச்சி",
-      villageEn: "Modakkurichi",
-      cropTa: "மஞ்சள் (5 ஏக்கர்)",
-      cropEn: "Turmeric (5 Acres)",
-      phone: "+91 94432 •••••",
-      consent: false,
-      alerts: false,
-    },
-  ];
+  const loadData = async () => {
+    setIsRefreshing(true);
+    try {
+      const fpoList = await getFPOs();
+      setFpos(fpoList);
+      const primaryFpo = fpoList[0] || null;
+      setActiveFpo(primaryFpo);
+
+      if (primaryFpo) {
+        const res = await getFarmers(primaryFpo.id, undefined, searchTerm);
+        setFarmers(res.farmers);
+      }
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSearch = async (term: string) => {
+    setSearchTerm(term);
+    if (activeFpo) {
+      const res = await getFarmers(activeFpo.id, undefined, term);
+      setFarmers(res.farmers);
+    }
+  };
+
+  const filteredFarmers = farmers.filter((f) => {
+    if (consentFilter === "granted") return Boolean(f.notice_sent_at || f.alerts_opt_in);
+    if (consentFilter === "pending") return !f.notice_sent_at && !f.alerts_opt_in;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -80,8 +93,18 @@ export default function FarmersPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button size="sm" className="h-9">
-            <UserPlus className="w-4 h-4 mr-1.5" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={loadData}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1 text-muted-foreground ${isRefreshing ? "animate-spin" : ""}`} />
+            {lang === "ta" ? "புதுப்பி" : "Refresh"}
+          </Button>
+          <Button size="sm" className="h-8">
+            <UserPlus className="w-3.5 h-3.5 mr-1.5" />
             {lang === "ta" ? "விவசாயி சேர்" : "Add Farmer"}
           </Button>
         </div>
@@ -96,20 +119,35 @@ export default function FarmersPage() {
               <Input
                 placeholder={
                   lang === "ta"
-                    ? "பெயர் அல்லது கிராமம் மூலம் தேடுக..."
-                    : "Search by farmer name or village..."
+                    ? "பெயர், கிராமம் அல்லது வட்டம் மூலம் தேடுக..."
+                    : "Search by farmer name, village, or taluk..."
                 }
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="pl-9 h-10"
               />
             </div>
             <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <Badge variant="outline" className="h-8 px-3 py-1 cursor-pointer">
-                {lang === "ta" ? "அனைத்து கிராமங்கள்" : "All Villages"}
+              <Badge
+                variant={consentFilter === "all" ? "default" : "outline"}
+                className="h-8 px-3 py-1 cursor-pointer"
+                onClick={() => setConsentFilter("all")}
+              >
+                {lang === "ta" ? "அனைத்து விவசாயிகள்" : "All Farmers"}
               </Badge>
-              <Badge variant="outline" className="h-8 px-3 py-1 cursor-pointer">
+              <Badge
+                variant={consentFilter === "granted" ? "default" : "outline"}
+                className="h-8 px-3 py-1 cursor-pointer"
+                onClick={() => setConsentFilter("granted")}
+              >
                 {lang === "ta" ? "ஒப்புதல் பெற்றவை" : "Consent Active"}
+              </Badge>
+              <Badge
+                variant={consentFilter === "pending" ? "default" : "outline"}
+                className="h-8 px-3 py-1 cursor-pointer"
+                onClick={() => setConsentFilter("pending")}
+              >
+                {lang === "ta" ? "நிலுவையில்" : "Pending"}
               </Badge>
             </div>
           </div>
@@ -120,16 +158,20 @@ export default function FarmersPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              {lang === "ta" ? "பதிவு செய்யப்பட்ட விவசாயிகள்" : "Registered Member Farmers"}
-            </CardTitle>
-            <Badge variant="secondary">3 {lang === "ta" ? "உழவர்கள்" : "Farmers"}</Badge>
+            <div>
+              <CardTitle className="text-lg">
+                {lang === "ta" ? "பதிவு செய்யப்பட்ட விவசாயிகள்" : "Registered Member Farmers"}
+              </CardTitle>
+              <CardDescription>
+                {lang === "ta"
+                  ? "DPDP சட்டம் பிரிவு 8-ன் படி வாட்ஸ்அப் முதல்-தொடர்பு அறிவிப்பு காலம் மற்றும் ஒப்புதல் தணிக்கை."
+                  : "DPDP Section 8 compliance: First-contact notice timestamp & WhatsApp consent tracking."}
+              </CardDescription>
+            </div>
+            <Badge variant="secondary">
+              {filteredFarmers.length} {lang === "ta" ? "உழவர்கள்" : "Farmers"}
+            </Badge>
           </div>
-          <CardDescription>
-            {lang === "ta"
-              ? "DPDP சட்டத்தின் கீழ் விவசாயிகள் ஒப்புதல் நிலை முதன்மைப்படுத்தப்பட்டுள்ளது."
-              : "DPDP Section 8 compliance: Consent audit logs tracked with timestamps."}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -137,49 +179,76 @@ export default function FarmersPage() {
               <TableRow>
                 <TableHead>{lang === "ta" ? "பெயர்" : "Name"}</TableHead>
                 <TableHead>{lang === "ta" ? "கிராமம் / வட்டம்" : "Village / Taluk"}</TableHead>
-                <TableHead>{lang === "ta" ? "முக்கிய பயிர்" : "Primary Crop"}</TableHead>
+                <TableHead>{lang === "ta" ? "நிலப்பரப்பு" : "Land Area"}</TableHead>
                 <TableHead>{lang === "ta" ? "தொலைபேசி" : "Phone"}</TableHead>
-                <TableHead>{lang === "ta" ? "DPDP ஒப்புதல்" : "DPDP Consent"}</TableHead>
+                <TableHead>{lang === "ta" ? "DPDP ஒப்புதல் நிலை" : "DPDP Status"}</TableHead>
                 <TableHead>{lang === "ta" ? "விலை அறிவிப்புகள்" : "Price Alerts"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sampleFarmers.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell className="font-semibold text-foreground">
-                    {lang === "ta" ? f.nameTa : f.nameEn}
-                  </TableCell>
-                  <TableCell>{lang === "ta" ? f.villageTa : f.villageEn}</TableCell>
-                  <TableCell>{lang === "ta" ? f.cropTa : f.cropEn}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {f.phone}
-                  </TableCell>
-                  <TableCell>
-                    {f.consent ? (
-                      <Badge variant="success" className="space-x-1">
-                        <ShieldCheck className="w-3 h-3 mr-1" />
-                        <span>{lang === "ta" ? "ஒப்புதல் உண்டு" : "Granted"}</span>
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive" className="space-x-1">
-                        <ShieldAlert className="w-3 h-3 mr-1" />
-                        <span>{lang === "ta" ? "நிலுவையில்" : "Pending"}</span>
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={f.alerts ? "default" : "secondary"}>
-                      {f.alerts
-                        ? lang === "ta"
-                          ? "இயக்கத்தில்"
-                          : "Opted-In"
-                        : lang === "ta"
-                        ? "நிறுத்தப்பட்டது"
-                        : "Off"}
-                    </Badge>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
+                    {lang === "ta" ? "விவசாயிகள் பட்டியல் ஏற்றப்படுகிறது..." : "Loading farmer records..."}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredFarmers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
+                    {lang === "ta"
+                      ? "தேடலுக்குரிய விவசாயிகள் எவரும் இல்லை."
+                      : "No farmers match the current search or filter."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredFarmers.map((f) => {
+                  const hasConsent = Boolean(f.notice_sent_at || f.alerts_opt_in);
+                  const maskedPhone = f.phone
+                    ? f.phone.replace(/(\+?\d{2,5}\s?\d{3})\d{4}/, "$1••••")
+                    : "—";
+
+                  return (
+                    <TableRow key={f.id}>
+                      <TableCell className="font-semibold text-foreground">
+                        {f.name}
+                      </TableCell>
+                      <TableCell>
+                        {f.village}, {f.taluk}
+                      </TableCell>
+                      <TableCell>
+                        {f.farm_area_acres} {lang === "ta" ? "ஏக்கர்" : "acres"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {maskedPhone}
+                      </TableCell>
+                      <TableCell>
+                        {hasConsent ? (
+                          <Badge variant="success" className="gap-1">
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>{lang === "ta" ? "அறிவிப்பு வழங்கப்பட்டது" : "Notice Logged"}</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="warning" className="gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>{lang === "ta" ? "நிலுவையில்" : "Pending First Notice"}</span>
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={f.alerts_opt_in ? "default" : "secondary"}>
+                          {f.alerts_opt_in
+                            ? lang === "ta"
+                              ? "இயக்கத்தில்"
+                              : "Opted-In"
+                            : lang === "ta"
+                            ? "நிறுத்தப்பட்டது"
+                            : "Off"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>

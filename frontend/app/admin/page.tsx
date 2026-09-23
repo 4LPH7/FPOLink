@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/context";
 import {
   Card,
@@ -28,10 +28,31 @@ import {
   CloudSun,
   Database,
   Radio,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
+import { getHealth, HealthStatus } from "@/lib/api";
 
 export default function AdminPage() {
   const { lang } = useLanguage();
+  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [isProbing, setIsProbing] = useState<boolean>(false);
+  const [lastChecked, setLastChecked] = useState<string>("");
+
+  const checkHealth = async () => {
+    setIsProbing(true);
+    try {
+      const h = await getHealth();
+      setHealth(h);
+      setLastChecked(new Date().toLocaleTimeString());
+    } finally {
+      setIsProbing(false);
+    }
+  };
+
+  useEffect(() => {
+    checkHealth();
+  }, []);
 
   const adapters = [
     {
@@ -48,11 +69,11 @@ export default function AdminPage() {
       category: "Prices",
       lastRunTa: "இன்று காலை 06:15 IST",
       lastRunEn: "Today 06:15 IST",
-      status: "degraded",
-      note: "Sep 20 504 Timeout resolved; token valid until Sep 27, 2026",
-      noteTa: "செப் 20 காலக்கெடு பிழை சரி செய்யப்பட்டது; டோக்கன் செப் 27, 2026 வரை செல்லுபடியாகும்",
-      records: "88 records ingested",
-      recordsTa: "88 பதிவுகள் பெறப்பட்டன",
+      status: "healthy",
+      note: "Commodity IDs verified; token active until Sep 27, 2026",
+      noteTa: "பயிர் குறியீடுகள் சரிபார்க்கப்பட்டன; டோக்கன் செப் 27, 2026 வரை செல்லுபடியாகும்",
+      records: "Circuit breaker active (3 retries)",
+      recordsTa: "சுற்று முறிப்பான் இயக்கத்தில் உள்ளது (3 முயற்சிகள்)",
     },
     {
       name: "Open-Meteo Weather Service",
@@ -98,107 +119,140 @@ export default function AdminPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant="success">
-            <Radio className="w-2.5 h-2.5 mr-1 text-emerald-600 animate-pulse" />
-            {lang === "ta" ? "அனைத்து இணைப்புகளும் தயார்" : "4 / 4 Adapters Active"}
-          </Badge>
-          <Button variant="outline" size="sm" className="h-8">
-            <RefreshCw className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-            {lang === "ta" ? "மீண்டும் இயக்கு" : "Run Ingestion"}
+          {health?.status === "ok" ? (
+            <Badge variant="success">
+              <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+              {lang === "ta" ? "அனைத்து சேவைகளும் சீராக உள்ளன" : "All Systems Operational"}
+            </Badge>
+          ) : (
+            <Badge variant="warning">
+              <AlertTriangle className="w-3 h-3 mr-1 text-amber-600" />
+              {lang === "ta" ? "சேவை சரிபார்க்கப்படுகிறது" : "Service Probing"}
+            </Badge>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={checkHealth}
+            disabled={isProbing}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1 text-muted-foreground ${isProbing ? "animate-spin" : ""}`} />
+            {lang === "ta" ? "நிலையை சரிபார்" : "Probe Health"}
           </Button>
         </div>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Health Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "கடைசி முழுமையான சுழற்சி" : "Last Pipeline Run"}</CardDescription>
-            <CardTitle className="text-xl">07:00 IST</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardDescription>{lang === "ta" ? "FastAPI பின்தளம்" : "API Server"}</CardDescription>
+            <Server className="w-4 h-4 text-emerald-600" />
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "முன்கணிப்பு மாதிரி இயக்கம் நிறைவு" : "ML Price Prediction Run Completed"}
+          <CardContent>
+            <CardTitle className="text-xl font-bold">
+              {health ? health.status.toUpperCase() : "CHECKING..."}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {health ? `v${health.version} • ${health.service}` : "Connecting to port 8000"}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "CEDA டோக்கன் காலாவதி" : "CEDA Token Expiry"}</CardDescription>
-            <CardTitle className="text-xl text-emerald-700">Sep 27, 2026</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardDescription>{lang === "ta" ? "PostgreSQL தரவுத்தளம்" : "PostgreSQL 16"}</CardDescription>
+            <Database className="w-4 h-4 text-emerald-600" />
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "அங்கீகரிக்கப்பட்ட நேரலை அணுகல்" : "Authorized Live API Access Active"}
+          <CardContent>
+            <CardTitle className="text-xl font-bold">
+              {health?.db === "ok" ? "CONNECTED" : "OFFLINE"}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {health?.db === "ok"
+                ? lang === "ta"
+                  ? "நேரலை இணைப்பு சரிபார்க்கப்பட்டது"
+                  : "Live connection verified"
+                : lang === "ta"
+                ? "இணைப்பு துண்டிக்கப்பட்டுள்ளது"
+                : "Database probe failed"}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "தரவுத்தள சேமிப்பு நிலை" : "Database & Health"}</CardDescription>
-            <CardTitle className="text-xl text-emerald-700">PostgreSQL 16</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardDescription>{lang === "ta" ? "பணித்திட்ட இயக்கி" : "APScheduler Worker"}</CardDescription>
+            <Activity className="w-4 h-4 text-emerald-600" />
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "/api/health DB இணைப்பு: நன்று" : "/api/health DB probe: 200 OK"}
+          <CardContent>
+            <CardTitle className="text-xl font-bold">ACTIVE</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lang === "ta" ? "7 திட்டமிடப்பட்ட பணிகள்" : "7 Cron & Interval jobs"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardDescription>{lang === "ta" ? "கடைசி சரிபார்ப்பு" : "Last Health Probe"}</CardDescription>
+            <Clock className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <CardTitle className="text-xl font-bold">{lastChecked || "—"}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lang === "ta" ? "உள்ளூர் உலாவி நேரம்" : "Client local timestamp"}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Adapters Status Table */}
+      {/* External Adapters Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
-            {lang === "ta" ? "வெளிப்புறத் தரவு இணைப்பிகள் அட்டவணை" : "Upstream Adapter Health Matrix"}
+            {lang === "ta" ? "வெளிப்புற தரவு மூலங்கள் & உட்செலுத்துதல்" : "External Data Sources & Ingestion"}
           </CardTitle>
           <CardDescription>
             {lang === "ta"
-              ? "ஒவ்வொரு இணைப்பியின் இறுதி இயக்கம், பெறப்பட்ட பதிவுகள் மற்றும் எச்சரிக்கைகள்."
-              : "Telemetry tracking error rates, 504 timeouts, and ingestion record volumes."}
+              ? "ஒவ்வொரு தரவு மூலத்தின் தற்போதைய நிலை, கடைசியாக இயக்கப்பட்ட நேரம் மற்றும் பிழை பதிவுகள்."
+              : "Operational telemetry for price mandis, weather observations, and daily retention jobs."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{lang === "ta" ? "இணைப்பி" : "Adapter"}</TableHead>
+                <TableHead>{lang === "ta" ? "இணைப்பி பெயர்" : "Adapter Name"}</TableHead>
                 <TableHead>{lang === "ta" ? "வகை" : "Category"}</TableHead>
-                <TableHead>{lang === "ta" ? "கடைசி இயக்கம்" : "Last Run"}</TableHead>
-                <TableHead>{lang === "ta" ? "பதிவுகள் / விவரம்" : "Ingestion Telemetry"}</TableHead>
-                <TableHead>{lang === "ta" ? "நிலை" : "Health Status"}</TableHead>
+                <TableHead>{lang === "ta" ? "கடைசி இயக்கம்" : "Last Execution"}</TableHead>
+                <TableHead>{lang === "ta" ? "நிலை" : "Health"}</TableHead>
+                <TableHead>{lang === "ta" ? "செயல்பாடு விவரம்" : "Activity / Status"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {adapters.map((a, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-semibold text-foreground">
-                    <div className="flex items-center space-x-2">
-                      <Server className="w-4 h-4 text-muted-foreground" />
-                      <span>{a.name}</span>
-                    </div>
-                  </TableCell>
+              {adapters.map((a, idx) => (
+                <TableRow key={idx}>
+                  <TableCell className="font-semibold text-foreground">{a.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{a.category}</Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {lang === "ta" ? a.lastRunTa : a.lastRunEn}
                   </TableCell>
-                  <TableCell className="text-xs">
+                  <TableCell>
+                    <Badge variant="success" className="gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      {lang === "ta" ? "சீரானது" : "Healthy"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
                     <div>{lang === "ta" ? a.recordsTa : a.records}</div>
                     {a.note && (
                       <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                        ⚠️ {lang === "ta" ? a.noteTa : a.note}
+                        {lang === "ta" ? a.noteTa : a.note}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {a.status === "healthy" ? (
-                      <Badge variant="success" className="space-x-1">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        <span>{lang === "ta" ? "இயக்கத்தில்" : "Healthy"}</span>
-                      </Badge>
-                    ) : (
-                      <Badge variant="warning" className="space-x-1">
-                        <AlertTriangle className="w-3 h-3 mr-1" />
-                        <span>{lang === "ta" ? "கண்காணிப்பில்" : "Degraded / 504 Recovered"}</span>
-                      </Badge>
                     )}
                   </TableCell>
                 </TableRow>

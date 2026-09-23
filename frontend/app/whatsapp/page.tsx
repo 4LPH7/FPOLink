@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/context";
 import {
   Card,
@@ -20,6 +20,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
   MessageSquare,
   Send,
   AlertOctagon,
@@ -27,15 +34,35 @@ import {
   Radio,
   CheckCheck,
   ShieldCheck,
+  RefreshCw,
+  Terminal,
 } from "lucide-react";
+import { getHealth, HealthStatus } from "@/lib/api";
 
 export default function WhatsAppPage() {
   const { lang } = useLanguage();
+  const [runbookOpen, setRunbookOpen] = useState(false);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      const h = await getHealth();
+      setHealth(h);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const sampleInbound = [
     {
-      id: "wamid.HBgLM...",
-      waId: "9198421•••••",
+      id: "wamid.HBgLMD...",
+      waId: "+91 98421 •••••",
       kind: "text",
       contentTa: "வணக்கம் (மெனு கோரப்பட்டது)",
       contentEn: "வணக்கம் (Requested Menu)",
@@ -44,8 +71,8 @@ export default function WhatsAppPage() {
       timeEn: "10 mins ago",
     },
     {
-      id: "wamid.HBgLN...",
-      waId: "9197892•••••",
+      id: "wamid.HBgLND...",
+      waId: "+91 97892 •••••",
       kind: "button",
       contentTa: "பொத்தான்: மஞ்சள் விலை தகவல்",
       contentEn: "Button: Turmeric Price Rate",
@@ -54,8 +81,8 @@ export default function WhatsAppPage() {
       timeEn: "25 mins ago",
     },
     {
-      id: "wamid.HBgLO...",
-      waId: "9194432•••••",
+      id: "wamid.HBgLOD...",
+      waId: "+91 94432 •••••",
       kind: "text",
       contentTa: "அறுவடை பதிவு: மஞ்சள், 250 கிலோ",
       contentEn: "Harvest submit: Turmeric 250kg",
@@ -84,9 +111,79 @@ export default function WhatsAppPage() {
             <Radio className="w-2.5 h-2.5 mr-1 text-emerald-600 animate-pulse" />
             {lang === "ta" ? "போட் இயங்குகிறது" : "WHATSAPP_ENABLED=true"}
           </Badge>
-          <Button variant="outline" size="sm" className="h-8">
-            <ShieldCheck className="w-3.5 h-3.5 mr-1 text-primary" />
-            {lang === "ta" ? "அவசர நிறுத்தம் Runbook" : "Kill Switch Runbook"}
+
+          {/* Kill Switch Runbook Drawer */}
+          <Sheet open={runbookOpen} onOpenChange={setRunbookOpen}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => setRunbookOpen(true)}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 mr-1 text-primary" />
+              {lang === "ta" ? "அவசர நிறுத்தம் Runbook" : "Kill Switch Runbook"}
+            </Button>
+            <SheetContent side="right" className="w-[340px] sm:w-[480px]">
+              <SheetHeader>
+                <SheetTitle className="text-lg flex items-center gap-2">
+                  <AlertOctagon className="w-5 h-5 text-destructive" />
+                  {lang === "ta" ? "அவசர நிறுத்தம் (Kill Switch)" : "Emergency Kill Switch"}
+                </SheetTitle>
+                <SheetDescription>
+                  {lang === "ta"
+                    ? "வாட்ஸ்அப் கிளவுட் API வழியாக செய்திகள் அனுப்பப்படுவதை உடனடியாக நிறுத்துவதற்கான வழிமுறை."
+                    : "Zero-downtime operational procedure to halt all outbound WhatsApp transmissions."}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-4 text-xs">
+                <div className="rounded-md border p-3 bg-muted/50 space-y-2">
+                  <div className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Terminal className="w-4 h-4 text-primary" />
+                    <span>Step 1: Set Environment Kill Switch</span>
+                  </div>
+                  <pre className="p-2 rounded bg-background font-mono text-[11px] overflow-x-auto">
+                    WHATSAPP_ENABLED=false
+                  </pre>
+                  <p className="text-muted-foreground">
+                    Webhooks immediately return HTTP 503 Service Unavailable, preventing cost exhaustion.
+                  </p>
+                </div>
+
+                <div className="rounded-md border p-3 bg-muted/50 space-y-2">
+                  <div className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Terminal className="w-4 h-4 text-primary" />
+                    <span>Step 2: Restart Containers</span>
+                  </div>
+                  <pre className="p-2 rounded bg-background font-mono text-[11px] overflow-x-auto">
+                    docker compose restart backend worker
+                  </pre>
+                </div>
+
+                <div className="rounded-md border p-3 bg-muted/50 space-y-2">
+                  <div className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Terminal className="w-4 h-4 text-primary" />
+                    <span>Step 3: Verification Probe</span>
+                  </div>
+                  <pre className="p-2 rounded bg-background font-mono text-[11px] overflow-x-auto">
+                    curl -i http://localhost:8000/api/whatsapp/webhook
+                  </pre>
+                  <p className="text-muted-foreground">
+                    Confirm HTTP 503 response code is returned.
+                  </p>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={refreshData}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1 text-muted-foreground ${isRefreshing ? "animate-spin" : ""}`} />
+            {lang === "ta" ? "புதுப்பி" : "Refresh"}
           </Button>
         </div>
       </div>
@@ -145,7 +242,7 @@ export default function WhatsAppPage() {
           <CardDescription>
             {lang === "ta"
               ? "DPDP விதிகளின்படி உழவர் தொலைபேசி எண்கள் முகமூடி செய்யப்பட்டுள்ளன (PII Masking)."
-              : "All farmer phone numbers masked (first 3, last 2) per DPDP compliance standards."}
+              : "All farmer phone numbers masked per DPDP compliance standards."}
           </CardDescription>
         </CardHeader>
         <CardContent>
