@@ -28,3 +28,15 @@ class WhatsAppUsageSummary(BaseModel):
     circuit_breaker_tripped: bool = Field(
         ..., description="Whether send limits have halted proactive messaging"
     )
+
+
+class InboundMessageItem(BaseModel):
+    message_id: str
+    status: str
+    retry_count: int
+    received_at: str
+
+
+class InboundMessageListResponse(BaseModel):
+    messages: list[InboundMessageItem]
+    total: int

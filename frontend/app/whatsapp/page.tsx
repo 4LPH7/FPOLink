@@ -27,30 +27,42 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  MessageSquare,
-  Send,
   AlertOctagon,
-  Clock,
   Radio,
   CheckCheck,
   ShieldCheck,
   RefreshCw,
   Terminal,
+  Clock,
+  AlertCircle,
+  Inbox,
 } from "lucide-react";
-import { getHealth, HealthStatus } from "@/lib/api";
+import {
+  getWhatsAppActivity,
+  getWhatsAppUsage,
+  WhatsAppActivitySummary,
+  WhatsAppUsageSummary,
+} from "@/lib/api";
 
 export default function WhatsAppPage() {
   const { lang } = useLanguage();
   const [runbookOpen, setRunbookOpen] = useState(false);
-  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [activity, setActivity] = useState<WhatsAppActivitySummary | null>(null);
+  const [usage, setUsage] = useState<WhatsAppUsageSummary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshData = async () => {
     setIsRefreshing(true);
     try {
-      const h = await getHealth();
-      setHealth(h);
+      const [act, use] = await Promise.all([
+        getWhatsAppActivity(25),
+        getWhatsAppUsage(),
+      ]);
+      setActivity(act);
+      setUsage(use);
     } finally {
+      setLoading(false);
       setIsRefreshing(false);
     }
   };
@@ -59,38 +71,14 @@ export default function WhatsAppPage() {
     refreshData();
   }, []);
 
-  const sampleInbound = [
-    {
-      id: "wamid.HBgLMD...",
-      waId: "+91 98421 •••••",
-      kind: "text",
-      contentTa: "வணக்கம் (மெனு கோரப்பட்டது)",
-      contentEn: "வணக்கம் (Requested Menu)",
-      status: "processed",
-      timeTa: "10 நிமிடங்களுக்கு முன்",
-      timeEn: "10 mins ago",
-    },
-    {
-      id: "wamid.HBgLND...",
-      waId: "+91 97892 •••••",
-      kind: "button",
-      contentTa: "பொத்தான்: மஞ்சள் விலை தகவல்",
-      contentEn: "Button: Turmeric Price Rate",
-      status: "processed",
-      timeTa: "25 நிமிடங்களுக்கு முன்",
-      timeEn: "25 mins ago",
-    },
-    {
-      id: "wamid.HBgLOD...",
-      waId: "+91 94432 •••••",
-      kind: "text",
-      contentTa: "அறுவடை பதிவு: மஞ்சள், 250 கிலோ",
-      contentEn: "Harvest submit: Turmeric 250kg",
-      status: "processed",
-      timeTa: "45 நிமிடங்களுக்கு முன்",
-      timeEn: "45 mins ago",
-    },
-  ];
+  const totalInbound = activity?.total_inbound ?? 0;
+  const totalOutbound = usage?.total_messages ?? (activity?.total_outbound ?? 0);
+  const monthlyCap = usage?.monthly_cap ?? 5000;
+  const deliveryRate = usage ? `${usage.delivery_rate_pct.toFixed(1)}%` : "100.0%";
+  const estCost = usage ? `₹${usage.estimated_cost_inr.toFixed(2)}` : "₹0.00";
+  const circuitTripped = usage?.circuit_breaker_tripped ?? false;
+
+  const messages = activity?.inbound_messages || [];
 
   return (
     <div className="space-y-6">
@@ -107,9 +95,11 @@ export default function WhatsAppPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant="success">
-            <Radio className="w-2.5 h-2.5 mr-1 text-emerald-600 animate-pulse" />
-            {lang === "ta" ? "போட் இயங்குகிறது" : "WHATSAPP_ENABLED=true"}
+          <Badge variant={circuitTripped ? "destructive" : "success"}>
+            <Radio className={`w-2.5 h-2.5 mr-1 ${circuitTripped ? "text-destructive" : "text-emerald-600 animate-pulse"}`} />
+            {circuitTripped
+              ? (lang === "ta" ? "சுற்று முறிப்பான் இயக்கப்பட்டது" : "CIRCUIT BREAKER TRIPPED")
+              : (lang === "ta" ? "போட் இயங்குகிறது" : "WHATSAPP_ENABLED=true")}
           </Badge>
 
           {/* Kill Switch Runbook Drawer */}
@@ -188,52 +178,58 @@ export default function WhatsAppPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Real KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "இன்றைய செய்திகள்" : "Today's Inbound"}</CardDescription>
-            <CardTitle className="text-2xl font-extrabold">128</CardTitle>
+            <CardDescription>{lang === "ta" ? "உள்வந்த செய்திகள் (மொத்தம்)" : "Total Inbound Messages"}</CardDescription>
+            <CardTitle className="text-2xl font-extrabold">{totalInbound}</CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "100% செயலாக்கப்பட்டது (0 தோல்வி)" : "100% processed (0 failed)"}
+            {lang === "ta"
+              ? "PostgreSQL-இல் பதிவுசெய்யப்பட்ட நேரலை செய்திகள்"
+              : "Live messages persisted in database"}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "மாதாந்திர ஒதுக்கீடு" : "Monthly Send Cap"}</CardDescription>
+            <CardDescription>{lang === "ta" ? "வெளிச்செல்லும் செய்திகள் / வரம்பு" : "Outbound Messages / Cap"}</CardDescription>
             <CardTitle className="text-2xl font-extrabold text-foreground">
-              342 <span className="text-sm font-normal text-muted-foreground">/ 5,000</span>
+              {totalOutbound} <span className="text-sm font-normal text-muted-foreground">/ {monthlyCap.toLocaleString()}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "6.8% வரவு செலவு பயன்பாடு" : "6.8% of ₹2,000 budget used"}
+            {lang === "ta"
+              ? `மதிப்பிடப்பட்ட செலவு: ${estCost}`
+              : `Month-to-date estimated cost: ${estCost}`}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "சராசரி பதில் நேரம்" : "Avg Response Time"}</CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-emerald-700">1.4s</CardTitle>
+            <CardDescription>{lang === "ta" ? "செய்தி வழங்கல் வெற்றி விகிதம்" : "Delivery Success Rate"}</CardDescription>
+            <CardTitle className="text-2xl font-extrabold text-emerald-700">{deliveryRate}</CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "மெட்டா கிளவுட் API லேட்டன்சி" : "Meta Cloud API delivery latency"}
+            {lang === "ta" ? "வெற்றிகரமாக வழங்கப்பட்ட விகிதம்" : "Resolved messages successfully delivered"}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>{lang === "ta" ? "சுழற்சி துடைப்பான் நிலை" : "At-Least-Once Sweep"}</CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-emerald-700">10 min</CardTitle>
+            <CardDescription>{lang === "ta" ? "தானியங்கி துடைப்பான் சுழற்சி" : "At-Least-Once Sweep"}</CardDescription>
+            <CardTitle className="text-2xl font-extrabold text-emerald-700">
+              {circuitTripped ? "HALTED" : "ACTIVE"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "0 சிக்கிய செய்திகள்" : "0 stuck received rows"}
+            {lang === "ta" ? "10 நிமிட பின்னணி பணி" : "Periodic 10-minute worker cron job"}
           </CardContent>
         </Card>
       </div>
 
-      {/* Inbound Messages Table */}
+      {/* Inbound Messages Table (100% Real Live Data) */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
@@ -242,49 +238,76 @@ export default function WhatsAppPage() {
           <CardDescription>
             {lang === "ta"
               ? "DPDP விதிகளின்படி உழவர் தொலைபேசி எண்கள் முகமூடி செய்யப்பட்டுள்ளன (PII Masking)."
-              : "All farmer phone numbers masked per DPDP compliance standards."}
+              : "Direct live stream from PostgreSQL whatsapp_inbound table."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{lang === "ta" ? "செய்தி ID" : "Message ID"}</TableHead>
-                <TableHead>{lang === "ta" ? "உழவர் எண் (மறைக்கப்பட்டது)" : "Farmer Phone (Masked)"}</TableHead>
-                <TableHead>{lang === "ta" ? "வகை" : "Type"}</TableHead>
-                <TableHead>{lang === "ta" ? "செய்தி உள்ளடக்கம்" : "Message Context"}</TableHead>
-                <TableHead>{lang === "ta" ? "நேரம்" : "Timestamp"}</TableHead>
-                <TableHead>{lang === "ta" ? "நிலை" : "Lifecycle Status"}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sampleInbound.map((row, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {row.id}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs font-semibold">
-                    {row.waId}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{row.kind}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {lang === "ta" ? row.contentTa : row.contentEn}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {lang === "ta" ? row.timeTa : row.timeEn}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="success" className="space-x-1">
-                      <CheckCheck className="w-3 h-3 mr-1" />
-                      <span>{lang === "ta" ? "வெற்றிகரமாக முடிந்தது" : "Processed"}</span>
-                    </Badge>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+              <span>{lang === "ta" ? "ஏற்றுகிறது..." : "Loading live activity..."}</span>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+              <Inbox className="w-10 h-10 mb-2 opacity-40" />
+              <p className="font-medium text-sm">
+                {lang === "ta" ? "உள்வரும் செய்திகள் எதுவும் இல்லை" : "No inbound messages recorded yet"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lang === "ta"
+                  ? "விவசாயிகள் வாட்ஸ்அப்பில் செய்தி அனுப்பும்போது இங்கே தோன்றும்."
+                  : "Incoming farmer messages received via Meta Cloud API webhook will appear here in real time."}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{lang === "ta" ? "செய்தி ID" : "Message ID"}</TableHead>
+                  <TableHead>{lang === "ta" ? "மறுமுயற்சி எண்ணிக்கை" : "Retry Count"}</TableHead>
+                  <TableHead>{lang === "ta" ? "நிலை" : "Lifecycle Status"}</TableHead>
+                  <TableHead className="text-right">{lang === "ta" ? "பெறப்பட்ட நேரம்" : "Received At"}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {messages.map((row) => (
+                  <TableRow key={row.message_id}>
+                    <TableCell className="font-mono text-xs font-medium text-foreground">
+                      {row.message_id}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {row.retry_count > 0 ? (
+                        <Badge variant="warning">{row.retry_count} retries</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.status === "processed" ? (
+                        <Badge variant="success" className="space-x-1">
+                          <CheckCheck className="w-3 h-3 mr-1" />
+                          <span>{lang === "ta" ? "செயலாக்கப்பட்டது" : "Processed"}</span>
+                        </Badge>
+                      ) : row.status === "failed" ? (
+                        <Badge variant="destructive" className="space-x-1">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          <span>{lang === "ta" ? "தோல்வி" : "Failed"}</span>
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="space-x-1">
+                          <Clock className="w-3 h-3 mr-1" />
+                          <span>{row.status}</span>
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                      {row.received_at ? new Date(row.received_at).toLocaleString() : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

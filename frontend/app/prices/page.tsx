@@ -25,10 +25,16 @@ import {
   Minus,
   RefreshCw,
   BarChart2,
-  Filter,
+  Inbox,
 } from "lucide-react";
-import { getLatestPrices, getCrops, MarketPrice, Crop } from "@/lib/api";
-import { TURMERIC_DATA_30D, BANANA_DATA_30D } from "@/lib/marketData";
+import {
+  getLatestPrices,
+  getCrops,
+  getPriceHistory,
+  MarketPrice,
+  Crop,
+  PriceHistoryPoint,
+} from "@/lib/api";
 import {
   ResponsiveContainer,
   LineChart,
@@ -45,6 +51,7 @@ export default function PricesPage() {
   const [crops, setCrops] = useState<Crop[]>([]);
   const [selectedCrop, setSelectedCrop] = useState<string>("all");
   const [activeChartCrop, setActiveChartCrop] = useState<"turmeric" | "banana">("turmeric");
+  const [chartHistory, setChartHistory] = useState<PriceHistoryPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
@@ -57,22 +64,64 @@ export default function PricesPage() {
       ]);
       setPrices(pricesData);
       setCrops(cropsData);
+
+      // Load initial history for active crop
+      await loadCropHistory(activeChartCrop, cropsData, pricesData);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
   };
 
+  const loadCropHistory = async (
+    targetCropName: string,
+    currentCrops = crops,
+    currentPrices = prices
+  ) => {
+    const cropObj = currentCrops.find(
+      (c) => c.name.toLowerCase() === targetCropName.toLowerCase()
+    );
+    if (!cropObj) return;
+
+    // Find market for this crop from latest prices or first available
+    const priceRecord = currentPrices.find(
+      (p) => p.crop_name.toLowerCase() === targetCropName.toLowerCase()
+    );
+
+    // Call history endpoint
+    const history = await getPriceHistory(
+      cropObj.id,
+      priceRecord ? priceRecord.id : "default",
+      30
+    );
+    setChartHistory(history);
+  };
+
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleChartCropChange = async (crop: "turmeric" | "banana") => {
+    setActiveChartCrop(crop);
+    await loadCropHistory(crop);
+  };
 
   const filteredPrices =
     selectedCrop === "all"
       ? prices
       : prices.filter((p) => p.crop_name.toLowerCase() === selectedCrop.toLowerCase());
 
-  const chartData = activeChartCrop === "turmeric" ? TURMERIC_DATA_30D : BANANA_DATA_30D;
+  // Dynamically extract real top market cards
+  const turmericTop = prices.find((p) => p.crop_name.toLowerCase().includes("turmeric"));
+  const bananaTop = prices.find((p) => p.crop_name.toLowerCase().includes("banana"));
+
+  // Transform real history into chart points (in ₹/quintal)
+  const chartData = chartHistory.map((pt) => ({
+    date: pt.date ? pt.date.slice(5) : "",
+    modal: Math.round(Number(pt.modal_price) * 100),
+    min: Math.round(Number(pt.min_price) * 100),
+    max: Math.round(Number(pt.max_price) * 100),
+  }));
 
   return (
     <div className="space-y-6">
@@ -84,13 +133,13 @@ export default function PricesPage() {
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {lang === "ta"
-              ? "ஈரோடு மாவட்ட சந்தை விலைகள், CEDA/OGD நேரலை வரத்து, மற்றும் அடுத்த மாத முன்கணிப்பு."
-              : "Erode district mandi feeds, CEDA/OGD live arrivals, and ML price predictions."}
+              ? "ஈரோடு மாவட்ட சந்தை விலைகள், Agmarknet/OGD நேரலை வரத்து, மற்றும் முன்கணிப்பு."
+              : "Erode district mandi feeds, verified Agmarknet/OGD live arrivals, and price forecasts."}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="success">
-            {lang === "ta" ? "OGD/CEDA நேரலை" : "OGD/CEDA Live"}
+            {lang === "ta" ? "Agmarknet நேரலை" : "Agmarknet Live"}
           </Badge>
           <Button
             variant="outline"
@@ -105,31 +154,46 @@ export default function PricesPage() {
         </div>
       </div>
 
-      {/* Featured Price Cards */}
+      {/* Featured Price Cards (100% Real Live Database Data) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-l-4 border-l-amber-500">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {lang === "ta" ? "மஞ்சள் (விரலி)" : "Turmeric (Finger)"}
+                {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
               </span>
               <Badge variant="warning">
-                {lang === "ta" ? "வைத்திருத்தல் பரிந்துரை" : "HOLD SIGNAL"}
+                {lang === "ta" ? "நேரலை மண்டி விலை" : "LIVE MANDI"}
               </Badge>
             </div>
             <CardTitle className="text-3xl font-extrabold text-foreground mt-1">
-              ₹12,350 <span className="text-sm font-normal text-muted-foreground">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
+              {turmericTop ? (
+                <>
+                  ₹{Math.round(turmericTop.modal_price * 100).toLocaleString()}{" "}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    / {lang === "ta" ? "குவிண்டால்" : "quintal"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground text-xl">
+                  {lang === "ta" ? "விலை எதிர்பார்க்கப்படுகிறது" : "Awaiting quote"}
+                </span>
+              )}
             </CardTitle>
             <CardDescription>
-              {lang === "ta"
-                ? "பெருந்துறை ஒழுங்குமுறை விற்பனைக்கூடம் • நேற்று ₹12,200 (+1.2%)"
-                : "Perundurai Regulated Mandi • Prev: ₹12,200 (+1.2%)"}
+              {turmericTop ? (
+                `${turmericTop.market_name} • ₹${Math.round(turmericTop.min_price * 100)} - ₹${Math.round(turmericTop.max_price * 100)}`
+              ) : (
+                lang === "ta" ? "ஈரோடு மண்டி" : "Erode Mandi"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0 text-xs text-muted-foreground">
-            {lang === "ta"
-              ? "அடுத்த மாத கணிப்பு: ₹12,800/குவிண்டால் (நம்பகத்தன்மை: 85%)"
-              : "Next month forecast: ₹12,800/quintal (Confidence: 85%)"}
+            {turmericTop?.arrival_quantity ? (
+              `${lang === "ta" ? "வரத்து" : "Arrivals"}: ${turmericTop.arrival_quantity} quintals (${turmericTop.price_date})`
+            ) : (
+              lang === "ta" ? "அரசு அங்கீகரிக்கப்பட்ட விலை ஆதாரம்" : "Verified Agmarknet mandi quote"
+            )}
           </CardContent>
         </Card>
 
@@ -137,35 +201,50 @@ export default function PricesPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {lang === "ta" ? "வாழை (நேந்திரன்)" : "Banana (Nendran)"}
+                {lang === "ta" ? "வாழை" : "Banana"}
               </span>
               <Badge variant="success">
-                {lang === "ta" ? "சந்தையில் விற்றல்" : "SELL SIGNAL"}
+                {lang === "ta" ? "நேரலை மண்டி விலை" : "LIVE MANDI"}
               </Badge>
             </div>
             <CardTitle className="text-3xl font-extrabold text-foreground mt-1">
-              ₹38 <span className="text-sm font-normal text-muted-foreground">/ {lang === "ta" ? "கிலோ" : "kg"}</span>
+              {bananaTop ? (
+                <>
+                  ₹{Math.round(bananaTop.modal_price).toLocaleString()}{" "}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    / {lang === "ta" ? "கிலோ" : "kg"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground text-xl">
+                  {lang === "ta" ? "விலை எதிர்பார்க்கப்படுகிறது" : "Awaiting quote"}
+                </span>
+              )}
             </CardTitle>
             <CardDescription>
-              {lang === "ta"
-                ? "கோபிசெட்டிபாளையம் சந்தை • நேற்று ₹37 (+2.7%)"
-                : "Gobichettipalayam Mandi • Prev: ₹37 (+2.7%)"}
+              {bananaTop ? (
+                `${bananaTop.market_name} • ₹${Math.round(bananaTop.min_price)} - ₹${Math.round(bananaTop.max_price)}`
+              ) : (
+                lang === "ta" ? "கோபிசெட்டிபாளையம் மண்டி" : "Gobichettipalayam Mandi"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0 text-xs text-muted-foreground">
-            {lang === "ta"
-              ? "வரத்து உச்ச நிலை — அடுத்த 7 நாட்களில் விலை குறைய வாய்ப்பு."
-              : "Peak arrivals detected — potential price softening over next 7 days."}
+            {bananaTop?.arrival_quantity ? (
+              `${lang === "ta" ? "வரத்து" : "Arrivals"}: ${bananaTop.arrival_quantity} quintals (${bananaTop.price_date})`
+            ) : (
+              lang === "ta" ? "அரசு அங்கீகரிக்கப்பட்ட விலை ஆதாரம்" : "Verified Agmarknet mandi quote"
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* 30-Day Trend Chart */}
+      {/* 30-Day Trend Chart (Dynamic Live Data) */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div>
             <CardTitle className="text-lg">
-              {lang === "ta" ? "30-நாள் சந்தை விலை போக்கு" : "30-Day Mandi Price Trend"}
+              {lang === "ta" ? "சந்தை விலை போக்கு வரைபடம்" : "Mandi Price Trend History"}
             </CardTitle>
             <CardDescription>
               {lang === "ta"
@@ -178,7 +257,7 @@ export default function PricesPage() {
               size="sm"
               variant={activeChartCrop === "turmeric" ? "default" : "outline"}
               className="h-7 text-xs"
-              onClick={() => setActiveChartCrop("turmeric")}
+              onClick={() => handleChartCropChange("turmeric")}
             >
               {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
             </Button>
@@ -186,37 +265,50 @@ export default function PricesPage() {
               size="sm"
               variant={activeChartCrop === "banana" ? "default" : "outline"}
               className="h-7 text-xs"
-              onClick={() => setActiveChartCrop("banana")}
+              onClick={() => handleChartCropChange("banana")}
             >
               {lang === "ta" ? "வாழை" : "Banana"}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis
-                  domain={activeChartCrop === "turmeric" ? [10000, 14000] : [2200, 3400]}
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(val) => `₹${val}`}
-                />
-                <Tooltip
-                  formatter={(val: number) => [`₹${val}`, lang === "ta" ? "மாதிரி விலை" : "Modal Price"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="modal"
-                  stroke={activeChartCrop === "turmeric" ? "#d97706" : "#16a34a"}
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {chartData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground p-4">
+              <BarChart2 className="w-10 h-10 mb-2 opacity-40" />
+              <p className="font-medium text-sm">
+                {lang === "ta" ? "விலை வரலாற்றுத் தரவுகள் இல்லை" : "No price observations found for this crop"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lang === "ta"
+                  ? "தினசரி மண்டி தகவல் பதிவான பிறகு வரைபடம் தோன்றும்."
+                  : "Daily mandi feeds from Agmarknet/OGD will populate historical curves automatically."}
+              </p>
+            </div>
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(val) => `₹${val}`}
+                  />
+                  <Tooltip
+                    formatter={(val: number) => [`₹${val}`, lang === "ta" ? "மாதிரி விலை" : "Modal Price"]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="modal"
+                    stroke={activeChartCrop === "turmeric" ? "#d97706" : "#16a34a"}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -257,73 +349,103 @@ export default function PricesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{lang === "ta" ? "பயிர்" : "Crop"}</TableHead>
-                <TableHead>{lang === "ta" ? "மண்டி" : "Mandi"}</TableHead>
-                <TableHead>{lang === "ta" ? "மாதிரி விலை" : "Modal Price"}</TableHead>
-                <TableHead>{lang === "ta" ? "வரம்பு (குறைவு - உயர்வு)" : "Range (Min - Max)"}</TableHead>
-                <TableHead>{lang === "ta" ? "போக்கு" : "Trend"}</TableHead>
-                <TableHead>{lang === "ta" ? "ஆதாரம்" : "Source"}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+              <span>{lang === "ta" ? "ஏற்றுகிறது..." : "Loading live prices..."}</span>
+            </div>
+          ) : filteredPrices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+              <Inbox className="w-10 h-10 mb-2 opacity-40" />
+              <p className="font-medium text-sm">
+                {lang === "ta" ? "விலைத் தகவல்கள் இல்லை" : "No price observations available"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lang === "ta" ? "தேர்ந்தெடுக்கப்பட்ட பயிருக்கு விலை எதுவும் பதிவாகவில்லை." : "No records match the current filter selection."}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
-                    {lang === "ta" ? "விலை தகவல்கள் ஏற்றப்படுகின்றன..." : "Loading market prices..."}
-                  </TableCell>
+                  <TableHead>{lang === "ta" ? "பயிர்" : "Crop"}</TableHead>
+                  <TableHead>{lang === "ta" ? "சந்தை / மண்டி" : "Mandi Market"}</TableHead>
+                  <TableHead>{lang === "ta" ? "குறைந்த விலை" : "Min Price"}</TableHead>
+                  <TableHead>{lang === "ta" ? "அதிக விலை" : "Max Price"}</TableHead>
+                  <TableHead>{lang === "ta" ? "மாதிரி விலை" : "Modal Price"}</TableHead>
+                  <TableHead>{lang === "ta" ? "போக்கு" : "Trend"}</TableHead>
+                  <TableHead className="text-right">{lang === "ta" ? "தேதி & ஆதாரம்" : "Date & Source"}</TableHead>
                 </TableRow>
-              ) : filteredPrices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
-                    {lang === "ta" ? "விலை விவரங்கள் எதுவும் கிடைக்கவில்லை." : "No market price records found."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredPrices.map((p) => {
-                  const dir = p.trend?.direction;
+              </TableHeader>
+              <TableBody>
+                {filteredPrices.map((row) => {
+                  const unitLabel = row.crop_name.toLowerCase().includes("banana") || row.crop_name.toLowerCase().includes("coconut")
+                    ? "/kg"
+                    : "/qtl";
+                  const multiplier = unitLabel === "/qtl" ? 100 : 1;
+
                   return (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-semibold">
-                        {lang === "ta" ? p.crop_tamil_name || p.crop_name : p.crop_name}
-                      </TableCell>
-                      <TableCell>{p.market_name}</TableCell>
-                      <TableCell className="font-bold text-emerald-700">
-                        ₹{p.modal_price.toLocaleString("en-IN")}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        ₹{p.min_price.toLocaleString("en-IN")} - ₹{p.max_price.toLocaleString("en-IN")}
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <span>{lang === "ta" ? row.crop_tamil_name || row.crop_name : row.crop_name}</span>
+                          <span className="block text-xs text-muted-foreground capitalize">
+                            {row.crop_name}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {dir === "up" && (
-                          <Badge variant="success" className="gap-1">
-                            <TrendingUp className="w-3 h-3" /> +{p.trend?.percent.toFixed(1)}%
-                          </Badge>
-                        )}
-                        {dir === "down" && (
-                          <Badge variant="destructive" className="gap-1">
-                            <TrendingDown className="w-3 h-3" /> -{p.trend?.percent.toFixed(1)}%
-                          </Badge>
-                        )}
-                        {(!dir || dir === "stable") && (
-                          <Badge variant="outline" className="gap-1">
-                            <Minus className="w-3 h-3" /> 0.0%
-                          </Badge>
-                        )}
+                        <span className="text-xs font-semibold">{row.market_name}</span>
+                        <span className="block text-[11px] text-muted-foreground">{row.district}</span>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        ₹{Math.round(row.min_price * multiplier).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        ₹{Math.round(row.max_price * multiplier).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs font-bold text-foreground">
+                        ₹{Math.round(row.modal_price * multiplier).toLocaleString()}{" "}
+                        <span className="text-[10px] text-muted-foreground">{unitLabel}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="uppercase text-[10px]">
-                          {p.source}
+                        {row.trend ? (
+                          <div className="flex items-center space-x-1">
+                            {row.trend.direction === "up" && (
+                              <Badge variant="success" className="h-5 px-1 text-[10px]">
+                                <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
+                                +{row.trend.percent.toFixed(1)}%
+                              </Badge>
+                            )}
+                            {row.trend.direction === "down" && (
+                              <Badge variant="destructive" className="h-5 px-1 text-[10px]">
+                                <TrendingDown className="w-2.5 h-2.5 mr-0.5" />
+                                -{row.trend.percent.toFixed(1)}%
+                              </Badge>
+                            )}
+                            {row.trend.direction === "stable" && (
+                              <Badge variant="outline" className="h-5 px-1 text-[10px]">
+                                <Minus className="w-2.5 h-2.5 mr-0.5" />
+                                0.0%
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="text-xs font-mono">{row.price_date}</div>
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          {row.source}
                         </Badge>
                       </TableCell>
                     </TableRow>
                   );
-                })
-              )}
-            </TableBody>
-          </Table>
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -18,8 +18,10 @@ from functools import lru_cache
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import get_db
 from app.messaging.whatsapp_cloud import (
     WhatsAppCloudChannel,
     parse_status_updates,
@@ -136,3 +138,33 @@ async def receive(
     for msg in parse_webhook(payload):
         background.add_task(bot.handle, msg, channel)
     return {"status": "ok"}
+
+
+@router.get("/activity")
+def get_whatsapp_activity(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Staff dashboard monitor feed — returns real inbound messages and telemetry."""
+    from app.models.whatsapp import OutboundMessage, WhatsAppInbound
+
+    inbound_rows = (
+        db.query(WhatsAppInbound).order_by(WhatsAppInbound.received_at.desc()).limit(limit).all()
+    )
+    total_inbound = db.query(WhatsAppInbound).count()
+    total_outbound = db.query(OutboundMessage).count()
+
+    return {
+        "enabled": settings.WHATSAPP_ENABLED,
+        "total_inbound": total_inbound,
+        "total_outbound": total_outbound,
+        "inbound_messages": [
+            {
+                "message_id": r.message_id,
+                "status": r.status,
+                "retry_count": r.retry_count,
+                "received_at": r.received_at.isoformat() if r.received_at else None,
+            }
+            for r in inbound_rows
+        ],
+    }

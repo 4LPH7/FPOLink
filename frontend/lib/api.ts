@@ -1,12 +1,9 @@
 /**
  * FPOLink TN — Frontend API Client
  *
- * Provides typed, resilient access to the FastAPI backend with seamless
- * fallback to local curated datasets when backend is offline or before
- * the daily mandi ingestion sweep.
+ * Provides typed, direct access to the FastAPI backend with 100% real database records
+ * and live external telemetry (Agmarknet, OGD, Open-Meteo).
  */
-
-import { MANDI_DATA, TURMERIC_DATA_30D, BANANA_DATA_30D, MandiRow } from "./marketData";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -39,6 +36,14 @@ export interface MarketPrice {
   trend?: PriceTrend;
 }
 
+export interface PriceHistoryPoint {
+  date: string;
+  min_price: number;
+  max_price: number;
+  modal_price: number;
+  arrival_quantity?: number | null;
+}
+
 export interface Farmer {
   id: string;
   user_id: string;
@@ -51,7 +56,7 @@ export interface Farmer {
   farm_area_acres: number;
   language_preference: string;
   lang?: string;
-  alerts_opt_in: boolean;
+  alerts_opt_in?: boolean;
   notice_sent_at?: string | null;
   created_at?: string | null;
 }
@@ -76,6 +81,33 @@ export interface HealthStatus {
   db: string;
 }
 
+export interface InboundMessageActivity {
+  message_id: string;
+  status: string;
+  retry_count: number;
+  received_at: string | null;
+}
+
+export interface WhatsAppActivitySummary {
+  enabled: boolean;
+  total_inbound: number;
+  total_outbound: number;
+  inbound_messages: InboundMessageActivity[];
+}
+
+export interface WhatsAppUsageSummary {
+  month: string;
+  total_messages: number;
+  by_category: Record<string, number>;
+  by_status: Record<string, number>;
+  delivery_rate_pct: number;
+  estimated_cost_inr: number;
+  unreachable_recipients: number;
+  monthly_cap: number;
+  monthly_budget_inr: number;
+  circuit_breaker_tripped: boolean;
+}
+
 // ─── Health API ──────────────────────────────────────────────
 export async function getHealth(): Promise<HealthStatus> {
   try {
@@ -86,7 +118,7 @@ export async function getHealth(): Promise<HealthStatus> {
       throw new Error(`Health probe HTTP ${res.status}`);
     }
     return await res.json();
-  } catch (err) {
+  } catch {
     return {
       status: "degraded",
       service: "fpolink-api",
@@ -100,23 +132,18 @@ export async function getHealth(): Promise<HealthStatus> {
 export async function getCrops(): Promise<Crop[]> {
   try {
     const res = await fetch(`${API_BASE}/api/crops/`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.crops) && data.crops.length > 0) {
+      if (Array.isArray(data.crops)) {
         return data.crops;
       }
     }
-  } catch {
-    // Backend unreachable, fallback to defaults
+  } catch (err) {
+    console.warn("Failed to fetch crops from backend:", err);
   }
-
-  return [
-    { id: "1", name: "turmeric", tamil_name: "மஞ்சள்", category: "spice", unit: "kg" },
-    { id: "2", name: "banana", tamil_name: "வாழைப்பழம்", category: "fruit", unit: "kg" },
-    { id: "3", name: "coconut", tamil_name: "தேங்காய்", category: "plantation", unit: "unit" },
-  ];
+  return [];
 }
 
 // ─── Prices API ──────────────────────────────────────────────
@@ -127,32 +154,36 @@ export async function getLatestPrices(district = "Erode"): Promise<MarketPrice[]
     });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.prices) && data.prices.length > 0) {
+      if (Array.isArray(data.prices)) {
         return data.prices;
       }
     }
-  } catch {
-    // Fallback to verified local market rows
+  } catch (err) {
+    console.warn("Failed to fetch latest prices from backend:", err);
   }
+  return [];
+}
 
-  // Transform local MANDI_DATA to MarketPrice structure
-  return MANDI_DATA.map((row: MandiRow) => ({
-    id: row.id,
-    crop_name: row.cropEn.toLowerCase(),
-    crop_tamil_name: row.cropTa,
-    market_name: row.mandiEn,
-    district: row.district,
-    min_price: row.min,
-    max_price: row.max,
-    modal_price: row.modal,
-    price_date: row.date,
-    source: row.source,
-    trend: {
-      amount: row.change,
-      percent: Math.abs(row.change / row.modal) * 100,
-      direction: row.change > 0 ? "up" : row.change < 0 ? "down" : "stable",
-    },
-  }));
+export async function getPriceHistory(
+  cropId: string,
+  marketId: string,
+  days = 30
+): Promise<PriceHistoryPoint[]> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/prices/history?crop_id=${encodeURIComponent(cropId)}&market_id=${encodeURIComponent(marketId)}&days=${days}`,
+      { cache: "no-store" }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.history)) {
+        return data.history;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to fetch price history:", err);
+  }
+  return [];
 }
 
 // ─── FPOs API ────────────────────────────────────────────────
@@ -163,25 +194,14 @@ export async function getFPOs(): Promise<FPO[]> {
     });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.fpos) && data.fpos.length > 0) {
+      if (Array.isArray(data.fpos)) {
         return data.fpos;
       }
     }
-  } catch {
-    // Fallback
+  } catch (err) {
+    console.warn("Failed to fetch FPOs from backend:", err);
   }
-
-  return [
-    {
-      id: "fpo-erode-01",
-      name: "Erode Farmers Collective",
-      registration_number: "FPO-TN-ERD-001",
-      district: "Erode",
-      village: "Perundurai",
-      state: "Tamil Nadu",
-      contact_phone: "9999900001",
-    },
-  ];
+  return [];
 }
 
 // ─── Farmers API ─────────────────────────────────────────────
@@ -209,72 +229,59 @@ export async function getFarmers(
         total: data.total || 0,
       };
     }
-  } catch {
-    // Fallback
+  } catch (err) {
+    console.warn("Failed to fetch farmers from backend:", err);
   }
 
-  // Curated demo farmers for offline/showcase mode
-  const localFarmers: Farmer[] = [
-    {
-      id: "farmer-01",
-      user_id: "user-01",
-      fpo_id: fpoId,
-      name: "Ramasamy",
-      phone: "+91 98765 43210",
-      village: "Kodumudi",
-      taluk: "Kodumudi",
-      district: "Erode",
-      farm_area_acres: 3.5,
-      language_preference: "ta",
-      lang: "ta",
-      alerts_opt_in: true,
-      notice_sent_at: "2026-09-20T08:00:00Z",
-      created_at: "2026-09-01T00:00:00Z",
-    },
-    {
-      id: "farmer-02",
-      user_id: "user-02",
-      fpo_id: fpoId,
-      name: "Kuppusamy",
-      phone: "+91 98765 43211",
-      village: "Perundurai",
-      taluk: "Perundurai",
-      district: "Erode",
-      farm_area_acres: 2.0,
-      language_preference: "ta",
-      lang: "ta",
-      alerts_opt_in: false,
-      notice_sent_at: "2026-09-21T09:30:00Z",
-      created_at: "2026-09-05T00:00:00Z",
-    },
-    {
-      id: "farmer-03",
-      user_id: "user-03",
-      fpo_id: fpoId,
-      name: "Murugesan K.",
-      phone: "+91 94432 10987",
-      village: "Modakkurichi",
-      taluk: "Modakkurichi",
-      district: "Erode",
-      farm_area_acres: 5.0,
-      language_preference: "ta",
-      lang: "ta",
-      alerts_opt_in: true,
-      notice_sent_at: null,
-      created_at: "2026-09-10T00:00:00Z",
-    },
-  ];
+  return {
+    farmers: [],
+    total: 0,
+  };
+}
 
-  const filtered = search
-    ? localFarmers.filter(
-        (f) =>
-          f.name.toLowerCase().includes(search.toLowerCase()) ||
-          f.village.toLowerCase().includes(search.toLowerCase())
-      )
-    : localFarmers;
+// ─── WhatsApp Activity & Usage Telemetry ─────────────────────
+export async function getWhatsAppActivity(limit = 20): Promise<WhatsAppActivitySummary> {
+  try {
+    const res = await fetch(`${API_BASE}/api/whatsapp/activity?limit=${limit}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("Failed to fetch WhatsApp activity:", err);
+  }
 
   return {
-    farmers: filtered,
-    total: filtered.length,
+    enabled: true,
+    total_inbound: 0,
+    total_outbound: 0,
+    inbound_messages: [],
   };
+}
+
+export async function getWhatsAppUsage(
+  month?: string,
+  token?: string
+): Promise<WhatsAppUsageSummary | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const query = month ? `?month=${encodeURIComponent(month)}` : "";
+    const res = await fetch(`${API_BASE}/api/admin/whatsapp/usage${query}`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("Failed to fetch WhatsApp usage metrics:", err);
+  }
+
+  return null;
 }

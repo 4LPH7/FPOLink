@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -9,18 +9,15 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  ReferenceLine,
 } from "recharts";
 import {
   TrendingUp,
   ShieldCheck,
   Calendar,
-  AlertCircle,
-  Clock,
-  Sparkles,
-  Info,
+  RefreshCw,
+  BarChart2,
 } from "lucide-react";
-import { TURMERIC_DATA_30D, BANANA_DATA_30D } from "@/lib/marketData";
+import { getLatestPrices, getCrops, getPriceHistory, Crop, MarketPrice, PriceHistoryPoint } from "@/lib/api";
 
 interface PriceChartProps {
   lang: "ta" | "en";
@@ -30,277 +27,227 @@ interface PriceChartProps {
 export default function PriceChart({ lang, t }: PriceChartProps) {
   const [selectedCrop, setSelectedCrop] = useState<"turmeric" | "banana">("turmeric");
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
+  const [history, setHistory] = useState<PriceHistoryPoint[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const fullData = selectedCrop === "turmeric" ? TURMERIC_DATA_30D : BANANA_DATA_30D;
+  const fetchChartHistory = async (cropName: "turmeric" | "banana", days: number) => {
+    setLoading(true);
+    try {
+      const [crops, prices] = await Promise.all([
+        getCrops(),
+        getLatestPrices("Erode"),
+      ]);
 
-  const chartData = React.useMemo(() => {
-    if (timeframe !== "7d") return fullData;
-    const parseItemDate = (dStr: string) => {
-      const [m, d] = dStr.split("/").map(Number);
-      return new Date(2026, m - 1, d).getTime();
-    };
-    const latestTime = parseItemDate(fullData[fullData.length - 1].date);
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    return fullData.filter((item) => latestTime - parseItemDate(item.date) <= sevenDaysMs);
-  }, [fullData, timeframe]);
+      const crop = crops.find((c) => c.name.toLowerCase() === cropName);
+      const price = prices.find((p) => p.crop_name.toLowerCase().includes(cropName));
 
-  const chartDataWithRange = React.useMemo(() => {
-    return chartData.map((d) => ({
-      ...d,
-      range: [d.min, d.max],
-    }));
-  }, [chartData]);
+      if (crop && price) {
+        const hist = await getPriceHistory(crop.id, price.id, days);
+        setHistory(hist);
+      } else {
+        setHistory([]);
+      }
+    } catch (err) {
+      console.warn("Failed to load price history:", err);
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const days = timeframe === "7d" ? 7 : timeframe === "90d" ? 90 : 30;
+    fetchChartHistory(selectedCrop, days);
+  }, [selectedCrop, timeframe]);
+
+  const chartData = history.map((pt) => ({
+    date: pt.date ? pt.date.slice(5) : "",
+    modal: Math.round(Number(pt.modal_price) * 100),
+    min: Math.round(Number(pt.min_price) * 100),
+    max: Math.round(Number(pt.max_price) * 100),
+    range: [Math.round(Number(pt.min_price) * 100), Math.round(Number(pt.max_price) * 100)],
+  }));
 
   const latestPoint = chartData[chartData.length - 1];
   const previousPoint = chartData[chartData.length - 2] || chartData[0];
-  const priceDiff = latestPoint.modal - previousPoint.modal;
-  const pctChange = ((priceDiff / previousPoint.modal) * 100).toFixed(1);
+  const priceDiff = latestPoint && previousPoint ? latestPoint.modal - previousPoint.modal : 0;
+  const pctChange = previousPoint && previousPoint.modal > 0
+    ? ((priceDiff / previousPoint.modal) * 100).toFixed(1)
+    : "0.0";
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
+    <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/90 dark:border-border p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-gray-100 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-gray-100 dark:border-border gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-bold text-gray-900 tracking-tight flex items-center">
-              <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
-              {t.dashboard.market_prices} — {lang === "ta" ? (selectedCrop === "turmeric" ? "ஈரோடு மஞ்சள்" : "ஈரோடு வாழை") : (selectedCrop === "turmeric" ? "Erode Turmeric" : "Erode Banana")}
+            <h2 className="text-lg font-bold text-gray-900 dark:text-foreground tracking-tight flex items-center">
+              <TrendingUp className="w-5 h-5 text-emerald-600 mr-2" />
+              {t.dashboard.market_prices} —{" "}
+              {lang === "ta"
+                ? selectedCrop === "turmeric"
+                  ? "ஈரோடு மஞ்சள்"
+                  : "ஈரோடு வாழை"
+                : selectedCrop === "turmeric"
+                ? "Erode Turmeric"
+                : "Erode Banana"}
             </h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-800 border border-green-200">
-              <ShieldCheck className="w-3 h-3 mr-1 text-green-700" />
-              {t.price.verified_source}: OGD & CEDA
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <ShieldCheck className="w-3 h-3 mr-1 text-emerald-700 dark:text-emerald-400" />
+              {lang === "ta" ? "நேரலை Agmarknet" : "Live Agmarknet"}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "ta"
-              ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் அதிகாரப்பூர்வ மாதிரி, குறைந்தபட்ச மற்றும் அதிகபட்ச விலைகள் (₹/குவிண்டால்)"
-              : "Official modal, minimum, and maximum wholesale mandi auction rates (₹/quintal)"}
+              ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடத்தின் மாதிரி விலை நிலவரம் (ரூ./குவிண்டால்)"
+              : "Daily modal auction rates from official Erode regulated mandis (₹/quintal)"}
           </p>
         </div>
 
-        {/* Crop and Timeframe Switchers */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Crop Selector */}
-          <div className="inline-flex p-1 bg-gray-100 rounded-xl">
+        {/* Action Controls */}
+        <div className="flex items-center space-x-2 self-start sm:self-auto">
+          <div className="inline-flex p-1 bg-gray-100 dark:bg-muted rounded-xl text-xs font-medium">
             <button
               onClick={() => setSelectedCrop("turmeric")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all ${
                 selectedCrop === "turmeric"
-                  ? "bg-white text-green-800 shadow-xs"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-card text-emerald-700 dark:text-emerald-400 font-bold shadow-xs"
+                  : "text-gray-500 dark:text-muted-foreground hover:text-gray-700"
               }`}
             >
-              🌾 {t.crops.turmeric}
+              {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
             </button>
             <button
               onClick={() => setSelectedCrop("banana")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all ${
                 selectedCrop === "banana"
-                  ? "bg-white text-green-800 shadow-xs"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-card text-emerald-700 dark:text-emerald-400 font-bold shadow-xs"
+                  : "text-gray-500 dark:text-muted-foreground hover:text-gray-700"
               }`}
             >
-              🍌 {t.crops.banana}
+              {lang === "ta" ? "வாழை" : "Banana"}
             </button>
           </div>
 
-          {/* Timeframe Selector */}
-          <div className="inline-flex p-1 bg-gray-100 rounded-xl">
+          <div className="hidden sm:inline-flex p-1 bg-gray-100 dark:bg-muted rounded-xl text-xs font-medium">
             <button
               onClick={() => setTimeframe("7d")}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all ${
                 timeframe === "7d"
-                  ? "bg-white text-gray-900 shadow-xs"
-                  : "text-gray-500 hover:text-gray-800"
+                  ? "bg-white dark:bg-card text-gray-900 dark:text-foreground font-bold shadow-xs"
+                  : "text-gray-500 dark:text-muted-foreground hover:text-gray-700"
               }`}
             >
-              {t.dashboard.timeframe_7d}
+              7D
             </button>
             <button
               onClick={() => setTimeframe("30d")}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all ${
                 timeframe === "30d"
-                  ? "bg-white text-gray-900 shadow-xs"
-                  : "text-gray-500 hover:text-gray-800"
+                  ? "bg-white dark:bg-card text-gray-900 dark:text-foreground font-bold shadow-xs"
+                  : "text-gray-500 dark:text-muted-foreground hover:text-gray-700"
               }`}
             >
-              {t.dashboard.timeframe_30d}
+              30D
             </button>
           </div>
         </div>
       </div>
 
-      {/* KPI & Signal Highlight Ribbon */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-5 p-4 rounded-xl bg-gradient-to-r from-emerald-50/70 via-green-50/50 to-amber-50/50 border border-emerald-100">
+      {/* Metric Highlight */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 my-2 border-b border-gray-100 dark:border-border">
         <div>
-          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-            {t.price.modal_price} ({lang === "ta" ? "நேற்று" : "Latest"})
+          <span className="text-xs text-muted-foreground block">
+            {lang === "ta" ? "தற்போதைய மாதிரி விலை" : "Current Modal Price"}
           </span>
-          <div className="flex items-baseline space-x-2 mt-0.5">
-            <span className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              ₹{latestPoint.modal.toLocaleString()}
-            </span>
-            <span className="text-xs font-medium text-gray-500">/ {t.dashboard.per_quintal}</span>
+          <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-foreground">
+            {latestPoint ? `₹${latestPoint.modal.toLocaleString()}` : "—"}
+          </span>
+          <span className="text-[10px] text-muted-foreground block">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
+        </div>
+
+        <div>
+          <span className="text-xs text-muted-foreground block">
+            {lang === "ta" ? "விலை மாற்றம்" : "Price Movement"}
+          </span>
+          <div className="flex items-center space-x-1 mt-0.5">
             <span
-              className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                priceDiff >= 0
-                  ? "text-emerald-700 bg-emerald-100/80"
-                  : "text-red-700 bg-red-100/80"
+              className={`text-sm sm:text-base font-bold ${
+                Number(pctChange) >= 0 ? "text-emerald-600" : "text-destructive"
               }`}
             >
-              {priceDiff >= 0 ? "+" : ""}{pctChange}%
+              {Number(pctChange) >= 0 ? `+${pctChange}%` : `${pctChange}%`}
             </span>
           </div>
-          <span className="text-[11px] text-gray-500 mt-1 block">
-            {lang === "ta" ? "விற்பனைக்கூடம்:" : "Mandi:"} {latestPoint.mandi}
+          <span className="text-[10px] text-muted-foreground block">
+            {priceDiff >= 0 ? `+₹${priceDiff}` : `-₹${Math.abs(priceDiff)}`}
           </span>
         </div>
 
         <div>
-          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-            {t.price.min_price} – {t.price.max_price}
+          <span className="text-xs text-muted-foreground block">
+            {lang === "ta" ? "குறைந்தபட்ச விலை" : "Minimum Auction"}
           </span>
-          <p className="text-xl font-bold text-gray-800 mt-1">
-            ₹{latestPoint.min.toLocaleString()} – ₹{latestPoint.max.toLocaleString()}
-          </p>
-          <span className="text-[11px] text-gray-500 mt-1 block">
-            {lang === "ta" ? "தர நிர்ணய வரம்பு (Grade A/B/C)" : "Commercial Grade Spread"}
+          <span className="text-lg font-bold text-gray-700 dark:text-muted-foreground">
+            {latestPoint ? `₹${latestPoint.min.toLocaleString()}` : "—"}
           </span>
+          <span className="text-[10px] text-muted-foreground block">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
         </div>
 
-        {/* ML Signal */}
-        <div className="flex flex-col justify-center border-t md:border-t-0 md:border-l border-emerald-200/60 md:pl-4">
-          <div className="flex items-center space-x-1 text-xs font-bold text-emerald-800 uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600 mr-1" />
-            <span>{t.dashboard.signal_title}</span>
-          </div>
-          <div className="mt-1 flex items-center space-x-2">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-extrabold bg-green-600 text-white shadow-xs">
-              {t.dashboard.hold_signal}
-            </span>
-            <span className="text-xs font-semibold text-gray-700">
-              {lang === "ta" ? "+2.9% உயர்வு எதிர்பார்ப்பு" : "Expected +2.9% in 14d"}
-            </span>
-          </div>
-          <span className="text-[10px] text-gray-500 mt-1">
-            {lang === "ta"
-              ? "LightGBM & Statsforecast மாதிரி முன்கணிப்பு (ஈரோடு மாவட்டம்)"
-              : "LightGBM & Statsforecast dual ensemble model"}
+        <div>
+          <span className="text-xs text-muted-foreground block">
+            {lang === "ta" ? "அதிகபட்ச விலை" : "Maximum Auction"}
           </span>
+          <span className="text-lg font-bold text-gray-700 dark:text-muted-foreground">
+            {latestPoint ? `₹${latestPoint.max.toLocaleString()}` : "—"}
+          </span>
+          <span className="text-[10px] text-muted-foreground block">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
         </div>
       </div>
 
-      {/* Chart Canvas */}
-      <div className="h-72 sm:h-80 w-full mt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartDataWithRange} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="modalGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#16a34a" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#16a34a" stopOpacity={0.0} />
-              </linearGradient>
-              <linearGradient id="rangeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#86efac" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#86efac" stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
-
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-
-            <XAxis
-              dataKey={lang === "ta" ? "dateTa" : "date"}
-              tickLine={false}
-              axisLine={{ stroke: "#e5e7eb" }}
-              tick={{ fontSize: 12, fill: "#6b7280" }}
-            />
-
-            <YAxis
-              domain={["auto", "auto"]}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(val) => `₹${(val / 1000).toFixed(1)}k`}
-              tick={{ fontSize: 12, fill: "#6b7280" }}
-              width={50}
-            />
-
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  const d = payload[0].payload;
-                  return (
-                    <div className="bg-gray-900/95 text-white p-3 rounded-xl shadow-xl border border-gray-800 text-xs backdrop-blur-sm min-w-[170px]">
-                      <p className="font-semibold text-gray-300 flex items-center justify-between border-b border-gray-700/80 pb-1.5 mb-2">
-                        <span>{lang === "ta" ? d.dateTa : d.date}</span>
-                        <span className="text-[10px] text-green-400 font-bold">{d.mandi}</span>
-                      </p>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-green-400 font-bold text-sm">
-                          <span>{t.price.modal_price}:</span>
-                          <span>₹{d.modal.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-gray-300">
-                          <span>{t.price.max_price}:</span>
-                          <span>₹{d.max.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-gray-400">
-                          <span>{t.price.min_price}:</span>
-                          <span>₹{d.min.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      {d.anomaly && (
-                        <div className="mt-2 pt-1.5 border-t border-gray-700/80 text-[10px] text-amber-400 font-semibold flex items-center">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          <span>{t.price.anomaly}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-
-            {/* Floating Min / Max Range Band */}
-            <Area
-              type="monotone"
-              dataKey="range"
-              stroke="#86efac"
-              strokeWidth={1}
-              strokeDasharray="2 2"
-              fill="url(#rangeGradient)"
-              name="Max"
-            />
-            {/* Modal Price Line & Gradient Fill */}
-            <Area
-              type="monotone"
-              dataKey="modal"
-              stroke="#16a34a"
-              strokeWidth={2.5}
-              fill="url(#modalGradient)"
-              activeDot={{ r: 6, stroke: "#ffffff", strokeWidth: 2, fill: "#15803d" }}
-              name="Modal"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Legend & Provenance Footnote */}
-      <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-2">
-        <div className="flex items-center space-x-4">
-          <span className="flex items-center space-x-1.5">
-            <span className="w-3 h-3 rounded-full bg-green-600 inline-block"></span>
-            <span className="font-medium text-gray-700">{t.price.modal_price}</span>
-          </span>
-          <span className="flex items-center space-x-1.5">
-            <span className="w-3 h-3 rounded bg-green-200 inline-block"></span>
-            <span className="font-medium text-gray-700">{t.price.min_price} – {t.price.max_price}</span>
-          </span>
-        </div>
-        <span className="text-[11px] text-gray-400">
-          {lang === "ta"
-            ? `கடைசியாக புதுப்பிக்கப்பட்டது: ${latestPoint.dateTa}, 06:00 IST (Agmarknet & CEDA)`
-            : `Last updated: ${latestPoint.date}, 06:00 IST (Agmarknet & CEDA verified)`}
-        </span>
+      {/* Chart Area */}
+      <div className="pt-3">
+        {loading ? (
+          <div className="h-64 flex items-center justify-center text-muted-foreground">
+            <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+            <span>{lang === "ta" ? "ஏற்றுகிறது..." : "Loading price observations..."}</span>
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-64 flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
+            <BarChart2 className="w-10 h-10 mb-2 opacity-40" />
+            <p className="font-medium text-sm">
+              {lang === "ta" ? "விலை வரலாற்றுத் தகவல்கள் இல்லை" : "No price history available"}
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground">
+              {lang === "ta" ? "தினசரி மண்டி தகவல் பெறப்பட்டதும் வரைபடம் தோன்றும்." : "Live series will render once observations are ingested."}
+            </p>
+          </div>
+        ) : (
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorModal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${v}`} />
+                <Tooltip formatter={(v: number) => [`₹${v}`, lang === "ta" ? "மாதிரி விலை" : "Modal Price"]} />
+                <Area
+                  type="monotone"
+                  dataKey="modal"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorModal)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   );

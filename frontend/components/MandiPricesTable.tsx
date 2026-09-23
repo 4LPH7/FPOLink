@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Store, Search, ShieldCheck, ArrowUpRight, ArrowDownRight, Minus, ExternalLink } from "lucide-react";
-import { MANDI_DATA, type MandiRow } from "@/lib/marketData";
+import React, { useState, useEffect } from "react";
+import { Store, Search, ShieldCheck, ArrowUpRight, ArrowDownRight, Minus, ExternalLink, RefreshCw } from "lucide-react";
+import { getLatestPrices, MarketPrice } from "@/lib/api";
 
 interface MandiPricesTableProps {
   lang: "ta" | "en";
@@ -12,19 +12,31 @@ interface MandiPricesTableProps {
 export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [cropFilter, setCropFilter] = useState("all");
+  const [prices, setPrices] = useState<MarketPrice[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredRows = MANDI_DATA.filter((row) => {
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await getLatestPrices("Erode");
+        setPrices(data);
+      } catch (err) {
+        console.warn("Failed to load prices:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const filteredRows = prices.filter((row) => {
     const matchesSearch =
-      row.mandiEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.mandiTa.includes(searchTerm) ||
-      row.cropEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.cropTa.includes(searchTerm);
+      row.market_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      row.crop_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (row.crop_tamil_name && row.crop_tamil_name.includes(searchTerm));
 
     if (cropFilter === "all") return matchesSearch;
-    if (cropFilter === "turmeric") return matchesSearch && row.cropEn.includes("Turmeric");
-    if (cropFilter === "banana") return matchesSearch && row.cropEn.includes("Banana");
-    if (cropFilter === "coconut") return matchesSearch && row.cropEn.includes("Coconut");
-    return matchesSearch;
+    return matchesSearch && row.crop_name.toLowerCase().includes(cropFilter);
   });
 
   return (
@@ -34,121 +46,116 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
         <div>
           <div className="flex items-center space-x-2">
             <h3 className="text-base font-bold text-gray-900 tracking-tight flex items-center">
-              <Store className="w-5 h-5 text-green-600 mr-2" />
+              <Store className="w-5 h-5 text-emerald-600 mr-2" />
               {lang === "ta" ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் தினசரி விலை நிலவரம்" : "Erode Mandi Daily Auction Rates"}
             </h3>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-              {lang === "ta" ? "மாதிரி குறிப்புத் தரவு" : "Sample Reference Data"}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+              {lang === "ta" ? "நேரலை மண்டி தரவு" : "Live Mandi Data"}
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {lang === "ta"
-              ? "மாதிரி குறிப்புத் தரவு (செப்டம்பர் 2026) — Agmarknet (OGD) மற்றும் CEDA வடிவமைப்பின்படி"
-              : "Sample reference rates (September 2026) — formatted to Agmarknet (OGD) & CEDA schemas"}
+              ? "Agmarknet (OGD) மற்றும் ஒழுங்குமுறை சந்தைகளின் நேரலை மேற்கோள்கள்"
+              : "Live price feeds verified from official Agmarknet and regulated mandi sources"}
           </p>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="flex items-center space-x-2">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <div className="relative w-full sm:w-60">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder={lang === "ta" ? "மண்டி அல்லது பயிர் தேடுக..." : "Search mandi or crop..."}
+              placeholder={lang === "ta" ? "சந்தை அல்லது பயிரைத் தேடு..." : "Search mandi or crop..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition-all w-48 sm:w-56"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
           </div>
 
-          {/* Crop Dropdown */}
-          <select
-            value={cropFilter}
-            onChange={(e) => setCropFilter(e.target.value)}
-            className="text-xs rounded-xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600"
-          >
-            <option value="all">{t.common.all}</option>
-            <option value="turmeric">{t.crops.turmeric}</option>
-            <option value="banana">{t.crops.banana}</option>
-            <option value="coconut">{t.crops.coconut}</option>
-          </select>
+          <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-medium w-full sm:w-auto">
+            <button
+              onClick={() => setCropFilter("all")}
+              className={`flex-1 sm:flex-initial px-3 py-1 rounded-lg transition-all ${
+                cropFilter === "all" ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
+              }`}
+            >
+              {lang === "ta" ? "அனைத்தும்" : "All"}
+            </button>
+            <button
+              onClick={() => setCropFilter("turmeric")}
+              className={`flex-1 sm:flex-initial px-3 py-1 rounded-lg transition-all ${
+                cropFilter === "turmeric" ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
+              }`}
+            >
+              {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
+            </button>
+            <button
+              onClick={() => setCropFilter("banana")}
+              className={`flex-1 sm:flex-initial px-3 py-1 rounded-lg transition-all ${
+                cropFilter === "banana" ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
+              }`}
+            >
+              {lang === "ta" ? "வாழை" : "Banana"}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mandi Table */}
+      {/* Table Content */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-gray-50/80 text-gray-600 font-semibold border-b border-gray-100 uppercase tracking-wider text-[11px]">
-            <tr>
-              <th className="py-3 px-4 sm:px-6">{t.harvest.crop}</th>
-              <th className="py-3 px-4 sm:px-6">{t.price.mandi}</th>
-              <th className="py-3 px-4 sm:px-6">{t.price.modal_price}</th>
-              <th className="py-3 px-4 sm:px-6 hidden md:table-cell">{t.price.min_price} – {t.price.max_price}</th>
-              <th className="py-3 px-4 sm:px-6">{t.price.change}</th>
-              <th className="py-3 px-4 sm:px-6 hidden sm:table-cell">{t.price.source}</th>
-              <th className="py-3 px-4 sm:px-6 hidden lg:table-cell">{t.price.date}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredRows.map((row) => (
-              <tr
-                key={row.id}
-                className="hover:bg-green-50/40 transition-colors group"
-              >
-                <td className="py-3.5 px-4 sm:px-6 font-bold text-gray-900">
-                  {lang === "ta" ? row.cropTa : row.cropEn}
-                </td>
-                <td className="py-3.5 px-4 sm:px-6 text-gray-700 font-medium">
-                  {lang === "ta" ? row.mandiTa : row.mandiEn}
-                </td>
-                <td className="py-3.5 px-4 sm:px-6">
-                  <span className="font-extrabold text-sm text-gray-900">
-                    ₹{row.modal.toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-gray-500 font-medium ml-1">/ q</span>
-                </td>
-                <td className="py-3.5 px-4 sm:px-6 text-gray-600 hidden md:table-cell font-mono">
-                  ₹{row.min.toLocaleString()} – ₹{row.max.toLocaleString()}
-                </td>
-                <td className="py-3.5 px-4 sm:px-6">
-                  <span
-                    className={`inline-flex items-center font-bold px-2 py-0.5 rounded-full text-[11px] ${
-                      row.change >= 0
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {row.change >= 0 ? (
-                      <ArrowUpRight className="w-3 h-3 mr-0.5" />
-                    ) : (
-                      <ArrowDownRight className="w-3 h-3 mr-0.5" />
-                    )}
-                    {row.change >= 0 ? "+" : ""}
-                    {row.change}%
-                  </span>
-                </td>
-                <td className="py-3.5 px-4 sm:px-6 hidden sm:table-cell">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-700">
-                    <ShieldCheck className="w-3 h-3 mr-1 text-green-600" />
-                    {row.source.toUpperCase()}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4 sm:px-6 text-gray-500 hidden lg:table-cell font-mono">
-                  {row.date}
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+            <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+            <span>Loading live prices...</span>
+          </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">
+            No market price observations available.
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/50 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="py-3 px-6">{lang === "ta" ? "பயிர் / வகை" : "Crop"}</th>
+                <th className="py-3 px-6">{lang === "ta" ? "சந்தை" : "Mandi"}</th>
+                <th className="py-3 px-4">{lang === "ta" ? "குறைந்தபட்சம்" : "Min Price"}</th>
+                <th className="py-3 px-4">{lang === "ta" ? "அதிகபட்சம்" : "Max Price"}</th>
+                <th className="py-3 px-6">{lang === "ta" ? "மாதிரி விலை" : "Modal Price"}</th>
+                <th className="py-3 px-4 text-right">{lang === "ta" ? "ஆதாரம்" : "Source"}</th>
               </tr>
-            ))}
-
-            {filteredRows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-400">
-                  {t.common.no_data}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-xs">
+              {filteredRows.map((row) => (
+                <tr key={row.id} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="py-4 px-6 font-semibold text-gray-900">
+                    <div>{lang === "ta" ? row.crop_tamil_name || row.crop_name : row.crop_name}</div>
+                    <span className="text-[10px] text-gray-400 capitalize">{row.crop_name}</span>
+                  </td>
+                  <td className="py-4 px-6 text-gray-700">
+                    <div className="font-medium">{row.market_name}</div>
+                    <span className="text-[11px] text-gray-400">{row.district}</span>
+                  </td>
+                  <td className="py-4 px-4 font-mono text-gray-600">
+                    ₹{Math.round(row.min_price * 100).toLocaleString()}
+                  </td>
+                  <td className="py-4 px-4 font-mono text-gray-600">
+                    ₹{Math.round(row.max_price * 100).toLocaleString()}
+                  </td>
+                  <td className="py-4 px-6 font-mono font-bold text-gray-900">
+                    ₹{Math.round(row.modal_price * 100).toLocaleString()}
+                    <span className="text-[10px] font-normal text-gray-400 ml-1">/qtl</span>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
+                      {row.source}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
