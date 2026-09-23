@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +16,22 @@ class Settings(BaseSettings):
         for old in ("postgresql://", "postgres://"):
             if v.startswith(old):
                 return v.replace(old, "postgresql+psycopg://", 1)
+        return v
+
+    @field_validator("DEFAULT_CROPS", "CORS_ORIGINS", mode="after")
+    @classmethod
+    def parse_string_list(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [x.strip() for x in v.split(",") if x.strip()]
         return v
 
     ENVIRONMENT: str = "development"
@@ -85,10 +101,10 @@ class Settings(BaseSettings):
     # Geography & Scope
     STATE: str = "Tamil Nadu"
     DEFAULT_DISTRICT: str = "Erode"
-    DEFAULT_CROPS: List[str] = ["turmeric", "banana", "coconut"]
+    DEFAULT_CROPS: Union[List[str], str] = ["turmeric", "banana", "coconut"]
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000"]
 
     # Sentry (optional error monitoring)
     SENTRY_DSN: Optional[str] = None

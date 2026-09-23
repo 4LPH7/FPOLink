@@ -24,10 +24,10 @@
     "semantic_hash": "8a14c7841c6d0eb7670585fb0770c443"
   },
   "backend/alembic/versions/0003_harvest_source_message_id.py": {
-    "mtime": 1790007276.9436245,
-    "seen": 1790138778.659136,
-    "ast_hash": "48b69d9edaa388554529e3ab6d112ea8",
-    "semantic_hash": "48b69d9edaa388554529e3ab6d112ea8"
+    "mtime": 1790139501.243176,
+    "seen": 1790159587.3080084,
+    "ast_hash": "56cdcac963fa0ce03c91e09e591d512d",
+    "semantic_hash": ""
   },
   "backend/alembic/versions/__init__.py": {
     "mtime": 1789745880.9314702,
@@ -108,16 +108,16 @@
     "semantic_hash": "7780884a87931062ce07efbe30b569d1"
   },
   "backend/app/api/whatsapp.py": {
-    "mtime": 1789913843.569111,
-    "seen": 1790138778.6591494,
-    "ast_hash": "ab70d386923328ecce769b54cfc61d11",
-    "semantic_hash": "ab70d386923328ecce769b54cfc61d11"
+    "mtime": 1790142477.551999,
+    "seen": 1790159587.3108604,
+    "ast_hash": "c44fedb0323a1ae64bc73436c741af6e",
+    "semantic_hash": ""
   },
   "backend/app/config.py": {
-    "mtime": 1789924265.5075424,
-    "seen": 1790138778.65915,
-    "ast_hash": "4442d48c9d9b0bc0b570d2c22d7ea5db",
-    "semantic_hash": "4442d48c9d9b0bc0b570d2c22d7ea5db"
+    "mtime": 1790140474.281081,
+    "seen": 1790159587.3108644,
+    "ast_hash": "c918af89e08c31d34cc9241317f2faec",
+    "semantic_hash": ""
   },
   "backend/app/core/__init__.py": {
     "mtime": 1789921940.5372877,
@@ -198,10 +198,10 @@
     "semantic_hash": "bcaa8e8175db279210f78390ebc83343"
   },
   "backend/app/main.py": {
-    "mtime": 1789911784.4976547,
-    "seen": 1790138778.6591794,
-    "ast_hash": "3fde1015f1a3fead9173d92c44a8f095",
-    "semantic_hash": "3fde1015f1a3fead9173d92c44a8f095"
+    "mtime": 1790140474.281081,
+    "seen": 1790159587.3136415,
+    "ast_hash": "2f5e856efa9ef14454beecb3c0bbe9d0",
+    "semantic_hash": ""
   },
   "backend/app/messaging/__init__.py": {
     "mtime": 1789911768.6592903,
@@ -210,16 +210,16 @@
     "semantic_hash": "d7de33cfffd33fc6dcd6e2209c5e2a7b"
   },
   "backend/app/messaging/base.py": {
-    "mtime": 1789981167.6054218,
-    "seen": 1790138778.6591809,
-    "ast_hash": "2bfe3c03efd51a7757ac8d47903820f7",
-    "semantic_hash": "2bfe3c03efd51a7757ac8d47903820f7"
+    "mtime": 1790142477.5510004,
+    "seen": 1790159587.3138444,
+    "ast_hash": "47d84e55b479598be4059a71d2f07f62",
+    "semantic_hash": ""
   },
   "backend/app/messaging/whatsapp_cloud.py": {
-    "mtime": 1790006415.2306633,
-    "seen": 1790138778.6591814,
-    "ast_hash": "63ab17786b5ae85d5feabed10c3a2dae",
-    "semantic_hash": "63ab17786b5ae85d5feabed10c3a2dae"
+    "mtime": 1790142477.551999,
+    "seen": 1790159587.313847,
+    "ast_hash": "6499b317ae1bb2da2b8a3afd44507e35",
+    "semantic_hash": ""
   },
   "backend/app/ml/__init__.py": {
     "mtime": 1789743789.5670288,
@@ -228,10 +228,10 @@
     "semantic_hash": "cbd61d0f2dc2ed227541c8119499463e"
   },
   "backend/app/models/__init__.py": {
-    "mtime": 1789913346.1116722,
-    "seen": 1790138778.6591825,
-    "ast_hash": "56d5462cddfcd8600cf4b59184f3937a",
-    "semantic_hash": "56d5462cddfcd8600cf4b59184f3937a"
+    "mtime": 1790142876.699599,
+    "seen": 1790159587.3140357,
+    "ast_hash": "77a981cb4ad948bf8fc2f21c52edfb25",
+    "semantic_hash": ""
   },
   "backend/app/models/aggregation.py": {
     "mtime": 1789819154.055883,
@@ -264,10 +264,10 @@
     "semantic_hash": "4b4544d4a350e54eaf262b2ff02ce8ba"
   },
   "backend/app/models/farmer.py": {
-    "mtime": 1789924235.2563205,
-    "seen": 1790138778.6591873,
-    "ast_hash": "84e4a3a9f93dc42ee5a4fe99ece8e48e",
-    "semantic_hash": "84e4a3a9f93dc42ee5a4fe99ece8e48e"
+    "mtime": 1790140474.2833586,
+    "seen": 1790159587.315048,
+    "ast_hash": "c901de70b201b2caa08f24466da52ce2",
+    "semantic_hash": ""
   },
   "backend/app/models/forecast_log.py": {
     "mtime": 1789819154.078972,
@@ -354,10 +354,10 @@
     "semantic_hash": "9ad821c432a3c4b27e595e452ca1be13"
   },
   "backend/app/models/whatsapp.py": {
-    "mtime": 1789913456.9414299,
-    "seen": 1790138778.6591969,
-    "ast_hash": "d89ea79476f5d7e710020fa38363850c",
-    "semantic_hash": "d89ea79476f5d7e710020fa38363850c"
+    "mtime": 1790142477.5510004,
+    "seen": 1790159587.3177178,
+    "ast_hash": "aacf3c82f363d784ac4d43366147b963",
+    "semantic_hash": ""
   },
   "backend/app/notifications/__init__.py": {
     "mtime": 1789743789.576379,
@@ -444,10 +444,10 @@
     "semantic_hash": "16d9cc2febe49ae84bbdd628094348b6"
   },
   "backend/app/services/fpo_service.py": {
-    "mtime": 1789819154.0689464,
-    "seen": 1790138778.6592088,
-    "ast_hash": "12001f316fa80fa3d44f4b42bd725b14",
-    "semantic_hash": "12001f316fa80fa3d44f4b42bd725b14"
+    "mtime": 1790140474.1341417,
+    "seen": 1790159587.320562,
+    "ast_hash": "b7604e3ab29950c99149c50ac4cc8537",
+    "semantic_hash": ""
   },
   "backend/app/services/harvest_service.py": {
     "mtime": 1790007188.7045953,
@@ -498,10 +498,10 @@
     "semantic_hash": "16d6424d36031a536d8f6510892197d9"
   },
   "backend/app/worker.py": {
-    "mtime": 1789819154.050883,
-    "seen": 1790138778.6592152,
-    "ast_hash": "09d8d024c9349c078dde248279786a5f",
-    "semantic_hash": "09d8d024c9349c078dde248279786a5f"
+    "mtime": 1790140474.2883627,
+    "seen": 1790159587.3221776,
+    "ast_hash": "5968b285adff912a20f269de48aae66f",
+    "semantic_hash": ""
   },
   "backend/entrypoint.sh": {
     "mtime": 1789817355.0152018,
@@ -642,10 +642,10 @@
     "semantic_hash": "f0db3c77fc56359751ef03ce034c02d3"
   },
   "backend/tests/test_whatsapp_bot.py": {
-    "mtime": 1789978978.3791509,
-    "seen": 1790138778.6592317,
-    "ast_hash": "e2cf1c85c8ac01bcb144127e221bb916",
-    "semantic_hash": "e2cf1c85c8ac01bcb144127e221bb916"
+    "mtime": 1790140474.28936,
+    "seen": 1790159587.3267977,
+    "ast_hash": "f5449b315e45ec56e80676c692b162e5",
+    "semantic_hash": ""
   },
   "backend/tests/test_whatsapp_harvest_flow.py": {
     "mtime": 1790007276.9461486,
@@ -790,5 +790,149 @@
     "seen": 1790138778.659248,
     "ast_hash": "130469b4894d9a3d8783798ab6587893",
     "semantic_hash": "130469b4894d9a3d8783798ab6587893"
+  },
+  "backend/alembic/versions/0004_phase4_outbound.py": {
+    "mtime": 1790140875.2975752,
+    "seen": 1790159587.308012,
+    "ast_hash": "c2ec8f3ca480a911d7ce70a6ee62cdc7",
+    "semantic_hash": ""
+  },
+  "backend/app/api/admin_whatsapp.py": {
+    "mtime": 1790140474.2800815,
+    "seen": 1790159587.3088322,
+    "ast_hash": "3368f81d0b1d88bd3ba8db6e3d1feb7a",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/whatsapp_usage.py": {
+    "mtime": 1790140474.2843597,
+    "seen": 1790159587.3192942,
+    "ast_hash": "8ed60e682419ace2d41ccb6a04bccf29",
+    "semantic_hash": ""
+  },
+  "backend/app/services/whatsapp_alerts.py": {
+    "mtime": 1790140474.285414,
+    "seen": 1790159587.32152,
+    "ast_hash": "32888e58d554e2dcd2d5573e65cab52d",
+    "semantic_hash": ""
+  },
+  "backend/app/services/whatsapp_digest.py": {
+    "mtime": 1790140474.285414,
+    "seen": 1790159587.3215227,
+    "ast_hash": "2d7334fbd1315ce2f55529da338247ad",
+    "semantic_hash": ""
+  },
+  "backend/app/services/whatsapp_status.py": {
+    "mtime": 1790142477.5529983,
+    "seen": 1790159587.3215244,
+    "ast_hash": "a822981cf9d8690a49c222ffca78e060",
+    "semantic_hash": ""
+  },
+  "backend/app/services/whatsapp_usage.py": {
+    "mtime": 1790140474.2883627,
+    "seen": 1790159587.3215265,
+    "ast_hash": "682ce9ff65e725ddf39cb702d680a2fc",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_whatsapp_daily_digest.py": {
+    "mtime": 1790144333.1622388,
+    "seen": 1790159587.3268013,
+    "ast_hash": "eb16cc027c155c52245eb4af4f568d9b",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_whatsapp_price_alerts.py": {
+    "mtime": 1790144407.2574596,
+    "seen": 1790159587.3274117,
+    "ast_hash": "fb8834249283ee64a83cde0c501c9dbd",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_whatsapp_status_webhook.py": {
+    "mtime": 1790142520.3907514,
+    "seen": 1790159587.3274152,
+    "ast_hash": "dfa5977746359a004d69bfeacb9e824e",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_whatsapp_usage_and_circuit_breaker.py": {
+    "mtime": 1790140474.2913587,
+    "seen": 1790159587.3274176,
+    "ast_hash": "071b8372a9d8636e5616f283d1f54cc4",
+    "semantic_hash": ""
+  },
+  ".agents/rules/graphify.md": {
+    "mtime": 1790140474.2780793,
+    "seen": 1790159587.3316123,
+    "ast_hash": "f1e53ecc9194573d3c28fc116c743a2e",
+    "semantic_hash": ""
+  },
+  ".agents/workflows/graphify.md": {
+    "mtime": 1790140474.2780793,
+    "seen": 1790159587.3316147,
+    "ast_hash": "6d73634a678cf1e1c71930adf80bd1f0",
+    "semantic_hash": ""
+  },
+  ".github/dependabot.yml": {
+    "mtime": 1789923233.902507,
+    "seen": 1790159587.331617,
+    "ast_hash": "0e4e521549493d99248e7f12b27d45cc",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1789922799.8800952,
+    "seen": 1790159587.3316195,
+    "ast_hash": "dece76abe23b7891fad76675a564f783",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1789911693.903669,
+    "seen": 1790159587.331622,
+    "ast_hash": "ea2d8a42f2bac404e2606f7622a2f885",
+    "semantic_hash": ""
+  },
+  "backend/requirements.txt": {
+    "mtime": 1789913792.981914,
+    "seen": 1790159587.3316245,
+    "ast_hash": "e0e5d36af802ce8676471e011d7eb801",
+    "semantic_hash": ""
+  },
+  "config/fpolink.yaml": {
+    "mtime": 1789743667.7561579,
+    "seen": 1790159587.331627,
+    "ast_hash": "7acc2ac4af681e48f3307689b428f9e4",
+    "semantic_hash": ""
+  },
+  "docker-compose.yml": {
+    "mtime": 1789820009.7166388,
+    "seen": 1790159587.3316293,
+    "ast_hash": "54c59a2a8037d152e867dce4b13118c7",
+    "semantic_hash": ""
+  },
+  "docs/WHATSAPP_SETUP.md": {
+    "mtime": 1789889466.0,
+    "seen": 1790159587.3316314,
+    "ast_hash": "1b1c219cd634fc67712f67574bb8b206",
+    "semantic_hash": ""
+  },
+  "docs/data-provenance.md": {
+    "mtime": 1789906123.2085812,
+    "seen": 1790159587.3316333,
+    "ast_hash": "b126d453b12963e595f07eaff74847da",
+    "semantic_hash": ""
+  },
+  "docs/manual-ceda-backfill-guide.md": {
+    "mtime": 1789982303.2906892,
+    "seen": 1790159587.3316355,
+    "ast_hash": "7d829d56d38b88e2050309da3771d886",
+    "semantic_hash": ""
+  },
+  "tasks/plan.md": {
+    "mtime": 1789910033.7391858,
+    "seen": 1790159587.3316376,
+    "ast_hash": "9b93c28b6c9e6700f4f96d1d6fb89d7a",
+    "semantic_hash": ""
+  },
+  "tasks/todo.md": {
+    "mtime": 1790140474.3379288,
+    "seen": 1790159587.3316398,
+    "ast_hash": "b2657ed65f2449028da0beda2dfb9178",
+    "semantic_hash": ""
   }
 }

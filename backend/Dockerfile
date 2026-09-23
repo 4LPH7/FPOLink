@@ -13,8 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Make entrypoint executable
-RUN chmod +x entrypoint.sh
+# Make entrypoint scripts executable
+RUN chmod +x entrypoint.sh entrypoint.prod.sh
+
 
 EXPOSE 8000
 

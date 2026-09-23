@@ -33,10 +33,11 @@ QUINTAL_TO_KG = Decimal("100")
 TN_CENSUS_STATE_ID = 33
 ERODE_CENSUS_DISTRICT_ID = 610
 
-# Known commodity IDs to avoid list-everything calls
+# Known commodity IDs from CEDA Agmarknet API
 KNOWN_COMMODITY_IDS: Dict[str, int] = {
-    "turmeric": 14,
-    "banana": 22,
+    "turmeric": 39,
+    "banana": 19,
+    "coconut": 138,
 }
 
 
@@ -174,6 +175,15 @@ class CEDAAPIProvider(MarketDataProvider):
         if resp is not None:
             try:
                 data = resp.json()
+                output = data.get("output", {})
+                if isinstance(output, dict) and "data" in output:
+                    return [
+                        {
+                            "id": item.get("commodity_id"),
+                            "name": item.get("commodity_name"),
+                        }
+                        for item in output["data"]
+                    ]
                 return data.get("commodities", [])
             except Exception as e:
                 logger.error(f"Error parsing CEDA commodities JSON: {e}")
@@ -189,6 +199,9 @@ class CEDAAPIProvider(MarketDataProvider):
         if resp is not None:
             try:
                 data = resp.json()
+                output = data.get("output", {})
+                if isinstance(output, dict) and "data" in output:
+                    return output["data"]
                 return data.get("geographies", [])
             except Exception as e:
                 logger.error(f"Error parsing CEDA geographies JSON: {e}")
@@ -245,7 +258,13 @@ class CEDAAPIProvider(MarketDataProvider):
         if resp is not None:
             try:
                 data = resp.json()
-                for item in data.get("data", []):
+                items = []
+                if "output" in data and isinstance(data["output"], dict):
+                    items = data["output"].get("data", [])
+                elif "data" in data and isinstance(data["data"], list):
+                    items = data["data"]
+
+                for item in items:
                     record = self._parse_api_item(item, crop, district)
                     if record:
                         records.append(record)
