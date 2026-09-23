@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -21,11 +21,9 @@ from app.models.fpo import FPO
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.user import User, UserRole
-from app.models.whatsapp import OutboundMessage, WhatsAppRecipientStatus
+from app.models.whatsapp import OutboundMessage
 from app.services.db_bot_services import DbBotServices
 from app.services.whatsapp_digest import DailyDigestService
-from app.services.whatsapp_status import WhatsAppStatusService
-from app.services.whatsapp_usage import WhatsAppUsageService
 
 
 @compiles(JSONB, "sqlite")

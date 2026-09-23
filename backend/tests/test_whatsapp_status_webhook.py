@@ -6,7 +6,6 @@ import hashlib
 import hmac
 import json
 import uuid
-from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,7 +15,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.whatsapp import get_status_service, get_wa_settings
+from app.api.whatsapp import get_status_service
 from app.config import settings
 from app.main import app
 from app.messaging.base import StatusUpdate

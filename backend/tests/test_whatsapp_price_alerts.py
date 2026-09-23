@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -21,7 +21,6 @@ from app.models.fpo import FPO
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.user import User, UserRole
-from app.models.whatsapp import OutboundMessage
 from app.services.whatsapp_alerts import PriceMoveAlertService
 
 
