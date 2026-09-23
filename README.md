@@ -47,15 +47,16 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
 
 | Module | Description | Status |
 |---|---|---|
-| **Auth & DPDP Consent** | Phone auth with Argon2id + PyJWT and DPDP Act consent tracking | **Active** |
+| **Auth & DPDP Consent** | Phone auth with Argon2id + PyJWT and DPDP Act 2023 compliance tracking | **Active** |
 | **Market Intelligence** | Daily mandi prices, normalized markets/varieties, MAD anomaly detection | **Active** |
 | **FPO Management** | Organization registration, staff administration, member statistics | **Active** |
-| **Farmer Directory** | Farmer registration, farm land tracking, bilingual preferences | **Active** |
-| **Data Ingestion (ETL)** | CEDA historical backfill, OGD API, Open-Meteo & NASA POWER weather | **Active** |
-| **Harvest Aggregation** | Aggregate individual farmer harvests into bulk batches | In Progress |
-| **WhatsApp Bot** | Meta Cloud API webhook, inbound prices, harvest flow, utility digest | Planned (W2) |
-| **Price Forecasting** | Model ladder (statsforecast → LightGBM) with hold/sell ranges | Planned (W4) |
-| **Buyer Module** | Purchase requirements and order matching | Deferred (v0.2) |
+| **Farmer Directory** | Farmer registration, farm land tracking, bilingual preferences (ta/en) | **Active** |
+| **Data Ingestion (ETL)** | CEDA historical backfill, live OGD API, Open-Meteo & NASA POWER weather | **Active** |
+| **Harvest Chat Flow** | Conversational WhatsApp harvest logging with unit normalization | **Active** |
+| **WhatsApp Bot & Engine** | Meta Cloud API v23.0, 3-button interactive menu, at-least-once sweep | **Active** |
+| **Staff Web Dashboard** | Next.js 14 PWA, shadcn/ui, Tamil line-height scale, 30-day price trends | **Active** |
+| **Price Forecasting** | Seasonal baseline and LightGBM models with hold/sell decision signals | **Active** |
+| **Production Deployment** | Zero-cost Cloudflare Tunnel sidecar + Oracle Cloud Always Free VM guide | **Active** |
 
 ## Tech Stack
 
@@ -74,40 +75,28 @@ A self-hostable, open-source platform that provides Farmer Producer Organization
 | External Feeds | OGD API, CEDA bulk data, Open-Meteo | Zero mandatory paid APIs |
 | Containers | Docker Compose | Reproducible development & deployment |
 
-> [!NOTE]
-> **Single Source of Truth for Progress**:
-> Refer to [tasks/todo.md](tasks/todo.md) for the active task checklist, and [tasks/plan.md](tasks/plan.md) for detailed architecture and acceptance criteria.
+> [!TIP]
+> **Complete Guides**:
+> - [**Quickstart Guide**](docs/QUICKSTART.md) — Step-by-step from `git clone` to first successful API request.
+> - [**Production Hosting Guide**](docs/HOSTING.md) — Free-tier deployment on Oracle Cloud VM with Cloudflare Tunnel.
+> - [**Operational Runbook**](docs/OPS_RUNBOOK.md) — Incident response, kill-switch procedures, and log inspection.
+> - [**Meta Production Checklist**](docs/META_PRODUCTION_CHECKLIST.md) — Pre-flight requirements for WhatsApp Cloud API.
 
 ## Quick Start
 
-### Prerequisites
-- [Docker](https://www.docker.com/) and Docker Compose (recommended)
-- Or **PostgreSQL 15+** if running standalone (PostgreSQL 15+ is strictly required for `NULLS NOT DISTINCT` unique constraints on variety-aware price dedup).
-- Python 3.11+ / 3.12+
-- Git
-
-### Setup
+See [**docs/QUICKSTART.md**](docs/QUICKSTART.md) for full instructions.
 
 ```bash
-# 1. Clone the repository
+# 1. Clone repository & configure environment
 git clone https://github.com/4LPH7/FPOLink.git
 cd FPOLink
-
-# 2. Copy environment file
 cp .env.example .env
 
-# 3. Start stack (PostgreSQL 16, Backend API, Scheduler Worker)
-docker compose up -d --build postgres backend worker
+# 2. Start full stack (PostgreSQL, FastAPI backend, Worker, Next.js dashboard)
+docker compose up -d --build
 
-# 4. Run database migrations
-docker compose exec backend alembic upgrade head
-
-# 5. Seed initial reference data (Admin, Crops, Varieties, Markets, Prices)
-# Optionally set SEED_ADMIN_PASSWORD in .env or pass as env var
+# 3. Seed initial database reference data
 docker compose exec backend python scripts/seed.py
-
-# 6. (Optional) Check mandi price reporting coverage
-docker compose exec backend python scripts/check_market_coverage.py --crop turmeric --district Erode
 ```
 
 ### Access
