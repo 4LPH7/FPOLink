@@ -18,6 +18,9 @@ class WhatsAppInbound(Base):
     status = Column(
         String(50), nullable=False, default="received"
     )  # received, processed, ignored, failed
+    retry_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )  # at-least-once sweep counter (T5.4)
 
 
 class ConversationState(Base):

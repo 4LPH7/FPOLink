@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.api import (
     admin,
@@ -25,6 +27,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.SENTRY_DSN:
+        try:
+            import sentry_sdk
+
+            sentry_sdk.init(
+                dsn=settings.SENTRY_DSN,
+                environment=settings.ENVIRONMENT,
+                traces_sample_rate=0.1,
+            )
+            logger.info("Sentry initialized (env=%s)", settings.ENVIRONMENT)
+        except ImportError:
+            logger.warning("sentry-sdk not installed; skipping Sentry initialization")
     logger.info("FPOLink TN API starting...")
     yield
 
@@ -59,4 +73,20 @@ app.include_router(whatsapp.router)
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "service": "fpolink-api", "version": "0.1.0"}
+    try:
+        from app.database import engine
+
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok", "service": "fpolink-api", "version": "0.1.0", "db": "ok"}
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "degraded",
+                "service": "fpolink-api",
+                "version": "0.1.0",
+                "db": "error",
+                "detail": str(exc),
+            },
+        )

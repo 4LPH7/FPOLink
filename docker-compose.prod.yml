@@ -1,0 +1,29 @@
+# Production Docker Compose override for FPOLink TN
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+services:
+  backend:
+    volumes: []
+    entrypoint: ["/bin/bash", "/app/entrypoint.prod.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; resp = urllib.request.urlopen('http://localhost:8000/api/health'); assert resp.status == 200\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: always
+
+  worker:
+    volumes: []
+    command: ["python", "-m", "app.worker"]
+    restart: always
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      backend:
+        condition: service_healthy

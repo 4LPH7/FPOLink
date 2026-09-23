@@ -178,6 +178,10 @@ class BotServices(Protocol):
 
     async def set_state(self, wa_id: str, state: ConvState | None) -> None: ...
 
+    async def mark_processed(self, message_id: str) -> None: ...
+
+    async def mark_failed(self, message_id: str) -> None: ...
+
 
 # ---------------------------------------------------------------- helpers
 
@@ -269,8 +273,13 @@ class BotEngine:
         """Entry point for background tasks: never raises."""
         try:
             await self._handle(msg, ch)
+            # Mark as processed on success (T5.4 at-least-once lifecycle)
+            if hasattr(self.svc, "mark_processed"):
+                await self.svc.mark_processed(msg.message_id)
         except Exception:
             log.exception("bot error for %s", mask(msg.wa_id))
+            if hasattr(self.svc, "mark_failed"):
+                await self.svc.mark_failed(msg.message_id)
 
     async def _handle(self, msg: InboundMessage, ch: MessageChannel) -> None:
         if not await self.svc.first_time(msg.message_id):

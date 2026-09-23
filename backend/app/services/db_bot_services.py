@@ -58,6 +58,22 @@ class DbBotServices:
                 db.rollback()
                 return False
 
+    async def mark_processed(self, message_id: str) -> None:
+        """Transition inbound message from 'received' to 'processed' (T5.4)."""
+        with self.db_factory() as db:
+            row = db.query(WhatsAppInbound).filter(WhatsAppInbound.message_id == message_id).first()
+            if row and row.status == "received":
+                row.status = "processed"
+                db.commit()
+
+    async def mark_failed(self, message_id: str) -> None:
+        """Transition inbound message to 'failed' (T5.4)."""
+        with self.db_factory() as db:
+            row = db.query(WhatsAppInbound).filter(WhatsAppInbound.message_id == message_id).first()
+            if row:
+                row.status = "failed"
+                db.commit()
+
     async def find_farmer(self, phone10: str) -> Optional[Farmer]:
         """Match farmer by last 10 digits of phone."""
         if not phone10:

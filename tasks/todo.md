@@ -42,11 +42,11 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [ ] Reviewed by human
 
 ## Phase 5: Production readiness
-- [ ] T5.1 Deploy webhook behind stable HTTPS
-- [ ] T5.2 Meta production setup (number, verification, token, payment)
-- [ ] T5.3 Security and privacy pass
-- [ ] T5.4 At-least-once processing sweep
-- [ ] T5.5 Observability and runbook
+- [x] T5.1 Deploy webhook behind stable HTTPS (Cloudflare Tunnel + production compose override)
+- [x] T5.2 Meta production setup (META_PRODUCTION_CHECKLIST.md runbook)
+- [x] T5.3 Security and privacy pass (DPDP retention purge: inbound 7d, state 24h, outbound 12mo)
+- [x] T5.4 At-least-once processing sweep (migration 0005, status lifecycle, 10-min worker sweep)
+- [x] T5.5 Observability and runbook (Sentry init, DB health check, OPS_RUNBOOK.md)
 ### Checkpoint D: staging E2E with a real phone
 - [ ] Reviewed by human
 

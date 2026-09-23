@@ -65,8 +65,46 @@ def run_price_alerts():
     logger.info("Price-move alerts completed: %s", metrics)
 
 
+def run_data_retention():
+    """DPDP retention purge at 03:00 IST (T5.3)."""
+    from app.services.retention import (
+        purge_conversation_state,
+        purge_inbound,
+        purge_outbound,
+    )
+
+    logger.info("Starting data retention purge...")
+    purge_inbound(retention_days=7)
+    purge_conversation_state(ttl_hours=24)
+    purge_outbound(retention_months=12)
+    logger.info("Data retention purge complete.")
+
+
+def run_inbound_sweep():
+    """At-least-once sweep for stuck inbound messages (T5.4)."""
+    from app.services.inbound_sweep import sweep_stuck_inbound
+
+    metrics = sweep_stuck_inbound()
+    if metrics["found"] > 0:
+        logger.info("Inbound sweep: %s", metrics)
+
+
 def main():
+    from app.config import settings
+
+    if settings.SENTRY_DSN:
+        try:
+            import sentry_sdk
+
+            sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENVIRONMENT)
+            logger.info("Sentry initialized in worker (env=%s)", settings.ENVIRONMENT)
+        except ImportError:
+            logger.warning("sentry-sdk not installed; skipping worker Sentry initialization")
+
     scheduler = BlockingScheduler(timezone="Asia/Kolkata")
+
+    # Daily at 3 AM IST — DPDP data retention purge (T5.3)
+    scheduler.add_job(run_data_retention, "cron", hour=3, minute=0, id="data_retention")
 
     # Daily at 5 AM IST — weather
     scheduler.add_job(run_weather_ingestion, "cron", hour=5, minute=0, id="weather_ingestion")
@@ -82,6 +120,9 @@ def main():
 
     # Daily at 7:45 AM IST — WhatsApp price-move alerts (T4.3)
     scheduler.add_job(run_price_alerts, "cron", hour=7, minute=45, id="whatsapp_price_alerts")
+
+    # Every 10 minutes — at-least-once inbound sweep (T5.4)
+    scheduler.add_job(run_inbound_sweep, "interval", minutes=10, id="inbound_sweep")
 
     logger.info("FPOLink Worker started. Scheduled jobs:")
     for job in scheduler.get_jobs():
