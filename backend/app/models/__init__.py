@@ -6,6 +6,7 @@ from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.models.forecast_log import ForecastLog
 from app.models.fpo import FPO
+from app.models.geography import Block, District, State, Taluk, Village
 from app.models.harvest import Harvest
 from app.models.ingestion_log import IngestionLog
 from app.models.market import Market
@@ -27,6 +28,11 @@ from app.models.whatsapp import (
 
 __all__ = [
     "Base",
+    "State",
+    "District",
+    "Taluk",
+    "Block",
+    "Village",
     "User",
     "FPO",
     "Farmer",

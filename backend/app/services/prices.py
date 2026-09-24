@@ -87,6 +87,7 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
             }
         )
 
+    prices.sort(key=lambda x: (x["crop_name"], x["market_name"]))
     return prices
 
 

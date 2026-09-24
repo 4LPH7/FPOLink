@@ -65,6 +65,17 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T7.4 WhatsApp bot activity (read-only view into conversation_state and inbound logs: `/whatsapp`)
 
 
+## Phase 8: Statewide Platform Foundation (v0.5 Architecture)
+- [x] T8.1 Tracer Vertical Slice: Geography Hierarchy (State/District/Taluk/Block/Village) + Migration 0006
+- [ ] T8.2 Agricultural Ontology & Canonical Crop/Variety Registry with Aliases
+- [ ] T8.3 Market Master Registry & Canonical Market Aliases
+- [ ] T8.4 Multi-Tenant RBAC, Organization Scoping & Audit Logging
+- [ ] T8.5 Statewide Market Ingestion & Explainable Quality Scoring Framework
+- [ ] T8.6 API v1 Routing & Backward-Compatibility Shims
+- [ ] T8.7 Statewide Reference Seed & Verification Checkpoint E
+### Checkpoint E: Statewide Foundation Sign-Off
+- [ ] Migration 0006 applied, 38 TN districts queryable, Tier-A crops resolved, existing pilot 100% green
+
 ## Final: Pilot
 - [ ] 2-week pilot with 10–20 farmers from one FPO (runbook: `docs/PILOT_RUNBOOK.md`)
 - [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision (evaluation rubric: `docs/PILOT_RUNBOOK.md`)

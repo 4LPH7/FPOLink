@@ -40,10 +40,11 @@ def create_tables():
         return
 
     yield
-    try:
-        Base.metadata.drop_all(bind=engine)
-    except Exception:
-        pass
+    if os.environ.get("DROP_TEST_TABLES", "").lower() in ("1", "true", "yes"):
+        try:
+            Base.metadata.drop_all(bind=engine)
+        except Exception:
+            pass
 
 
 @pytest.fixture()

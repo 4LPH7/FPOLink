@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Text
+from sqlalchemy import Column, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -19,5 +19,9 @@ class FPO(Base, TimestampMixin):
     contact_phone = Column(String(15), nullable=False)
     contact_email = Column(String, nullable=True)
     address = Column(Text, nullable=True)
+
+    state_id = Column(UUID(as_uuid=True), ForeignKey("states.id"), nullable=True)
+    district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id"), nullable=True)
+    taluk_id = Column(UUID(as_uuid=True), ForeignKey("taluks.id"), nullable=True)
 
     farmers = relationship("Farmer", back_populates="fpo")

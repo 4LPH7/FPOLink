@@ -25,6 +25,11 @@ class Farmer(Base, TimestampMixin):
     notice_sent_at = Column(DateTime(timezone=True), nullable=True)
     is_unreachable = Column(Boolean, nullable=False, default=False)
 
+    state_id = Column(UUID(as_uuid=True), ForeignKey("states.id"), nullable=True)
+    district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id"), nullable=True)
+    taluk_id = Column(UUID(as_uuid=True), ForeignKey("taluks.id"), nullable=True)
+    village_id = Column(UUID(as_uuid=True), ForeignKey("villages.id"), nullable=True)
+
     user = relationship("User")
     fpo = relationship("FPO", back_populates="farmers")
     farms = relationship("Farm", back_populates="farmer")

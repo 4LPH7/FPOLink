@@ -58,6 +58,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.v1 import router as v1_router
+
 app.include_router(auth.router)
 app.include_router(fpo.router)
 app.include_router(farmers.router)
@@ -69,6 +71,7 @@ app.include_router(predictions.router)
 app.include_router(admin.router)
 app.include_router(admin_whatsapp.router)
 app.include_router(whatsapp.router)
+app.include_router(v1_router)
 
 
 @app.get("/api/health")

@@ -64,7 +64,7 @@ def test_prices_and_crops_api(client, db):
     assert latest_res.status_code == 200
     prices = latest_res.json()["prices"]
     assert len(prices) >= 1
-    assert prices[0]["crop_name"] == "turmeric"
+    assert any(p["crop_name"] == "turmeric" for p in prices)
 
     # 3. Test /api/prices/history
     history_res = client.get(f"/api/prices/history?crop_id={crop.id}&market_id={market.id}&days=30")
