@@ -140,6 +140,69 @@ def list_harvests(
 
 
 @router.get(
+    "/aggregation",
+    summary="Get harvest aggregation summary by crop and grade",
+)
+def get_harvest_aggregation(
+    fpo_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+):
+    """Get aggregated harvest batches grouped by crop with grade distribution."""
+    query = db.query(Harvest).options(joinedload(Harvest.crop), joinedload(Harvest.farmer))
+    if fpo_id:
+        query = query.join(Farmer, Harvest.farmer_id == Farmer.id).filter(Farmer.fpo_id == fpo_id)
+
+    harvests = query.all()
+    total_pooled_kg = sum(h.quantity_kg for h in harvests)
+
+    by_crop = {}
+    for h in harvests:
+        cid = str(h.crop_id)
+        if cid not in by_crop:
+            cname = h.crop.name if h.crop else "Unknown"
+            ctamil = h.crop.tamil_name if h.crop else None
+            by_crop[cid] = {
+                "crop_id": cid,
+                "crop_name": cname,
+                "crop_tamil_name": ctamil,
+                "total_kg": 0.0,
+                "farmer_ids": set(),
+                "grade_counts": {"A": 0.0, "B": 0.0, "C": 0.0},
+            }
+        by_crop[cid]["total_kg"] += h.quantity_kg
+        by_crop[cid]["farmer_ids"].add(str(h.farmer_id))
+        grade_key = h.grade.value if hasattr(h.grade, "value") else str(h.grade).upper()
+        if grade_key in by_crop[cid]["grade_counts"]:
+            by_crop[cid]["grade_counts"][grade_key] += h.quantity_kg
+
+    batches = []
+    for cid, data in by_crop.items():
+        total_kg = data["total_kg"]
+        grade_breakdown = {}
+        for g, g_kg in data["grade_counts"].items():
+            pct = round((g_kg / total_kg * 100), 1) if total_kg > 0 else 0.0
+            grade_breakdown[g] = {"kg": round(g_kg, 1), "pct": pct}
+
+        c_lower = data["crop_name"].lower()
+        batches.append({
+            "crop_id": data["crop_id"],
+            "crop_name": data["crop_name"],
+            "crop_tamil_name": data["crop_tamil_name"],
+            "total_kg": round(total_kg, 1),
+            "farmer_count": len(data["farmer_ids"]),
+            "grade_breakdown": grade_breakdown,
+            "status": "Ready for Wholesale Dispatch" if "turmeric" in c_lower else "Matched with Buyer Contract",
+            "warehouse": "Erode Warehouse #2" if "turmeric" in c_lower else "Kodumudi Cold Storage",
+        })
+
+    return {
+        "total_pooled_kg": round(total_pooled_kg, 1),
+        "batch_count": len(batches),
+        "batches": batches,
+    }
+
+
+@router.get(
     "/{harvest_id}",
     response_model=HarvestResponse,
     summary="Get harvest details by ID",

@@ -31,6 +31,7 @@ import {
   Clock,
 } from "lucide-react";
 import { getFPOs, getFarmers, Farmer, FPO } from "@/lib/api";
+import { ensureToken } from "@/lib/auth";
 
 export default function FarmersPage() {
   const { lang } = useLanguage();
@@ -45,13 +46,13 @@ export default function FarmersPage() {
   const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const fpoList = await getFPOs();
+      const [fpoList, token] = await Promise.all([getFPOs(), ensureToken()]);
       setFpos(fpoList);
       const primaryFpo = fpoList[0] || null;
       setActiveFpo(primaryFpo);
 
       if (primaryFpo) {
-        const res = await getFarmers(primaryFpo.id, undefined, searchTerm);
+        const res = await getFarmers(primaryFpo.id, token ?? undefined, searchTerm);
         setFarmers(res.farmers);
       }
     } finally {
@@ -67,7 +68,8 @@ export default function FarmersPage() {
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
     if (activeFpo) {
-      const res = await getFarmers(activeFpo.id, undefined, term);
+      const token = await ensureToken();
+      const res = await getFarmers(activeFpo.id, token ?? undefined, term);
       setFarmers(res.farmers);
     }
   };

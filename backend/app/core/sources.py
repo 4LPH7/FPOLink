@@ -7,17 +7,18 @@ farmer-facing responses, dashboard statistics, or ML training pipelines.
 from typing import Dict, Set, Tuple
 
 # Whitelist of real, verified market price sources
-REAL_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd")
+REAL_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet")
 REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
 
 # Deterministic source arbitration priority (lower number = higher priority)
-# When both OGD (live daily) and CEDA (historical) report for the same crop,
-# market, variety, and date:
+# When multiple sources report for the same crop, market, variety, and date:
 # - ogd is preferred for current/recent days as the official real-time mandi observation.
+# - agmarknet is the official primary mandi source.
 # - ceda is preserved for long-term historical records.
 SOURCE_PRIORITY: Dict[str, int] = {
     "ogd": 1,
-    "ceda": 2,
+    "agmarknet": 2,
+    "ceda": 3,
 }
 
 # Synthetic or unverified sources that MUST NEVER be served to farmers
