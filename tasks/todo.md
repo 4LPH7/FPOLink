@@ -91,16 +91,18 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] Migration 0010 applied, 38 districts with registered mandis, deterministic source mappings, raw replay verified, 0 Erode regressions
 
 ## Phase 11: Agricultural Intelligence (v0.7 Intelligence Layer)
-- [ ] T11.1 Agricultural Feature Store Engine (`backend/app/ml/features.py`)
-- [ ] T11.2 Feature Store Unit & Verification Test Suite (`backend/tests/test_feature_store.py`)
-- [ ] T11.3 Dual Forecasting Engine: LightGBM Quantile Regression + Baseline (`backend/app/ml/forecasting.py`)
-- [ ] T11.4 Actionable Signal Engine & Prediction Persistence (`predictions`, `model_versions`, `forecast_log`)
-- [ ] T11.5 Worker Automated Prediction Pipeline Integration (`backend/app/worker.py`)
-- [ ] T11.6 Geospatial Market Arbitrage & Net Freight Engine (`backend/app/services/arbitrage.py`)
-- [ ] T11.7 Agricultural Intelligence API v1 Endpoints (`/api/v1/intelligence/*`)
-- [ ] T11.8 Frontend Price & Intelligence Dashboard Updates (Confidence envelopes, arbitrage matrix, 38-district selector)
-- [ ] T11.9 End-to-End Intelligence Integration Test Suite (`backend/tests/test_agricultural_intelligence.py`)
-- [ ] T11.10 Checkpoint G: Agricultural Intelligence Sign-Off
+- [x] T11.1 Agricultural Feature Store Engine (`backend/app/ml/features.py`)
+- [x] T11.2 Feature Store Unit & Verification Test Suite (`backend/tests/test_feature_store.py`)
+- [x] T11.3 Dual Forecasting Engine: LightGBM Quantile Regression + Baseline (`backend/app/ml/forecasting.py`)
+- [x] T11.4 Actionable Signal Engine & Prediction Persistence (`predictions`, `model_versions`, `forecast_log`)
+- [x] T11.5 Worker Automated Prediction Pipeline Integration (`backend/app/worker.py`)
+- [x] T11.6 Geospatial Market Arbitrage & Net Freight Engine (`backend/app/services/arbitrage.py`)
+- [x] T11.7 Agricultural Intelligence API v1 Endpoints (`/api/v1/intelligence/*`)
+- [x] T11.8 Frontend Price & Intelligence Dashboard Updates (Confidence envelopes, arbitrage matrix, 38-district selector)
+- [x] T11.9 End-to-End Intelligence Integration Test Suite (`backend/tests/test_agricultural_intelligence.py`)
+- [x] T11.10 Checkpoint G: Agricultural Intelligence Sign-Off
+### Checkpoint G: Agricultural Intelligence Sign-Off
+- [x] Dual-engine forecasting verified, feature store tested, arbitrage net freight calculated, 189 tests green (100%), 0 regressions
 
 ## Future Strategic Roadmap (v0.8 to v1.0)
 - **Phase 13–15 (v0.8 Supply + Demand Network)**: Farm acreage tracking, expected yield/supply aggregation heatmaps, buyer matching engine.

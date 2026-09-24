@@ -92,6 +92,37 @@ Eliminates reliance on fragile fuzzy string matching by storing deterministic ma
 - **Commodity Registry (`/admin/commodities`)**: Staff and administrator interface to search, inspect, and filter all 20 Tier-A crops across categories (spice, fruit, vegetable, cereal, fiber, commercial), view registered botanical cultivars, aliases, and external source mappings.
 - **Ingestion Center Console (`/admin`)**: Telemetry hub showing statewide reporting freshness across all 38 revenue districts, active market counts, ingestion run history, and real-time ingestion trigger controls.
 
+### 1.11 Agricultural Intelligence & Forecasting Engine (v0.7)
+Translates statewide raw mandi telemetry into forward-looking, actionable decision support for farmers and FPOs:
+- **Feature Store Engine (`app/ml/features.py`)**: 
+  - Extracts 26 leak-free tabular features per crop-market time series: price lags (1, 2, 3, 7, 14, 30 days), rolling statistics (7d, 14d, 30d mean, standard deviation, min, max, spread), arrival volume momentum, quality weighting score, and regional Tamil calendar festival flags (`holidays_tn.py` - Pongal, Deepavali, Tamil New Year).
+  - Strict temporal ordering ensures zero future lookahead contamination.
+- **Dual-Engine Quantile Forecaster (`app/ml/forecasting.py`)**:
+  - **LightGBM Quantile Regressors** trained at $\alpha \in \{0.10, 0.50, 0.90\}$ to predict median price alongside asymmetrical confidence bounds.
+  - **Empirical Rolling Baseline Fallback**: Seamless fallback for sparse series ($N < 30$ historical observations) using rolling median and historical quantiles.
+  - **Monotonicity Post-Processing Guarantee**: Enforces $\text{p10} \le \text{p50} \le \text{p90}$ across all horizon dates.
+  - **Actionable Selling Signals**: Generates deterministic recommendations:
+    - `hold`: if expected 7-day median price change $> +5.0\%$
+    - `sell`: if expected 7-day median price change $< -5.0\%$
+    - `neutral`: price movement within $\pm 5.0\%$
+- **Geospatial Inter-District Arbitrage Engine (`app/services/arbitrage.py`)**:
+  - Uses the Geodesic Haversine formula across registered mandi coordinates.
+  - Deducts a realistic regional freight cost model:
+    $$\text{Freight Cost} = \text{Base ₹50.00} + (\text{₹1.20} \times \text{Distance in km})$$
+  - Computes net realized profit spread per quintal:
+    $$\text{Net Spread} = (\text{Remote Modal Price} - \text{Local Modal Price}) - \text{Freight Cost}$$
+  - Ranks actionable arbitrage opportunities with distance and road route feasibility.
+- **Unified Intelligence REST API v1 (`/api/v1/intelligence/*`)**:
+  - `GET /api/v1/intelligence/forecast`: 7-day quantile forecast, confidence envelope, and recommendation.
+  - `GET /api/v1/intelligence/arbitrage`: Real-time inter-district price arbitrage matrix.
+  - `GET /api/v1/intelligence/spreads`: District-level spread analysis for commodities.
+  - `POST /api/v1/intelligence/train`: Background ML model retraining trigger.
+- **Interactive Prices & Intelligence UI (`/prices`)**:
+  - 38-District filter selector.
+  - Live Mandi Rates table with freshness and volume tags.
+  - 7-Day AI Price Forecast featuring Recharts shaded confidence envelope ($\text{p10} - \text{p90}$) and actionable `SELL NOW` / `HOLD` badges.
+  - Nearby Mandi Arbitrage Table surfacing net gains after freight deductions.
+
 ---
 
 ## 2. Database Migrations
@@ -158,3 +189,10 @@ All 181 automated unit and integration tests pass with 100% green status:
 - `tests/test_ingestion_center_api.py` (Telemetry endpoints & statewide freshness)
 - `tests/test_statewide_coverage.py` (Multi-district cross-validation across TN)
 - All 145 baseline Erode pilot tests (WhatsApp bot, parsers, auth, forecasts, digest worker, zero regressions).
+
+### Checkpoint G (v0.7 Agricultural Intelligence):
+All 189 automated unit and integration tests pass with 100% green status:
+- `tests/test_feature_store.py` (26 features, zero lookahead leakage, festival flags)
+- `tests/test_agricultural_intelligence.py` (Forecast API, LightGBM quantile regression, baseline fallback, Haversine freight arbitrage)
+- All 181 baseline statewide and Erode pilot tests (0 regressions, 0 failed, 1 skipped).
+

@@ -60,10 +60,13 @@ A self-hostable, production-ready, open-source platform that empowers Farmer Pro
 | **Multi-Tenant RBAC & Audit** | 9 discrete roles (`STATE_ADMIN`, `DISTRICT_ADMIN`, `FPO_ADMIN`, etc.) with audit logging | **Active** |
 | **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Active** |
 | **Mandi Price Ingestion** | Real-time adapters for data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes | **Active** |
+| **Agricultural Feature Store** | 26 leak-free tabular features (lags, rolling stats, arrival momentum, Tamil festival flags) | **Active** |
+| **Dual Forecasting Engine (v0.7)** | LightGBM quantile regression (p10/p50/p90) + rolling baseline + actionable signals | **Active** |
+| **Geospatial Arbitrage Engine** | Haversine distance matrix across mandis with freight deduction (₹50 + ₹1.20/km/qtl) | **Active** |
+| **Prices & Intelligence UI** | 38-district selector, Recharts 7-day quantile confidence bands, and arbitrage matrix | **Active** |
 | **Staff Web Dashboard** | Next.js 14 PWA, Tailwind CSS, shadcn/ui, Tamil typography, 30-day price trends | **Active** |
 | **WhatsApp Conversational Bot** | Meta Cloud API v23.0, 3-button interactive menu, idempotent harvest logging | **Active** |
 | **DPDP Act 2023 Compliance** | Digital Personal Data Protection Act compliance, consent ledger, 7-day raw purge | **Active** |
-| **Price Forecasting & ML** | Baseline seasonal naive models and LightGBM quantile regression intervals | **Active** |
 | **Zero-Cost Production Stack** | Cloudflare Tunnel sidecar + Oracle Cloud Always Free VM deployment guide | **Active** |
 
 ---

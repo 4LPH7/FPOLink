@@ -43,7 +43,10 @@ def is_festival(d: date) -> bool:
 
     # Check national holidays
     if HAS_HOLIDAYS:
-        india_holidays = holidays.India(years=d.year, state="TN")
+        try:
+            india_holidays = holidays.India(years=d.year, subdiv="TN")
+        except TypeError:
+            india_holidays = holidays.India(years=d.year, state="TN")
         if d in india_holidays:
             return True
 

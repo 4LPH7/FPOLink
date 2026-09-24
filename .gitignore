@@ -33,6 +33,7 @@ out/
 
 # Docker
 *.log
+docker-compose.override.yml*
 
 # ML models
 ml/models/*.joblib
@@ -46,6 +47,10 @@ Thumbs.db
 *.sql.bak
 postgres_data/
 
+# Local instruction / scratch directories
+scale/
+
 # Graphify
 graphify-out/cache/
+
 
