@@ -4,15 +4,21 @@ import logging
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.data_sources.base import PriceRecord
 from app.data_sources.registry import DataSourceRegistry
 from app.models.crop import Crop
+from app.models.data_quality import DataQualityEvent, IngestionRun
+from app.models.geography import District
 from app.models.ingestion_log import IngestionLog
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.raw_ingest import RawIngest
+from app.services.crop_resolver import resolve_crop, resolve_variety
+from app.services.data_quality import calculate_quality_score
+from app.services.market_resolver import resolve_market
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,18 @@ class IngestionService:
         total_errors = 0
         error_details = []
 
+        # Create IngestionRun telemetry record
+        ingestion_run = IngestionRun(
+            source_code=source or "auto",
+            status="running",
+            district=districts[0] if len(districts) == 1 else "statewide",
+            records_fetched=0,
+            records_ingested=0,
+            started_at=start_time,
+        )
+        self.db.add(ingestion_run)
+        self.db.commit()
+
         for crop_name in crops:
             for district in districts:
                 # Select target providers: specific source or all available independent providers
@@ -79,7 +97,16 @@ class IngestionService:
 
         duration = (datetime.now(timezone.utc) - start_time).total_seconds()
 
-        # Log the ingestion run
+        # Update IngestionRun
+        ingestion_run.records_fetched = total_fetched
+        ingestion_run.records_ingested = total_stored
+        ingestion_run.status = (
+            "success" if total_errors == 0 else ("partial" if total_stored > 0 else "failed")
+        )
+        ingestion_run.errors = error_details if error_details else None
+        ingestion_run.completed_at = datetime.now(timezone.utc)
+
+        # Log the legacy ingestion run for backwards compatibility
         log_entry = IngestionLog(
             source=source or "auto",
             records_fetched=total_fetched,
@@ -114,13 +141,15 @@ class IngestionService:
                     )
                     self.db.add(raw)
 
-                # Resolve crop
-                crop = self.db.query(Crop).filter(Crop.name == record.crop_name).first()
+                # Resolve crop via canonical resolver
+                crop = resolve_crop(record.crop_name, self.db)
+                if not crop:
+                    crop = self.db.query(Crop).filter(Crop.name == record.crop_name).first()
                 if not crop:
                     logger.warning(f"Unknown crop: {record.crop_name}, skipping")
                     continue
 
-                # Resolve or create market
+                # Resolve or create market via canonical resolver
                 market = self._resolve_market(record)
                 if not market:
                     continue
@@ -128,18 +157,31 @@ class IngestionService:
                 # Resolve variety if provided
                 variety_id = None
                 if record.variety_name:
-                    from app.models.variety import Variety
+                    variety = resolve_variety(crop.id, record.variety_name, self.db)
+                    if not variety:
+                        from app.models.variety import Variety
 
-                    variety = (
-                        self.db.query(Variety)
-                        .filter(
-                            Variety.crop_id == crop.id,
-                            Variety.name.ilike(record.variety_name.strip()),
+                        variety = (
+                            self.db.query(Variety)
+                            .filter(
+                                Variety.crop_id == crop.id,
+                                Variety.name.ilike(record.variety_name.strip()),
+                            )
+                            .first()
                         )
-                        .first()
-                    )
                     if variety:
                         variety_id = variety.id
+
+                # Calculate data quality score
+                quality_score, quality_breakdown = calculate_quality_score(
+                    price_date=record.price_date,
+                    modal_price=record.modal_price,
+                    min_price=record.min_price,
+                    max_price=record.max_price,
+                    source=record.source,
+                    alias_confidence=1.0,
+                    arrival_quantity=record.arrival_quantity,
+                )
 
                 # Check for existing record (dedup)
                 existing_q = self.db.query(MarketPrice).filter(
@@ -154,6 +196,7 @@ class IngestionService:
                     existing_q = existing_q.filter(MarketPrice.variety_id.is_(None))
                 existing = existing_q.first()
 
+                record_id = None
                 if existing:
                     # Update if newer data
                     existing.min_price = record.min_price
@@ -162,6 +205,9 @@ class IngestionService:
                     existing.raw_price = record.raw_price
                     existing.raw_unit = record.raw_unit
                     existing.arrival_quantity = record.arrival_quantity
+                    existing.quality_score = quality_score
+                    existing.quality_breakdown = quality_breakdown
+                    record_id = str(existing.id)
                 else:
                     mp = MarketPrice(
                         crop_id=crop.id,
@@ -176,9 +222,28 @@ class IngestionService:
                         arrival_quantity=record.arrival_quantity,
                         price_date=record.price_date,
                         source=record.source,
+                        quality_score=quality_score,
+                        quality_breakdown=quality_breakdown,
                     )
                     self.db.add(mp)
+                    self.db.flush()
                     stored += 1
+                    record_id = str(mp.id)
+
+                if quality_score < 50.0 and record_id:
+                    issue_type = (
+                        "price_contradiction"
+                        if record.min_price > record.max_price
+                        else "low_quality_data"
+                    )
+                    dq_event = DataQualityEvent(
+                        record_type="market_price",
+                        record_id=record_id,
+                        issue_type=issue_type,
+                        penalty=round(100.0 - quality_score, 1),
+                        details=quality_breakdown,
+                    )
+                    self.db.add(dq_event)
 
                 self.db.commit()
 
@@ -189,7 +254,23 @@ class IngestionService:
         return stored
 
     def _resolve_market(self, record: PriceRecord) -> Optional[Market]:
-        """Find or create a market entry."""
+        """Find or create a market entry with canonical resolution."""
+        district_id = None
+        if record.district:
+            district_obj = (
+                self.db.query(District)
+                .filter(func.lower(District.name) == record.district.strip().lower())
+                .first()
+            )
+            if district_obj:
+                district_id = district_obj.id
+
+        # 1. Try canonical resolver
+        market = resolve_market(record.market_name, district_id=district_id, db=self.db)
+        if market:
+            return market
+
+        # 2. Direct name/district query
         market = (
             self.db.query(Market)
             .filter(
@@ -200,12 +281,14 @@ class IngestionService:
         )
 
         if not market:
-            # Auto-create market
+            # Auto-create market with district linkage if available
             market = Market(
                 name=record.market_name,
                 district=record.district,
-                state=record.state,
+                district_id=district_id,
+                state=record.state or "Tamil Nadu",
                 market_type="mandi",
+                is_active=True,
             )
             self.db.add(market)
             self.db.commit()

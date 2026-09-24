@@ -13,7 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
@@ -35,6 +35,8 @@ class MarketPrice(Base):
     arrival_quantity = Column(Float, nullable=True)
     price_date = Column(Date, index=True, nullable=False)
     source = Column(String(50), nullable=False)
+    quality_score = Column(Float, nullable=True, default=100.0)
+    quality_breakdown = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     crop = relationship("Crop")

@@ -46,8 +46,10 @@ def test_crop_alias_resolution(db):
     db.add(crop)
     db.commit()
 
-    alias1 = CropAlias(crop_id=crop.id, alias="manjal", source="tamil")
-    alias2 = CropAlias(crop_id=crop.id, alias="turmeric finger polished", source="agmarknet")
+    u_alias1 = f"manjal_custom_{uuid.uuid4().hex[:4]}"
+    u_alias2 = f"turmeric_finger_custom_{uuid.uuid4().hex[:4]}"
+    alias1 = CropAlias(crop_id=crop.id, alias=u_alias1, source="tamil")
+    alias2 = CropAlias(crop_id=crop.id, alias=u_alias2, source="agmarknet")
     db.add_all([alias1, alias2])
     db.commit()
 
@@ -58,9 +60,9 @@ def test_crop_alias_resolution(db):
     assert resolve_crop("மஞ்சள் பயிர்", db).id == crop.id
 
     # 3. Aliases
-    assert resolve_crop("manjal", db).id == crop.id
-    assert resolve_crop("MANJAL", db).id == crop.id
-    assert resolve_crop("Turmeric Finger Polished", db).id == crop.id
+    assert resolve_crop(u_alias1, db).id == crop.id
+    assert resolve_crop(u_alias1.upper(), db).id == crop.id
+    assert resolve_crop(u_alias2.title(), db).id == crop.id
 
     # 4. Unknown string
     assert resolve_crop("nonexistent_exotic_spice", db) is None

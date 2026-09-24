@@ -70,11 +70,11 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T8.2 Agricultural Ontology & Canonical Crop/Variety Registry with Aliases
 - [x] T8.3 Market Master Registry & Canonical Market Aliases
 - [x] T8.4 Multi-Tenant RBAC, Organization Scoping & Audit Logging
-- [ ] T8.5 Statewide Market Ingestion & Explainable Quality Scoring Framework
-- [ ] T8.6 API v1 Routing & Backward-Compatibility Shims
-- [ ] T8.7 Statewide Reference Seed & Verification Checkpoint E
+- [x] T8.5 Statewide Market Ingestion & Explainable Quality Scoring Framework
+- [x] T8.6 API v1 Routing & Backward-Compatibility Shims
+- [x] T8.7 Statewide Reference Seed & Verification Checkpoint E
 ### Checkpoint E: Statewide Foundation Sign-Off
-- [ ] Migration 0006 applied, 38 TN districts queryable, Tier-A crops resolved, existing pilot 100% green
+- [x] Migration 0006 applied, 38 TN districts queryable, Tier-A crops resolved, existing pilot 100% green
 
 ## Final: Pilot
 - [ ] 2-week pilot with 10–20 farmers from one FPO (runbook: `docs/PILOT_RUNBOOK.md`)

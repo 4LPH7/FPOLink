@@ -19,8 +19,20 @@ class MarketPriceResponse(BaseModel):
     price_date: date
     source: str
     arrival_quantity: Optional[float] = None
+    quality_score: Optional[float] = None
+    quality_breakdown: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class QualitySummaryResponse(BaseModel):
+    total_records: int
+    average_quality_score: float
+    verified_count: int
+    good_count: int
+    limited_count: int
+    unreliable_count: int
+    by_source: dict
 
 
 class PriceTrend(BaseModel):

@@ -17,28 +17,37 @@ from app.services.data_cleaning import detect_anomaly_mad
 logger = logging.getLogger(__name__)
 
 
-def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]:
+def get_latest_prices(
+    db: Session,
+    district: Optional[str] = None,
+    crop_id: Optional[str] = None,
+    min_quality: Optional[float] = None,
+) -> List[dict]:
     """Get the most recent verified price for each crop in each market."""
     from app.config import settings
 
-    district = district or settings.DEFAULT_DISTRICT
-
     # Subquery for max date per crop/market — whitelisting real sources only
+    subq_filters = [MarketPrice.source.in_(REAL_PRICE_SOURCES)]
+    if district and district.lower() != "all":
+        subq_filters.append(func.lower(MarketPrice.district) == district.lower().strip())
+    elif not district:
+        subq_filters.append(MarketPrice.district == settings.DEFAULT_DISTRICT)
+
+    if crop_id:
+        subq_filters.append(MarketPrice.crop_id == crop_id)
+
     subq = (
         db.query(
             MarketPrice.crop_id,
             MarketPrice.market_id,
             func.max(MarketPrice.price_date).label("max_date"),
         )
-        .filter(
-            MarketPrice.district == district,
-            MarketPrice.source.in_(REAL_PRICE_SOURCES),
-        )
+        .filter(*subq_filters)
         .group_by(MarketPrice.crop_id, MarketPrice.market_id)
         .subquery()
     )
 
-    results = (
+    query = (
         db.query(MarketPrice, Crop, Market)
         .join(Crop, MarketPrice.crop_id == Crop.id)
         .join(Market, MarketPrice.market_id == Market.id)
@@ -49,8 +58,16 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
             & (MarketPrice.price_date == subq.c.max_date),
         )
         .filter(MarketPrice.source.in_(REAL_PRICE_SOURCES))
-        .all()
     )
+    if district and district.lower() != "all":
+        query = query.filter(func.lower(MarketPrice.district) == district.lower().strip())
+    elif not district:
+        query = query.filter(MarketPrice.district == settings.DEFAULT_DISTRICT)
+
+    if crop_id:
+        query = query.filter(MarketPrice.crop_id == crop_id)
+
+    results = query.all()
 
     # If both OGD and CEDA report on max_date, arbitrate using SOURCE_PRIORITY
     winner_per_pair = {}
@@ -65,6 +82,11 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
 
     prices = []
     for mp, crop, market in winner_per_pair.values():
+        if min_quality is not None:
+            score = mp.quality_score if mp.quality_score is not None else 100.0
+            if score < min_quality:
+                continue
+
         # Calculate trend
         trend = _calculate_trend(db, mp.crop_id, mp.market_id, mp.price_date)
 
@@ -83,6 +105,8 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
                 "price_date": mp.price_date,
                 "source": mp.source,
                 "arrival_quantity": mp.arrival_quantity,
+                "quality_score": mp.quality_score,
+                "quality_breakdown": mp.quality_breakdown,
                 "trend": trend,
             }
         )
@@ -128,9 +152,65 @@ def get_price_history(
             "max_price": mp.max_price,
             "modal_price": mp.modal_price,
             "arrival_quantity": mp.arrival_quantity,
+            "quality_score": mp.quality_score,
         }
         for mp in sorted(date_map.values(), key=lambda x: x.price_date)
     ]
+
+
+def get_quality_summary(
+    db: Session,
+    district: Optional[str] = None,
+    days: int = 7,
+) -> dict:
+    """Summarize data quality metrics for market prices over recent window."""
+    start_date = date.today() - timedelta(days=days)
+    query = db.query(MarketPrice).filter(MarketPrice.price_date >= start_date)
+    if district and district.lower() != "all":
+        query = query.filter(func.lower(MarketPrice.district) == district.lower().strip())
+    records = query.all()
+
+    total = len(records)
+    if total == 0:
+        return {
+            "total_records": 0,
+            "average_quality_score": 0.0,
+            "verified_count": 0,
+            "good_count": 0,
+            "limited_count": 0,
+            "unreliable_count": 0,
+            "by_source": {},
+        }
+
+    scores = [r.quality_score if r.quality_score is not None else 100.0 for r in records]
+    avg_score = round(sum(scores) / total, 1)
+
+    verified = sum(1 for s in scores if s >= 85.0)
+    good = sum(1 for s in scores if 70.0 <= s < 85.0)
+    limited = sum(1 for s in scores if 50.0 <= s < 70.0)
+    unreliable = sum(1 for s in scores if s < 50.0)
+
+    by_source = {}
+    for r in records:
+        src = r.source or "unknown"
+        if src not in by_source:
+            by_source[src] = {"count": 0, "total_score": 0.0}
+        by_source[src]["count"] += 1
+        by_source[src]["total_score"] += (r.quality_score if r.quality_score is not None else 100.0)
+
+    for src, data in by_source.items():
+        data["average_score"] = round(data["total_score"] / data["count"], 1)
+        del data["total_score"]
+
+    return {
+        "total_records": total,
+        "average_quality_score": avg_score,
+        "verified_count": verified,
+        "good_count": good,
+        "limited_count": limited,
+        "unreliable_count": unreliable,
+        "by_source": by_source,
+    }
 
 
 def get_price_trend(

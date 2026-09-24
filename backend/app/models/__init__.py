@@ -4,6 +4,7 @@ from app.models.base import Base
 from app.models.buyer import Buyer, BuyerRequirement
 from app.models.crop import Crop
 from app.models.crop_alias import CropAlias
+from app.models.data_quality import DataQualityEvent, DataSource, IngestionRun
 from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.models.forecast_log import ForecastLog
@@ -64,6 +65,9 @@ __all__ = [
     "RawIngest",
     "ModelVersion",
     "ForecastLog",
+    "DataSource",
+    "IngestionRun",
+    "DataQualityEvent",
     "WhatsAppInbound",
     "ConversationState",
     "OutboundMessage",

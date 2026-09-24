@@ -18,8 +18,12 @@ def test_market_alias_resolution(db):
     db.add(district)
     db.commit()
 
+    mkt_name = f"Perundurai Test Market {uuid.uuid4().hex[:4]}"
+    alias1_name = f"Perundurai Mandi Test {uuid.uuid4().hex[:4]}"
+    alias2_name = f"AGMARKNET_PERUNDURAI_TEST_{uuid.uuid4().hex[:4]}"
+
     market = Market(
-        name="Perundurai Regulated Market",
+        name=mkt_name,
         code=f"MKT-PRD-{uuid.uuid4().hex[:4]}",
         district="Erode",
         district_id=district.id,
@@ -29,8 +33,8 @@ def test_market_alias_resolution(db):
     db.add(market)
     db.commit()
 
-    alias1 = MarketAlias(market_id=market.id, alias="Perundurai Mandi", source="general")
-    alias2 = MarketAlias(market_id=market.id, alias="AGMARKNET_PERUNDURAI", source="agmarknet")
+    alias1 = MarketAlias(market_id=market.id, alias=alias1_name, source="general")
+    alias2 = MarketAlias(market_id=market.id, alias=alias2_name, source="agmarknet")
     db.add_all([alias1, alias2])
     db.commit()
 
@@ -38,12 +42,12 @@ def test_market_alias_resolution(db):
     assert resolve_market(market.code, db=db).id == market.id
 
     # 2. Exact name
-    assert resolve_market("Perundurai Regulated Market", db=db).id == market.id
+    assert resolve_market(mkt_name, db=db).id == market.id
 
     # 3. Aliases
-    assert resolve_market("Perundurai Mandi", db=db).id == market.id
-    assert resolve_market("perundurai mandi", db=db).id == market.id
-    assert resolve_market("AGMARKNET_PERUNDURAI", db=db).id == market.id
+    assert resolve_market(alias1_name, db=db).id == market.id
+    assert resolve_market(alias1_name.lower(), db=db).id == market.id
+    assert resolve_market(alias2_name, db=db).id == market.id
 
     # 4. Unknown market
     assert resolve_market("NonExistent_Unknown_Market", db=db) is None
