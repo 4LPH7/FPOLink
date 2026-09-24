@@ -71,6 +71,8 @@ def get_latest_prices(db: Session, district: Optional[str] = None) -> List[dict]
         prices.append(
             {
                 "id": str(mp.id),
+                "crop_id": str(mp.crop_id),
+                "market_id": str(mp.market_id),
                 "crop_name": crop.name,
                 "crop_tamil_name": crop.tamil_name,
                 "market_name": market.name,
