@@ -90,8 +90,19 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 ### Checkpoint F: Statewide Data Network Sign-Off
 - [x] Migration 0010 applied, 38 districts with registered mandis, deterministic source mappings, raw replay verified, 0 Erode regressions
 
-## Future Strategic Roadmap (v0.7 to v1.0)
-- **Phase 11–12 (v0.7 Agricultural Intelligence)**: Multi-market forecasting, global LightGBM models, feature store, price spread comparisons.
+## Phase 11: Agricultural Intelligence (v0.7 Intelligence Layer)
+- [ ] T11.1 Agricultural Feature Store Engine (`backend/app/ml/features.py`)
+- [ ] T11.2 Feature Store Unit & Verification Test Suite (`backend/tests/test_feature_store.py`)
+- [ ] T11.3 Dual Forecasting Engine: LightGBM Quantile Regression + Baseline (`backend/app/ml/forecasting.py`)
+- [ ] T11.4 Actionable Signal Engine & Prediction Persistence (`predictions`, `model_versions`, `forecast_log`)
+- [ ] T11.5 Worker Automated Prediction Pipeline Integration (`backend/app/worker.py`)
+- [ ] T11.6 Geospatial Market Arbitrage & Net Freight Engine (`backend/app/services/arbitrage.py`)
+- [ ] T11.7 Agricultural Intelligence API v1 Endpoints (`/api/v1/intelligence/*`)
+- [ ] T11.8 Frontend Price & Intelligence Dashboard Updates (Confidence envelopes, arbitrage matrix, 38-district selector)
+- [ ] T11.9 End-to-End Intelligence Integration Test Suite (`backend/tests/test_agricultural_intelligence.py`)
+- [ ] T11.10 Checkpoint G: Agricultural Intelligence Sign-Off
+
+## Future Strategic Roadmap (v0.8 to v1.0)
 - **Phase 13–15 (v0.8 Supply + Demand Network)**: Farm acreage tracking, expected yield/supply aggregation heatmaps, buyer matching engine.
 - **Phase 16–17 (v0.9 State Command Center)**: State Agricultural Pulse dashboard, role-specific views (State Admin, District Admin, FPO, Analyst, Buyer, Farmer).
 - **Phase 18–20 (v1.0 Tamil Nadu Agricultural Intelligence Platform)**: Integrated farmer PWA & WhatsApp intelligence network, province-wide scaling.
