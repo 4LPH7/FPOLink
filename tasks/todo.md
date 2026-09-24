@@ -74,8 +74,28 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T8.6 API v1 Routing & Backward-Compatibility Shims
 - [x] T8.7 Statewide Reference Seed & Verification Checkpoint E
 ### Checkpoint E: Statewide Foundation Sign-Off
-- [x] Migration 0006 applied, 38 TN districts queryable, Tier-A crops resolved, existing pilot 100% green
+- [x] Migration 0006-0009 applied, 38 TN districts queryable, Tier-A crops resolved, existing pilot 100% green
 
-## Final: Pilot
+## Phase 9: Statewide Data Network (v0.6 Data Layer)
+- [x] T9.1 Reference Invariants & Automated Count Assertions (38 districts, 20 crops, 25 taluks, 8 markets, 5 data sources)
+- [ ] T9.2 Complete Regulated Market Master Registry across all 38 districts
+- [ ] T9.3 External Source Mapping Models (`CropSourceMapping`, `MarketSourceMapping`, `VarietySourceMapping`) + Migration 0010
+- [ ] T9.4 Commodity Registry UI (`/admin/commodities`) & Admin API (`/api/v1/commodities`)
+- [ ] T9.5 Raw Ingestion Persistence & Replay Harness (`raw_ingest` with checksum)
+- [ ] T9.6 8-Stage Statewide Ingestion Pipeline
+- [ ] T9.7 Ingestion Center Telemetry Console (`/admin/ingestion` & `/api/v1/ingestion/runs`)
+- [ ] T9.8 End-to-End Price Data Lineage Tracking (`MarketPrice` -> `IngestionRun` -> `RawIngest`)
+- [ ] T9.9 Statewide Integration & Multi-District Regression Test Suite
+- [ ] T9.10 Checkpoint F: Statewide Data Network Sign-Off
+### Checkpoint F: Statewide Data Network Sign-Off
+- [ ] Migration 0010 applied, 38 districts with registered mandis, deterministic source mappings, raw replay verified, 0 Erode regressions
+
+## Future Strategic Roadmap (v0.7 to v1.0)
+- **Phase 11–12 (v0.7 Agricultural Intelligence)**: Multi-market forecasting, global LightGBM models, feature store, price spread comparisons.
+- **Phase 13–15 (v0.8 Supply + Demand Network)**: Farm acreage tracking, expected yield/supply aggregation heatmaps, buyer matching engine.
+- **Phase 16–17 (v0.9 State Command Center)**: State Agricultural Pulse dashboard, role-specific views (State Admin, District Admin, FPO, Analyst, Buyer, Farmer).
+- **Phase 18–20 (v1.0 Tamil Nadu Agricultural Intelligence Platform)**: Integrated farmer PWA & WhatsApp intelligence network, province-wide scaling.
+
+## Pilot Deployment
 - [ ] 2-week pilot with 10–20 farmers from one FPO (runbook: `docs/PILOT_RUNBOOK.md`)
 - [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision (evaluation rubric: `docs/PILOT_RUNBOOK.md`)

@@ -671,11 +671,29 @@ def seed_statewide():
                     )
                 )
                 ds_created += 1
-        db.commit()
-        print(f"✓ Ingestion Data Sources: {len(DATA_SOURCES)} configured ({ds_created} new)")
+        # ─── 7. Verification Assertions ──────────────────
+        assert len(TN_DISTRICTS) == 38, f"Configured districts: {len(TN_DISTRICTS)}, expected 38"
+        assert len(TIER_A_CROPS) == 20, f"Configured crops: {len(TIER_A_CROPS)}, expected 20"
+        total_taluks = sum(len(t) for t in TALUKS_BY_DISTRICT.values())
+        assert total_taluks == 25, f"Configured taluks: {total_taluks}, expected 25"
+        assert len(PILOT_MARKETS) == 8, f"Configured markets: {len(PILOT_MARKETS)}, expected 8"
+        assert len(DATA_SOURCES) == 5, f"Configured sources: {len(DATA_SOURCES)}, expected 5"
 
+        db_districts = db.query(District).count()
+        db_crops = db.query(Crop).filter(Crop.is_active.is_(True)).count()
+        db_taluks = db.query(Taluk).count()
+        db_markets = db.query(Market).count()
+        db_sources = db.query(DataSource).count()
+
+        assert db_districts == 38, f"DB districts count {db_districts} != 38"
+        assert db_crops >= 20, f"DB active crops count {db_crops} < 20"
+        assert db_taluks >= 25, f"DB taluks count {db_taluks} < 25"
+        assert db_markets >= 8, f"DB markets count {db_markets} < 8"
+        assert db_sources >= 5, f"DB sources count {db_sources} < 5"
+
+        print("✓ Verified all reference counts: 38 Districts, 20 Tier-A Crops, 25 Taluks, 8 Markets, 5 Data Sources")
         print("=" * 60)
-        print("✓ Statewide Foundation Reference Seed successfully applied!")
+        print("✓ Statewide Foundation Reference Seed successfully applied & verified!")
         print("=" * 60)
 
     except Exception as e:

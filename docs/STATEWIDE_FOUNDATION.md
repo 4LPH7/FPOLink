@@ -85,7 +85,27 @@ This populates:
 - 1 State (`Tamil Nadu`, code: `TN`)
 - 38 Revenue Districts
 - 25 Pilot Taluks (Erode, Coimbatore, Thanjavur)
-- 20 Tier-A Commodities with Tamil and botanical names
+- 20 Tier-A Commodities:
+  1. Turmeric (*Curcuma longa*, மஞ்சள்)
+  2. Banana (*Musa acuminata*, வாழை)
+  3. Coconut (*Cocos nucifera*, தேங்காய்)
+  4. Paddy (*Oryza sativa*, நெல்)
+  5. Groundnut (*Arachis hypogaea*, நிலக்கடலை)
+  6. Tomato (*Solanum lycopersicum*, தக்காளி)
+  7. Small Onion (*Allium cepa var. aggregatum*, சின்ன வெங்காயம்)
+  8. Onion (*Allium cepa*, பெரிய வெங்காயம்)
+  9. Green Chilli (*Capsicum annuum*, பச்சை மிளகாய்)
+  10. Red Chilli (*Capsicum annuum*, காய்ந்த மிளகாய்)
+  11. Maize (*Zea mays*, மக்காச்சோளம்)
+  12. Cotton (*Gossypium hirsutum*, பருத்தி)
+  13. Sugarcane (*Saccharum officinarum*, கரும்பு)
+  14. Black Gram (*Vigna mungo*, உளுந்து)
+  15. Green Gram (*Vigna radiata*, பாசிப்பயறு)
+  16. Tapioca (*Manihot esculenta*, மரவள்ளிக்கிழங்கு)
+  17. Mango (*Mangifera indica*, மாம்பழம்)
+  18. Brinjal (*Solanum melongena*, கத்தரிக்காய்)
+  19. Ladies Finger (*Abelmoschus esculentus*, வெண்டைக்காய்)
+  20. Ginger (*Zingiber officinale*, இஞ்சி)
 - 67 Canonical Crop Aliases
 - 40 Cultivar Varieties & Aliases
 - 8 Regulated Mandis with geo-coordinates and aliases
@@ -94,7 +114,8 @@ This populates:
 ---
 
 ## 4. Verification Checkpoint Sign-Off
-All 162 automated tests in the regression suite pass without errors:
+All 164 automated tests in the regression suite pass without errors:
+- `tests/test_seed_reference_counts.py`
 - `tests/test_geography.py`
 - `tests/test_crop_ontology.py`
 - `tests/test_market_registry.py`
