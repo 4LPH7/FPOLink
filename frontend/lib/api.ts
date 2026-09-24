@@ -23,6 +23,8 @@ export interface PriceTrend {
 
 export interface MarketPrice {
   id: string;
+  crop_id?: string;
+  market_id?: string;
   crop_name: string;
   crop_tamil_name?: string;
   market_name: string;
@@ -237,6 +239,63 @@ export async function getFarmers(
     farmers: [],
     total: 0,
   };
+}
+
+export interface FarmerCreatePayload {
+  name: string;
+  phone: string;
+  password: string;
+  village: string;
+  taluk: string;
+  district: string;
+  farm_area_acres: number;
+  language_preference: string;
+  consent_given: boolean;
+  lang: string;
+  alerts_opt_in: boolean;
+}
+
+export async function createFarmer(
+  fpoId: string,
+  data: FarmerCreatePayload,
+  token: string
+): Promise<{ farmer: Farmer | null; error: string | null }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/farmers/${fpoId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+      cache: "no-store",
+    });
+    if (res.ok) {
+      return { farmer: await res.json(), error: null };
+    }
+    const errData = await res.json().catch(() => ({ detail: "Unknown error" }));
+    return { farmer: null, error: errData.detail || `HTTP ${res.status}` };
+  } catch (err) {
+    return { farmer: null, error: String(err) };
+  }
+}
+
+export async function login(
+  phone: string,
+  password: string
+): Promise<{ access_token: string; refresh_token: string } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, password }),
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Login failed:", err);
+  }
+  return null;
 }
 
 // ─── WhatsApp Activity & Usage Telemetry ─────────────────────

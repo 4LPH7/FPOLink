@@ -54,12 +54,14 @@ def trigger_retention_purge(
     )
 
     inbound_count = purge_inbound(retention_days=7)
-    state_count = purge_conversation_state(retention_hours=24)
+    state_count = purge_conversation_state(ttl_hours=24)
     outbound_count = purge_outbound(retention_months=12)
 
     return {
         "message": "DPDP retention purge completed",
-        "purged_inbound": inbound_count,
-        "purged_states": state_count,
-        "purged_outbound": outbound_count,
+        "purged": {
+            "inbound": inbound_count,
+            "conversation_state": state_count,
+            "outbound": outbound_count,
+        },
     }

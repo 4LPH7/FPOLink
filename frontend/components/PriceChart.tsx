@@ -17,7 +17,7 @@ import {
   RefreshCw,
   BarChart2,
 } from "lucide-react";
-import { getLatestPrices, getCrops, getPriceHistory, Crop, MarketPrice, PriceHistoryPoint } from "@/lib/api";
+import { getLatestPrices, getPriceHistory, MarketPrice, PriceHistoryPoint } from "@/lib/api";
 
 interface PriceChartProps {
   lang: "ta" | "en";
@@ -28,27 +28,33 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
   const [selectedCrop, setSelectedCrop] = useState<"turmeric" | "banana">("turmeric");
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
   const [history, setHistory] = useState<PriceHistoryPoint[]>([]);
+  const [currentPrice, setCurrentPrice] = useState<MarketPrice | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchChartHistory = async (cropName: "turmeric" | "banana", days: number) => {
     setLoading(true);
     try {
-      const [crops, prices] = await Promise.all([
-        getCrops(),
-        getLatestPrices("Erode"),
-      ]);
+      const prices = await getLatestPrices("Erode");
+      const price = prices.find((p) =>
+        p.crop_name.toLowerCase().includes(cropName)
+      );
 
-      const crop = crops.find((c) => c.name.toLowerCase() === cropName);
-      const price = prices.find((p) => p.crop_name.toLowerCase().includes(cropName));
-
-      if (crop && price) {
-        const hist = await getPriceHistory(crop.id, price.id, days);
+      // Use crop_id and market_id returned by the API (added to response)
+      if (price && price.crop_id && price.market_id) {
+        const hist = await getPriceHistory(price.crop_id, price.market_id, days);
+        setCurrentPrice(price);
         setHistory(hist);
+      } else if (price) {
+        // Fallback: show current price card even if no history
+        setCurrentPrice(price);
+        setHistory([]);
       } else {
+        setCurrentPrice(null);
         setHistory([]);
       }
     } catch (err) {
       console.warn("Failed to load price history:", err);
+      setCurrentPrice(null);
       setHistory([]);
     } finally {
       setLoading(false);
@@ -60,20 +66,38 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
     fetchChartHistory(selectedCrop, days);
   }, [selectedCrop, timeframe]);
 
+  // Prices in DB are ₹/kg — multiply by 100 to show ₹/quintal
   const chartData = history.map((pt) => ({
     date: pt.date ? pt.date.slice(5) : "",
     modal: Math.round(Number(pt.modal_price) * 100),
     min: Math.round(Number(pt.min_price) * 100),
     max: Math.round(Number(pt.max_price) * 100),
-    range: [Math.round(Number(pt.min_price) * 100), Math.round(Number(pt.max_price) * 100)],
   }));
 
   const latestPoint = chartData[chartData.length - 1];
   const previousPoint = chartData[chartData.length - 2] || chartData[0];
   const priceDiff = latestPoint && previousPoint ? latestPoint.modal - previousPoint.modal : 0;
-  const pctChange = previousPoint && previousPoint.modal > 0
-    ? ((priceDiff / previousPoint.modal) * 100).toFixed(1)
-    : "0.0";
+  const pctChange =
+    previousPoint && previousPoint.modal > 0
+      ? ((priceDiff / previousPoint.modal) * 100).toFixed(1)
+      : "0.0";
+
+  // Use currentPrice as fallback KPI when history is empty
+  const displayModal = latestPoint
+    ? latestPoint.modal
+    : currentPrice
+    ? Math.round(Number(currentPrice.modal_price) * 100)
+    : null;
+  const displayMin = latestPoint
+    ? latestPoint.min
+    : currentPrice
+    ? Math.round(Number(currentPrice.min_price) * 100)
+    : null;
+  const displayMax = latestPoint
+    ? latestPoint.max
+    : currentPrice
+    ? Math.round(Number(currentPrice.max_price) * 100)
+    : null;
 
   return (
     <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/90 dark:border-border p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
@@ -161,7 +185,7 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
             {lang === "ta" ? "தற்போதைய மாதிரி விலை" : "Current Modal Price"}
           </span>
           <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-foreground">
-            {latestPoint ? `₹${latestPoint.modal.toLocaleString()}` : "—"}
+            {displayModal !== null ? `₹${displayModal.toLocaleString("en-IN")}` : "—"}
           </span>
           <span className="text-[10px] text-muted-foreground block">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
         </div>
@@ -189,7 +213,7 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
             {lang === "ta" ? "குறைந்தபட்ச விலை" : "Minimum Auction"}
           </span>
           <span className="text-lg font-bold text-gray-700 dark:text-muted-foreground">
-            {latestPoint ? `₹${latestPoint.min.toLocaleString()}` : "—"}
+            {displayMin !== null ? `₹${displayMin.toLocaleString("en-IN")}` : "—"}
           </span>
           <span className="text-[10px] text-muted-foreground block">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
         </div>
@@ -199,7 +223,7 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
             {lang === "ta" ? "அதிகபட்ச விலை" : "Maximum Auction"}
           </span>
           <span className="text-lg font-bold text-gray-700 dark:text-muted-foreground">
-            {latestPoint ? `₹${latestPoint.max.toLocaleString()}` : "—"}
+            {displayMax !== null ? `₹${displayMax.toLocaleString("en-IN")}` : "—"}
           </span>
           <span className="text-[10px] text-muted-foreground block">/ {lang === "ta" ? "குவிண்டால்" : "quintal"}</span>
         </div>
