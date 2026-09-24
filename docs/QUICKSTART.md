@@ -53,29 +53,20 @@ You should see:
 ### Step 4: Seed the Database
 Populate initial reference data (admin user, crops, varieties, mandis, and demo farmers):
 ```bash
+# 1. Baseline pilot data
 docker compose exec backend python scripts/seed.py
+
+# 2. Statewide platform reference foundation (38 districts, 20 crops, mandis, data sources)
+docker compose exec backend python scripts/seed_statewide_foundation.py
 ```
 
-Expected output:
-```text
-==================================================
-FPOLink TN — Seeding Database (v2)
-==================================================
-✓ Admin user created (phone: 9999900000, password: admin123)
-✓ Crop 'turmeric' (மஞ்சள்) created
-✓ Crop 'banana' (வாழைப்பழம்) created
-✓ Crop 'coconut' (தேங்காய்) created
-✓ Variety 'finger' for turmeric created
-✓ Variety 'bulb' for turmeric created
-✓ Variety 'Nendran' for banana created
-✓ Variety 'Poovan' for banana created
-✓ Market 'Erode Mandi' created
-✓ FPO 'Erode Farmers Collective' created
-✓ Farmer 'Ramasamy' created
-✓ Farmer 'Kuppusamy' created
-✓ Seeding completed successfully!
-==================================================
-```
+Expected output includes:
+- Admin user and pilot FPO created
+- All 38 Tamil Nadu districts registered
+- 25 Pilot Taluks created across Erode, Coimbatore, and Thanjavur
+- 20 Tier-A commodities with Tamil and botanical names, 67 aliases, and 40 varieties
+- 8 Regulated Mandis with geo-coordinates and aliases
+- 5 Verified Ingestion Data Sources
 
 ---
 
@@ -89,6 +80,18 @@ curl -s http://localhost:8000/api/health
 ```json
 {"status":"ok","service":"fpolink-api","version":"0.1.0","db":"ok"}
 ```
+
+### 2. Statewide Districts Probe (v1)
+```bash
+curl -s http://localhost:8000/api/v1/geography/districts
+```
+Returns all 38 districts of Tamil Nadu (Ariyalur through Virudhunagar).
+
+### 3. Latest Verified Mandi Prices (v1)
+```bash
+curl -s "http://localhost:8000/api/v1/prices/latest?district=Erode"
+```
+Returns latest verified prices with explainable data quality scores.
 
 ### 2. Verified Crops Feed
 ```bash
@@ -119,16 +122,12 @@ Open your browser and navigate to:
 
 ## 4. Running the Automated Test Suite
 
-To run backend integration tests against the live Docker PostgreSQL database:
+To run the complete test suite inside the container environment:
 ```bash
-# In PowerShell (Windows)
-$env:DATABASE_URL="postgresql+psycopg://fpolink:fpolink@localhost:5433/fpolink_test"
-$env:REQUIRE_DB="1"
-cd backend
-pytest -v --tb=short
+docker compose exec backend pytest -v --tb=short
 ```
 
-Expected result: **137 passed, 0 skipped, 0 failed** in ~10 seconds.
+Expected result: **162 passed, 1 skipped, 0 failed** in ~10 seconds.
 
 ---
 

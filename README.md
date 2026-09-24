@@ -1,191 +1,224 @@
 # FPOLink TN
 
-**FPO Digital Operating System for Tamil Nadu**
+**Tamil Nadu Agricultural Intelligence Platform & FPO Operating System**
 
-A self-hostable, open-source platform that provides Farmer Producer Organizations (FPOs) with price intelligence, harvest aggregation, demand forecasting, and buyer matching — focused on Erode district and key Tamil Nadu crops.
+A self-hostable, production-ready, open-source platform that empowers Farmer Producer Organizations (FPOs), district administrators, and state agricultural departments with real-time price intelligence, harvest aggregation, demand forecasting, multi-tenant governance, and automated farmer communication via WhatsApp — spanning all 38 districts of Tamil Nadu.
 
 [![CI](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml/badge.svg)](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black.svg)](https://nextjs.org)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016-336791.svg)](https://www.postgresql.org)
 
 ---
 
-## Architecture
+## Architecture Overview
 
 ```text
-                    FPO ADMIN / STAFF
-                           │
-                  ┌────────▼────────┐
-                  │   Web Dashboard │
-                  │   (Next.js PWA) │
-                  └────────┬────────┘
-                           │
-            ┌──────────────┼──────────────┐
-            │              │              │
-       Price Intel    Aggregation      Members
-            │              │              │
-            └──────────────┼──────────────┘
-                           │
-                     FastAPI Backend
-                           │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-   PostgreSQL 16     Background Worker     Notifications
-    (21 Tables)        (APScheduler)    (WhatsApp Cloud API)
-        │                   │
-        │              Daily ETL:
-        │              ├── data.gov.in (OGD)
-        │              ├── CEDA Agri-Market (Ashoka Univ)
-        │              ├── Open-Meteo & NASA POWER
-        │              └── TN Festival Features
-        │
-    ML Forecasting
-    ├── Baselines (Seasonal Naive)
-    ├── statsforecast (ETS / ARIMA)
-    └── LightGBM (Quantile intervals)
+                           STATE / DISTRICT / FPO ADMINS
+                                         │
+                                ┌────────▼────────┐
+                                │  Web Dashboard  │
+                                │  (Next.js PWA)  │
+                                └────────┬────────┘
+                                         │
+                 ┌───────────────────────┼───────────────────────┐
+                 │                       │                       │
+           Statewide Intel       Harvest & Members        Multi-Tenant RBAC
+                 │                       │                       │
+                 └───────────────────────┼───────────────────────┘
+                                         │
+                               FastAPI Backend (v1)
+                                         │
+             ┌───────────────────────────┼───────────────────────────┐
+             │                           │                           │
+       PostgreSQL 16             APScheduler Worker            Notifications
+    (28 Relational Tables)      (Container Isolation)      (WhatsApp Cloud API)
+             │                           │                           │
+    Statewide Foundation:       Ingestion & Quality:        At-Least-Once Sweeper:
+    ├── 38 Revenue Districts    ├── OGD India Mandi Feed    ├── Interactive Menus
+    ├── Taluk/Block/Village     ├── CEDA Ashoka Mandi Feed  ├── Daily Price Digest
+    ├── Canonical Crop Ontology ├── Open-Meteo & NASA POWER └── Price-Move Alerts
+    ├── Regulated Market Master ├── Explainable QA (0–100)
+    └── Tamper-Evident Audit    └── MAD Anomaly Detection
 ```
 
-## Modules
+---
+
+## Key Modules
 
 | Module | Description | Status |
 |---|---|---|
-| **Auth & DPDP Consent** | Phone auth with Argon2id + PyJWT and DPDP Act 2023 compliance tracking | **Active** |
-| **Market Intelligence** | Daily mandi prices, normalized markets/varieties, MAD anomaly detection | **Active** |
-| **FPO Management** | Organization registration, staff administration, member statistics | **Active** |
-| **Farmer Directory** | Farmer registration, farm land tracking, bilingual preferences (ta/en) | **Active** |
-| **Data Ingestion (ETL)** | CEDA historical backfill, live OGD API, Open-Meteo & NASA POWER weather | **Active** |
-| **Harvest Chat Flow** | Conversational WhatsApp harvest logging with unit normalization | **Active** |
-| **WhatsApp Bot & Engine** | Meta Cloud API v23.0, 3-button interactive menu, at-least-once sweep | **Active** |
-| **Staff Web Dashboard** | Next.js 14 PWA, shadcn/ui, Tamil line-height scale, 30-day price trends | **Active** |
-| **Price Forecasting** | Seasonal baseline and LightGBM models with hold/sell decision signals | **Active** |
-| **Production Deployment** | Zero-cost Cloudflare Tunnel sidecar + Oracle Cloud Always Free VM guide | **Active** |
+| **Administrative Geography** | Full 5-tier relational hierarchy: State, 38 Districts, Taluks, Blocks, and Villages | **Active** |
+| **Agricultural Crop Ontology** | Canonical crop catalog with botanical classifications, Tamil names, and aliases | **Active** |
+| **Market Master Registry** | Normalized mandi master registry with geo-coordinates and regional aliases | **Active** |
+| **Multi-Tenant RBAC & Audit** | 9 discrete roles (`STATE_ADMIN`, `DISTRICT_ADMIN`, `FPO_ADMIN`, etc.) with audit logging | **Active** |
+| **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Active** |
+| **Mandi Price Ingestion** | Real-time adapters for data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes | **Active** |
+| **Staff Web Dashboard** | Next.js 14 PWA, Tailwind CSS, shadcn/ui, Tamil typography, 30-day price trends | **Active** |
+| **WhatsApp Conversational Bot** | Meta Cloud API v23.0, 3-button interactive menu, idempotent harvest logging | **Active** |
+| **DPDP Act 2023 Compliance** | Digital Personal Data Protection Act compliance, consent ledger, 7-day raw purge | **Active** |
+| **Price Forecasting & ML** | Baseline seasonal naive models and LightGBM quantile regression intervals | **Active** |
+| **Zero-Cost Production Stack** | Cloudflare Tunnel sidecar + Oracle Cloud Always Free VM deployment guide | **Active** |
+
+---
 
 ## Tech Stack
 
-| Component | Technology | Rationale |
+| Layer | Technologies | Rationale |
 |---|---|---|
-| Frontend | Next.js (App Router) + Tailwind CSS | Fast, PWA support, Tamil i18n |
-| Backend | FastAPI + SQLAlchemy 2.0 (async-ready) | High performance, auto OpenAPI docs |
-| Database | PostgreSQL 16 (psycopg 3 driver) | Robust relational engine, JSONB support |
-| Migrations | Alembic | Version-controlled schema migrations |
-| Auth | `pwdlib[argon2]` + `PyJWT` | Actively maintained, OWASP recommended |
-| Worker | Standalone APScheduler Container | Process isolation, prevents duplicate jobs |
-| ML & Stats | `statsforecast`, `lightgbm`, `mapie` | Scalable forecasting with prediction intervals |
-| Feature Eng | `holidays` + curated TN festival calendar | Seasonal demand & arrival indicators |
-| Anomaly Detection | Median Absolute Deviation (MAD) | Robust against spiky agricultural price data |
-| Messaging | WhatsApp Cloud API (Meta) | Official Graph API integration, inbound-first, zero cost |
-| External Feeds | OGD API, CEDA bulk data, Open-Meteo | Zero mandatory paid APIs |
-| Containers | Docker Compose | Reproducible development & deployment |
+| **Frontend** | Next.js 14 (App Router), React 18, Tailwind CSS, shadcn/ui | High performance, responsive PWA, bilingual support (Tamil/English) |
+| **Backend API** | FastAPI, Pydantic v2, Python 3.11 | Asynchronous capability, automated OpenAPI v3 documentation |
+| **Database** | PostgreSQL 16 (`psycopg` 3 native driver), SQLAlchemy 2.0 | Transactional integrity, UUID primary keys, JSONB for telemetry |
+| **Migrations** | Alembic | Strict, version-controlled schema migrations (`0001` through `0009`) |
+| **Security & Auth** | `pwdlib[argon2]`, `PyJWT` | OWASP-recommended password hashing and stateless JWT bearer tokens |
+| **Background Worker** | APScheduler | Dedicated worker container for mandi ingestion and broadcast digests |
+| **Quality & Anomaly** | Custom QA Scoring (0–100), Median Absolute Deviation (MAD) | Outlier detection robust against agricultural price volatility |
+| **Messaging** | Meta WhatsApp Cloud API (Graph API v23.0) | Zero-cost official API integration, interactive quick-reply buttons |
+| **Containerization** | Docker Engine & Docker Compose | Uniform local development and reproducible server deployments |
 
-> [!TIP]
-> **Complete Guides**:
-> - [**Quickstart Guide**](docs/QUICKSTART.md) — Step-by-step from `git clone` to first successful API request.
-> - [**Production Hosting Guide**](docs/HOSTING.md) — Free-tier deployment on Oracle Cloud VM with Cloudflare Tunnel.
-> - [**Operational Runbook**](docs/OPS_RUNBOOK.md) — Incident response, kill-switch procedures, and log inspection.
-> - [**Meta Production Checklist**](docs/META_PRODUCTION_CHECKLIST.md) — Pre-flight requirements for WhatsApp Cloud API.
+---
+
+## Documentation Index
+
+- [**Quickstart Guide**](docs/QUICKSTART.md) — Step-by-step setup from git clone to first API call.
+- [**Statewide Foundation (v0.5 Architecture)**](docs/STATEWIDE_FOUNDATION.md) — Detailed architecture for statewide multi-tenancy, ontology, and quality scoring.
+- [**Production Hosting Runbook**](docs/HOSTING.md) — Free-tier deployment on Oracle Cloud VM with Cloudflare Tunnel.
+- [**Operations Runbook**](docs/OPS_RUNBOOK.md) — Incident response, kill-switch procedures, and log inspection.
+- [**Meta Production Checklist**](docs/META_PRODUCTION_CHECKLIST.md) — Pre-flight requirements for WhatsApp Cloud API.
+- [**Data Provenance & Isolation**](docs/data-provenance.md) — Verification ledger guaranteeing synthetic data isolation.
+- [**Pilot Runbook**](docs/PILOT_RUNBOOK.md) — Operational guide for onboarding pilot farmers and staff.
+
+---
 
 ## Quick Start
 
-See [**docs/QUICKSTART.md**](docs/QUICKSTART.md) for full instructions.
-
+### 1. Clone & Configure
 ```bash
-# 1. Clone repository & configure environment
 git clone https://github.com/4LPH7/FPOLink.git
 cd FPOLink
 cp .env.example .env
-
-# 2. Start full stack (PostgreSQL, FastAPI backend, Worker, Next.js dashboard)
-docker compose up -d --build
-
-# 3. Seed initial database reference data
-docker compose exec backend python scripts/seed.py
 ```
 
-### Access
+Review key configuration variables in `.env`:
+- `DEFAULT_CROPS=turmeric,banana,coconut`
+- `DEFAULT_DISTRICT=Erode`
+- `POSTGRES_PORT=5432` *(use 5433 if port 5432 is occupied on the host)*
+- `SEED_ADMIN_PASSWORD=admin123`
 
-| Service | URL |
-|---|---|
-| Backend API | http://localhost:8000 |
-| Swagger Documentation | http://localhost:8000/docs |
-| Health Check | http://localhost:8000/api/health |
-| Frontend Dashboard | http://localhost:3000 (after Day 8) |
-| PostgreSQL | localhost:5432 |
-
-### Database Seeding & Authentication
-
-Run the database seeder to populate initial reference records (crops, varieties, markets):
+### 2. Launch Stack with Docker Compose
 ```bash
-docker compose exec backend python scripts/seed.py
+docker compose up -d --build
 ```
-- In development, seed accounts are created for local smoke testing.
-- Outside development (`ENVIRONMENT=production`), default passwords are **strictly refused**. If `SEED_ADMIN_PASSWORD` is not set in the environment, a cryptographically secure 16-character password is generated at runtime and printed once to standard output.
+
+Verify that all 4 containers are running and healthy:
+```bash
+docker compose ps
+```
+- `fpolink-postgres-1` (healthy on port 5432/5433)
+- `fpolink-backend-1` (running on port 8000)
+- `fpolink-worker-1` (running background cron jobs)
+- `fpolink-frontend-1` (running on port 3000)
+
+### 3. Seed Reference Data
+Apply the initial baseline seed and the statewide platform reference seed:
+```bash
+# Baseline pilot data (Admin user, pilot FPO, initial crops, demo farmers)
+docker compose exec backend python scripts/seed.py
+
+# Statewide reference foundation (38 Districts, pilot taluks, 20 Tier-A crops, regulated mandis, telemetry)
+docker compose exec backend python scripts/seed_statewide_foundation.py
+```
+
+Both seed scripts are **100% idempotent** and safe to execute repeatedly without duplicating records.
+
+---
+
+## Service Endpoints
+
+| Service | Address | Description |
+|---|---|---|
+| **Frontend Dashboard** | `http://localhost:3000` | Staff and FPO web dashboard |
+| **Backend API** | `http://localhost:8000` | FastAPI application server |
+| **API Documentation** | `http://localhost:8000/docs` | Interactive Swagger UI |
+| **System Health Check** | `http://localhost:8000/api/health` | Service and database probe |
+| **PostgreSQL Database** | `localhost:5432` (or `5433`) | Relational database engine |
+
+---
+
+## API v1 Routing Matrix
+
+FPOLink provides a unified `/api/v1/` route hierarchy alongside legacy `/api/` endpoints:
+
+| Domain | Method | Endpoint | Description |
+|---|---|---|---|
+| **Geography** | `GET` | `/api/v1/geography/states` | List states (`Tamil Nadu`) |
+| **Geography** | `GET` | `/api/v1/geography/districts` | List all 38 revenue districts of Tamil Nadu |
+| **Geography** | `GET` | `/api/v1/geography/taluks` | Filter taluks by `district_id` |
+| **Crops** | `GET` | `/api/v1/crops` | List canonical agricultural crops |
+| **Crops** | `POST` | `/api/v1/crops/resolve` | Resolve raw/regional strings to canonical `Crop` |
+| **Markets** | `GET` | `/api/v1/markets` | List registered regulated mandis |
+| **Markets** | `POST` | `/api/v1/markets/resolve` | Resolve raw mandi strings to canonical `Market` |
+| **Prices** | `GET` | `/api/v1/prices/latest` | Latest verified prices with quality scores |
+| **Prices** | `GET` | `/api/v1/prices/history` | Historical price series with quality metrics |
+| **Prices** | `GET` | `/api/v1/prices/quality-summary` | Aggregated data quality telemetry summary |
+| **Farmers** | `GET` | `/api/v1/farmers/{fpo_id}` | Scoped farmer directory for an FPO |
+| **Farmers** | `POST` | `/api/v1/farmers/{fpo_id}` | Register farmer with DPDP consent |
+| **FPOs** | `GET` | `/api/v1/fpos/` | List registered Producer Organizations |
+| **Audit** | `GET` | `/api/v1/audit/logs` | Tamper-evident administrative audit trail |
+
+---
+
+## Database Schema & Migrations
+
+The platform database schema is managed via Alembic:
+
+| Migration | Scope |
+|---|---|
+| `0001_initial_schema` | Core entities: Users, Crops, Varieties, Markets, MarketPrices, FPOs, Farmers, Harvests, Buyers |
+| `0002_user_auth_fields` | Enhanced user authentication fields and consent flags |
+| `0003_raw_ingest_payload` | Raw ingestion payload tracking for replayability |
+| `0004_dpdp_consent` | DPDP Act 2023 compliance tracking and data retention flags |
+| `0005_message_status_tracking` | WhatsApp outbound message status lifecycle and sweep tracking |
+| `0006_statewide_foundation` | Relational geography hierarchy: `states`, `districts`, `taluks`, `blocks`, `villages` |
+| `0007_crop_market_ontology` | Crop ontology fields, `crop_aliases`, `varieties`, `variety_aliases`, `market_aliases` |
+| `0008_multitenant_rbac_audit` | 9 user roles, multi-tenant `fpo_id`/`district_id` scoping, and `audit_logs` |
+| `0009_statewide_ingestion_quality` | Data quality telemetry (`data_sources`, `ingestion_runs`, `data_quality_events`), quality scores |
+
+To check migration status:
+```bash
+docker compose exec backend alembic current
+docker compose exec backend alembic check
+```
+
+---
+
+## Testing & Quality Assurance
+
+The test suite covers unit tests, integration tests, contract tests, and compatibility shims.
+
+Execute the full regression test suite inside the container:
+```bash
+docker compose exec backend pytest -v --tb=short
+```
+
+**Results:**
+- **162 passing tests**
+- 1 skipped test (production webhook verification requiring live Meta token)
+- 0 failures
+
+---
+
+## Data Provenance & Real Data Guarantee
 
 > [!IMPORTANT]
-> **Production Security Rules**:
-> - If `ENVIRONMENT=production`, the application **strictly refuses to start** if `SECRET_KEY` remains the default `'change-me-in-production'`.
-> - If `ENVIRONMENT=production`, `seed.py` **refuses to use any default admin password**. If `SEED_ADMIN_PASSWORD` is not set in the environment, a cryptographically secure 16-character password is generated, printed once to standard output, and never saved in plaintext.
+> FPOLink strictly distinguishes between verified agricultural observations and test fixtures:
+> - **Real Ingestion Feeds**: Tagged as `ogd`, `agmarknet`, or `ceda`. These are verified, scored, and served to farmers.
+> - **Synthetic / Test Data**: Tagged as `ceda_synthetic`, `seed_demo`, or `test`. They are blocked from reaching farmer notifications, WhatsApp digests, or production forecasting models.
+> - See [docs/data-provenance.md](docs/data-provenance.md) for complete dataset isolation guarantees.
 
-## Data Sourcing: Real vs. Synthetic Fixtures
-
-> [!NOTE]
-> All files in `backend/tests/fixtures/*_synthetic.*` and `ml/datasets/*_synthetic.*` are **synthetic fixtures** crafted to model published government and academic schemas for deterministic unit testing. They must not be mistaken for verified ground-truth agricultural observations.
-> See [docs/data-provenance.md](docs/data-provenance.md) for the complete provenance verification ledger, dataset isolation guarantees, and step-by-step instructions.
-
-### Obtaining Real Mandi Data
-1. **Daily Agmarknet Prices (Live Ingestion)**:
-   - Register for a free developer account at [data.gov.in](https://data.gov.in/).
-   - Obtain your user API key from your data.gov.in dashboard.
-   - Configure `OGD_API_KEY=your_key_here` in your `.env` file.
-   - The default Agmarknet mandi daily price resource is `9ef84268-d588-465a-a308-a864a43d0070`.
-2. **Historical Training Data (CEDA Ashoka University)**:
-   - Visit the official [CEDA Agri Market Data Portal](https://agrimarket.ceda.ashoka.edu.in/).
-   - Filter by State: *Tamil Nadu*, District: *Erode*, Commodities: *Turmeric, Banana*.
-   - Export the CSV file and place it in `ml/datasets/ceda_erode_turmeric.csv`.
-   - Run the backfill script:
-     ```bash
-     python backend/scripts/backfill_ceda.py --csv-path ml/datasets/ceda_erode_turmeric.csv --crop turmeric --district Erode --source ceda
-     ```
-   - The ingestion service tags real extracts as `source='ceda'` and synthetic samples as `source='ceda_synthetic'` to guarantee that test/sample records never contaminate ML training series.
-
-```text
-fpolink/
-├── .github/workflows/ci.yml # Automated CI (pytest, alembic check, ruff, docker smoke)
-├── docs/
-│   ├── data-provenance.md   # Data verification ledger (real vs synthetic datasets)
-│   └── WHATSAPP_SETUP.md    # Meta WhatsApp Cloud API integration guide
-├── tasks/
-│   ├── plan.md              # Detailed implementation plan & acceptance criteria
-│   └── todo.md              # Single source of truth task checklist
-├── backend/
-│   ├── alembic/             # Versioned schema migrations
-│   │   └── versions/        # Migration scripts (0001_initial_schema.py)
-│   ├── app/
-│   │   ├── api/             # Routers: auth, prices, fpos, farmers, crops, admin
-│   │   ├── data_sources/    # Adapters: CEDA, OGD, Open-Meteo, NASA POWER, holidays
-│   │   ├── models/          # 21 SQLAlchemy models with single declarative base
-│   │   ├── schemas/         # Pydantic validation schemas
-│   │   ├── services/        # Business logic: auth, prices, ingestion, weather
-│   │   ├── utils/           # Unit conversions (Rs/quintal -> Rs/kg)
-│   │   ├── config.py        # Settings with automatic postgresql+psycopg normalization
-│   │   ├── database.py      # Engine and SessionLocal
-│   │   ├── main.py          # FastAPI application entrypoint
-│   │   └── worker.py        # Dedicated background scheduler process
-│   ├── scripts/
-│   │   ├── backfill_ceda.py # Historical data backfill script
-│   │   ├── check_market_coverage.py # Mandi monthly reporting audit
-│   │   └── seed.py          # Idempotent development database seeder
-│   ├── tests/               # Pytest suite (auth, units, parsers, ingestion, APIs)
-│   ├── Dockerfile
-│   └── entrypoint.sh        # DB health wait check + alembic auto-upgrade
-├── frontend/
-│   └── lib/i18n/            # English (en.json) & Tamil (ta.json) translation dictionaries
-├── config/fpolink.yaml      # Regional config (Erode, crops, data feeds)
-├── database/init.sql        # Database initialization with UTF-8 and extensions
-└── docker-compose.yml
-```
-
-## Language Support
-
-The UI and messaging layers support **English** and **Tamil (தமிழ்)** from the ground up.
+---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
