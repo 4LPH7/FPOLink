@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import Boolean, Column, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.models.base import Base, TimestampMixin
 
@@ -24,6 +25,8 @@ class Market(Base, TimestampMixin):
     state_id = Column(UUID(as_uuid=True), ForeignKey("states.id"), nullable=True)
     district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id"), nullable=True)
     taluk_id = Column(UUID(as_uuid=True), ForeignKey("taluks.id"), nullable=True)
+
+    aliases = relationship("MarketAlias", back_populates="market", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Market {self.name} ({self.district})>"

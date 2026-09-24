@@ -67,8 +67,8 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 
 ## Phase 8: Statewide Platform Foundation (v0.5 Architecture)
 - [x] T8.1 Tracer Vertical Slice: Geography Hierarchy (State/District/Taluk/Block/Village) + Migration 0006
-- [ ] T8.2 Agricultural Ontology & Canonical Crop/Variety Registry with Aliases
-- [ ] T8.3 Market Master Registry & Canonical Market Aliases
+- [x] T8.2 Agricultural Ontology & Canonical Crop/Variety Registry with Aliases
+- [x] T8.3 Market Master Registry & Canonical Market Aliases
 - [ ] T8.4 Multi-Tenant RBAC, Organization Scoping & Audit Logging
 - [ ] T8.5 Statewide Market Ingestion & Explainable Quality Scoring Framework
 - [ ] T8.6 API v1 Routing & Backward-Compatibility Shims
