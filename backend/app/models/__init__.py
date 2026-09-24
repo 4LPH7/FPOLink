@@ -1,4 +1,5 @@
 from app.models.aggregation import AggregationBatch, BatchItem
+from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.buyer import Buyer, BuyerRequirement
 from app.models.crop import Crop
@@ -18,7 +19,7 @@ from app.models.notification import Notification
 from app.models.order import Order
 from app.models.prediction import Prediction
 from app.models.raw_ingest import RawIngest
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.variety import Variety
 from app.models.variety_alias import VarietyAlias
 from app.models.weather import WeatherData
@@ -31,6 +32,9 @@ from app.models.whatsapp import (
 
 __all__ = [
     "Base",
+    "AuditLog",
+    "User",
+    "UserRole",
     "State",
     "District",
     "Taluk",
