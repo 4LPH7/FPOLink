@@ -285,3 +285,65 @@ export async function getWhatsAppUsage(
 
   return null;
 }
+
+// ─── FPO Dashboard Stats ──────────────────────────────────────
+
+export interface FPODashboardStats {
+  member_count: number;
+  total_farm_area_acres: number;
+  crop_distribution: Record<string, number>;
+  active_harvests_kg: number;
+  revenue_total: number;
+}
+
+export async function getFPODashboard(
+  fpoId: string,
+  token: string
+): Promise<FPODashboardStats | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/fpos/${fpoId}/dashboard`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch FPO dashboard stats:", err);
+  }
+  return null;
+}
+
+// ─── Harvest Aggregation ──────────────────────────────────────
+
+export interface HarvestGrade {
+  grade: string;
+  quantity_kg: number;
+  percentage: number;
+}
+
+export interface HarvestBatch {
+  crop_name: string;
+  crop_tamil_name?: string | null;
+  total_kg: number;
+  farmer_count: number;
+  grades: HarvestGrade[];
+  warehouse?: string | null;
+  status: string;
+}
+
+export interface HarvestAggregation {
+  total_pooled_kg: number;
+  batch_count: number;
+  batches: HarvestBatch[];
+}
+
+export async function getHarvestAggregation(): Promise<HarvestAggregation> {
+  try {
+    const res = await fetch(`${API_BASE}/api/harvest/aggregation`, {
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch harvest aggregation:", err);
+  }
+  return { total_pooled_kg: 0, batch_count: 0, batches: [] };
+}

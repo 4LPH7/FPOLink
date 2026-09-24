@@ -1,29 +1,86 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/context";
 import StatCard from "@/components/StatCard";
 import PriceChart from "@/components/PriceChart";
 import AlertPanel from "@/components/AlertPanel";
 import AggregationSummary from "@/components/AggregationSummary";
 import FarmerInviteCard from "@/components/FarmerInviteCard";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   Users,
   Store,
   Smartphone,
-  ArrowRight,
-  ShieldCheck,
-  Activity,
-  Layers,
 } from "lucide-react";
+import {
+  getFPOs,
+  getLatestPrices,
+  getFPODashboard,
+  getWhatsAppActivity,
+  FPODashboardStats,
+} from "@/lib/api";
+import { ensureToken } from "@/lib/auth";
+
+const FPO_ID = process.env.NEXT_PUBLIC_FPO_ID || "d7342e5d-bac6-466e-a18b-366133137074";
 
 export default function DashboardHome() {
   const { lang, t } = useLanguage();
+
+  const [stats, setStats] = useState<FPODashboardStats | null>(null);
+  const [turmericRate, setTurmericRate] = useState<string | null>(null);
+  const [botEnabled, setBotEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function loadKPIs() {
+      try {
+        const [token, prices, wa] = await Promise.all([
+          ensureToken(),
+          getLatestPrices("Erode"),
+          getWhatsAppActivity(1),
+        ]);
+
+        // WhatsApp bot status
+        setBotEnabled(wa.enabled);
+
+        // Turmeric modal price from latest prices
+        const turmericPrice = prices.find(
+          (p) => p.crop_name?.toLowerCase().includes("turmeric") || p.crop_name?.toLowerCase().includes("மஞ்சள்")
+        );
+        if (turmericPrice) {
+          setTurmericRate(
+            `₹${Number(turmericPrice.modal_price).toLocaleString("en-IN")}`
+          );
+        }
+
+        // Dashboard stats (requires auth)
+        if (token) {
+          const dash = await getFPODashboard(FPO_ID, token);
+          setStats(dash);
+        }
+      } catch (err) {
+        console.warn("Dashboard KPI load error:", err);
+      }
+    }
+    loadKPIs();
+  }, []);
+
+  const memberCount = stats
+    ? stats.member_count.toLocaleString("en-IN")
+    : "—";
+
+  const activeHarvestTonnes = stats
+    ? stats.active_harvests_kg > 0
+      ? `${(stats.active_harvests_kg / 1000).toFixed(1)} T`
+      : "0 T"
+    : "—";
+
+  const cropBreakdown = stats?.crop_distribution
+    ? Object.entries(stats.crop_distribution)
+        .slice(0, 2)
+        .map(([name]) => name)
+        .join(" • ") || "—"
+    : "—";
 
   return (
     <div className="space-y-6">
@@ -52,39 +109,41 @@ export default function DashboardHome() {
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title={t.dashboard.members}
-          value="1,250"
+          value={memberCount}
           subtitle={lang === "ta" ? "ஈரோடு & கொடுமுடி" : "Erode & Kodumudi"}
-          change="+12%"
-          changeType="positive"
           icon={Users}
           iconColor="text-emerald-700 bg-emerald-50 dark:bg-emerald-950"
         />
         <StatCard
           title={t.dashboard.turmeric_rate}
-          value="₹12,350"
-          subtitle={lang === "ta" ? "பெருந்துறை மண்டி (நேற்று: ₹12,200)" : "Perundurai (Prev: ₹12,200)"}
-          change="+1.2%"
-          changeType="positive"
+          value={turmericRate ?? "—"}
+          subtitle={lang === "ta" ? "பெருந்துறை மண்டி (Agmarknet)" : "Perundurai mandi (Agmarknet)"}
           icon={TrendingUp}
           iconColor="text-amber-700 bg-amber-50 dark:bg-amber-950"
-          badge={t.dashboard.hold_signal}
+          badge={turmericRate ? t.dashboard.hold_signal : undefined}
         />
         <StatCard
           title={t.dashboard.todays_produce}
-          value="4.8 Tonnes"
-          subtitle={lang === "ta" ? "மஞ்சள் (3.2T) • வாழை (1.6T)" : "Turmeric (3.2T) • Banana (1.6T)"}
-          change="+24%"
-          changeType="positive"
+          value={activeHarvestTonnes}
+          subtitle={cropBreakdown}
           icon={Store}
           iconColor="text-blue-700 bg-blue-50 dark:bg-blue-950"
         />
         <StatCard
           title={t.dashboard.bot_active}
-          value={t.dashboard.bot_status_live}
-          subtitle={lang === "ta" ? "98.4% விடை நேரம் (<2 விநாடி)" : "98.4% uptime (<2s latency)"}
+          value={
+            botEnabled === null
+              ? "—"
+              : botEnabled
+              ? t.dashboard.bot_status_live
+              : lang === "ta"
+              ? "இயக்கம் நிறுத்தப்பட்டது"
+              : "Kill-Switch ON"
+          }
+          subtitle={lang === "ta" ? "WhatsApp Cloud API நிலை" : "WhatsApp Cloud API status"}
           icon={Smartphone}
           iconColor="text-emerald-700 bg-emerald-50 dark:bg-emerald-950"
-          badge="Live"
+          badge={botEnabled ? "Live" : undefined}
         />
       </section>
 
