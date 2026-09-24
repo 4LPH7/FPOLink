@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/context";
 import {
   Card,
@@ -33,8 +34,18 @@ import {
   Trash2,
   Loader2,
   Play,
+  Sprout,
 } from "lucide-react";
-import { getHealth, HealthStatus, API_BASE } from "@/lib/api";
+import {
+  getHealth,
+  HealthStatus,
+  API_BASE,
+  getIngestionRuns,
+  getStatewideFreshness,
+  triggerIngestionRun,
+  IngestionRunItem,
+  StatewideFreshness,
+} from "@/lib/api";
 import { ensureToken } from "@/lib/auth";
 
 interface AdapterRow {
@@ -61,6 +72,13 @@ export default function AdminPage() {
   const [purgeLoading, setPurgeLoading] = useState(false);
   const [purgeResult, setPurgeResult] = useState<string | null>(null);
 
+  // Ingestion Center Telemetry
+  const [ingestionRuns, setIngestionRuns] = useState<IngestionRunItem[]>([]);
+  const [freshness, setFreshness] = useState<StatewideFreshness | null>(null);
+  const [runsLoading, setRunsLoading] = useState(false);
+  const [triggerIngestLoading, setTriggerIngestLoading] = useState(false);
+  const [triggerIngestResult, setTriggerIngestResult] = useState<string | null>(null);
+
   const checkHealth = async () => {
     setIsProbing(true);
     try {
@@ -72,9 +90,39 @@ export default function AdminPage() {
     }
   };
 
+  const loadIngestionData = async () => {
+    setRunsLoading(true);
+    try {
+      const [runsData, freshData] = await Promise.all([
+        getIngestionRuns(1, 10),
+        getStatewideFreshness(),
+      ]);
+      setIngestionRuns(runsData.items);
+      setFreshness(freshData);
+    } finally {
+      setRunsLoading(false);
+    }
+  };
+
   useEffect(() => {
     checkHealth();
+    loadIngestionData();
   }, []);
+
+  const handleTriggerIngestion = async () => {
+    setTriggerIngestLoading(true);
+    setTriggerIngestResult(null);
+    try {
+      const res = await triggerIngestionRun();
+      const recs = res.summary?.records_stored ?? 0;
+      setTriggerIngestResult(`Success: Ingestion complete. ${recs} records normalized.`);
+      await loadIngestionData();
+    } catch (err: any) {
+      setTriggerIngestResult(`Error: ${err.message || String(err)}`);
+    } finally {
+      setTriggerIngestLoading(false);
+    }
+  };
 
   const triggerWeatherIngest = async () => {
     setWeatherLoading(true);
@@ -220,6 +268,12 @@ export default function AdminPage() {
               {lang === "ta" ? "சேவை சரிபார்க்கப்படுகிறது" : "Service Probing"}
             </Badge>
           )}
+          <Link href="/admin/commodities">
+            <Button variant="default" size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">
+              <Sprout className="w-3.5 h-3.5 mr-1" />
+              {lang === "ta" ? "பயிர்கள் பதிவகம்" : "Commodities"}
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -453,6 +507,178 @@ export default function AdminPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Statewide Ingestion Telemetry & Freshness */}
+      {freshness && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+                <Database className="w-5 h-5 text-primary" />
+                {lang === "ta" ? "மாநில அளவிலான தரவுப் புதுப்பிப்பு நிலை" : "Statewide Data Freshness & Pipeline Operations"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {lang === "ta"
+                  ? "38 மாவட்டங்கள் மற்றும் 43 ஒழுங்குமுறை மண்டிகளின் நேரலைத் தரவுத் தொகுப்பு."
+                  : "Continuous telemetry tracking across all 38 revenue districts and 43 canonical regulated markets."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadIngestionData}
+                disabled={runsLoading}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${runsLoading ? "animate-spin" : ""}`} />
+                {lang === "ta" ? "புதுப்பி" : "Refresh Runs"}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleTriggerIngestion}
+                disabled={triggerIngestLoading}
+              >
+                {triggerIngestLoading ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />{lang === "ta" ? "இயங்குகிறது..." : "Running..."}</>
+                ) : (
+                  <><Play className="w-3.5 h-3.5 mr-1" />{lang === "ta" ? "உட்செலுத்துதல் இயக்கு" : "Run Ingestion Now"}</>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {triggerIngestResult && (
+            <div className={`p-3 rounded-lg text-xs border ${triggerIngestResult.startsWith("Error") ? "bg-red-50 text-red-700 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+              {triggerIngestResult}
+            </div>
+          )}
+
+          {/* Freshness KPI Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="border border-border/80 shadow-xs">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">{lang === "ta" ? "அறிக்கையிடும் மாவட்டங்கள்" : "Reporting Districts"}</p>
+                <div className="text-xl font-bold text-foreground mt-1">
+                  {freshness.all_time.reporting_districts} <span className="text-xs font-normal text-muted-foreground">/ {freshness.total_districts}</span>
+                </div>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {freshness.recent_7d.reporting_districts} active in last 7d
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 shadow-xs">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">{lang === "ta" ? "செயல்படும் மண்டிகள்" : "Active Mandis"}</p>
+                <div className="text-xl font-bold text-foreground mt-1">
+                  {freshness.all_time.active_markets} <span className="text-xs font-normal text-muted-foreground">/ {freshness.total_canonical_markets}</span>
+                </div>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {freshness.recent_7d.active_markets} active in last 7d
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 shadow-xs">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">{lang === "ta" ? "கண்காணிக்கப்படும் பயிர்கள்" : "Covered Crops"}</p>
+                <div className="text-xl font-bold text-foreground mt-1">
+                  {freshness.all_time.crops_covered}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Latest: {freshness.all_time.latest_price_date || "Today"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 shadow-xs">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">{lang === "ta" ? "சராசரி தர மதிப்பீடு" : "Avg Data Quality"}</p>
+                <div className="text-xl font-bold text-foreground mt-1">
+                  {freshness.all_time.average_quality_score}%
+                </div>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {freshness.all_time.total_observations} total observations
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Ingestion Runs History Table */}
+          <Card className="border border-border/80 shadow-xs overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base font-semibold">
+                {lang === "ta" ? "உட்செலுத்துதல் இயக்க வரலாறு" : "Recent Pipeline Ingestion Runs"}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {lang === "ta" ? "முந்தைய இயக்கங்களின் பதிவுகள், நேரம் மற்றும் பிழை விவரங்கள்." : "Telemetry records from recent automated and manual pipeline executions."}
+              </CardDescription>
+            </CardHeader>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30">
+                  <TableHead className="font-semibold text-foreground">{lang === "ta" ? "மூலம்" : "Source"}</TableHead>
+                  <TableHead className="font-semibold text-foreground">{lang === "ta" ? "மாவட்டம் / வரம்பு" : "Scope"}</TableHead>
+                  <TableHead className="font-semibold text-foreground">{lang === "ta" ? "நிலை" : "Status"}</TableHead>
+                  <TableHead className="font-semibold text-foreground text-center">{lang === "ta" ? "பெறப்பட்டவை / சேமிக்கப்பட்டவை" : "Records Fetched / Stored"}</TableHead>
+                  <TableHead className="font-semibold text-foreground text-center">{lang === "ta" ? "கால அளவு" : "Duration"}</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">{lang === "ta" ? "இயக்கப்பட்ட நேரம்" : "Executed At"}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {runsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-1 text-primary" />
+                      Loading pipeline runs...
+                    </TableCell>
+                  </TableRow>
+                ) : ingestionRuns.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-20 text-center text-muted-foreground text-xs">
+                      No ingestion runs recorded yet. Click &quot;Run Ingestion Now&quot; to execute your first pipeline run.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  ingestionRuns.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-semibold uppercase text-xs">
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          {r.source_code}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-foreground capitalize">
+                        {r.district || "Statewide"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={r.status === "success" ? "success" : r.status === "partial" ? "warning" : "destructive"}
+                          className="text-[10px] capitalize"
+                        >
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-xs">
+                        <span className="font-bold text-foreground">{r.records_ingested}</span>
+                        <span className="text-muted-foreground"> / {r.records_fetched}</span>
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                        {r.duration_seconds !== null ? `${r.duration_seconds}s` : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground font-mono">
+                        {r.started_at ? new Date(r.started_at).toLocaleTimeString("en-IN") : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
+

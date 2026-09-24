@@ -1,8 +1,9 @@
-"""Data ingestion service — fetches, cleans, and stores market price data."""
-
+import hashlib
+import json
 import logging
 from datetime import date, datetime, timezone
 from typing import List, Optional
+from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -86,7 +87,7 @@ class IngestionService:
                         )
                         total_fetched += len(records)
 
-                        stored = self._store_records(records)
+                        stored = self._store_records(records, ingestion_run_id=ingestion_run.id)
                         total_stored += stored
 
                     except Exception as e:
@@ -123,41 +124,85 @@ class IngestionService:
             "records_stored": total_stored,
             "errors": total_errors,
             "duration_seconds": round(duration, 2),
+            "ingestion_run_id": str(ingestion_run.id),
         }
         logger.info(f"Ingestion complete: {summary}")
         return summary
 
-    def _store_records(self, records: List[PriceRecord]) -> int:
-        """Store price records in the database, deduplicating by unique constraint."""
+    def _store_records(
+        self,
+        records: List[PriceRecord],
+        ingestion_run_id: Optional[UUID] = None,
+    ) -> int:
+        """Store price records in the database through the 8-stage pipeline."""
         stored = 0
         for record in records:
             try:
-                # Store raw payload for replay
-                if record.raw_payload:
+                # Stage 1: Immutable Raw Ingest & SHA-256 Checksum Deduplication
+                raw_payload = record.raw_payload or {
+                    "crop_name": record.crop_name,
+                    "variety_name": record.variety_name,
+                    "market_name": record.market_name,
+                    "district": record.district,
+                    "state": record.state,
+                    "min_price": str(record.min_price),
+                    "max_price": str(record.max_price),
+                    "modal_price": str(record.modal_price),
+                    "raw_price": str(record.raw_price) if record.raw_price is not None else None,
+                    "raw_unit": record.raw_unit,
+                    "arrival_quantity": record.arrival_quantity,
+                    "price_date": record.price_date.isoformat(),
+                    "source": record.source,
+                }
+                payload_json = json.dumps(raw_payload, sort_keys=True, default=str)
+                checksum = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+
+                existing_raw = (
+                    self.db.query(RawIngest)
+                    .filter(RawIngest.source == record.source, RawIngest.checksum == checksum)
+                    .first()
+                )
+                if existing_raw:
+                    raw_ingest_id = existing_raw.id
+                else:
                     raw = RawIngest(
                         source=record.source,
-                        payload=record.raw_payload,
+                        source_record_id=str(raw_payload.get("source_record_id") or raw_payload.get("id") or ""),
+                        checksum=checksum,
+                        payload=raw_payload,
                         processed=True,
                     )
                     self.db.add(raw)
+                    self.db.flush()
+                    raw_ingest_id = raw.id
 
-                # Resolve crop via canonical resolver
-                crop = resolve_crop(record.crop_name, self.db)
+                # Stage 2: Schema Validation (Checked via PriceRecord and numerical ranges)
+                if record.modal_price < 0 or record.min_price < 0 or record.max_price < 0:
+                    logger.warning(f"Invalid negative price in record: {record}, skipping")
+                    continue
+
+                # Stage 3 & 4: External Source Mapping & Canonical Crop Resolution
+                crop = resolve_crop(record.crop_name, self.db, source_code=record.source)
                 if not crop:
                     crop = self.db.query(Crop).filter(Crop.name == record.crop_name).first()
                 if not crop:
                     logger.warning(f"Unknown crop: {record.crop_name}, skipping")
                     continue
 
-                # Resolve or create market via canonical resolver
+                # Resolve Market with Source Mapping & District Scoping
                 market = self._resolve_market(record)
                 if not market:
                     continue
 
-                # Resolve variety if provided
+                # Resolve Variety if provided
                 variety_id = None
                 if record.variety_name:
-                    variety = resolve_variety(crop.id, record.variety_name, self.db)
+                    variety = resolve_variety(
+                        crop.id,
+                        record.variety_name,
+                        self.db,
+                        source_code=record.source,
+                    )
                     if not variety:
                         from app.models.variety import Variety
 
@@ -172,7 +217,13 @@ class IngestionService:
                     if variety:
                         variety_id = variety.id
 
-                # Calculate data quality score
+                # Stage 5 & 6: Normalization & Geographic Verification
+                geo_penalty = 0.0
+                if record.district and market.district:
+                    if record.district.strip().lower() != market.district.strip().lower():
+                        geo_penalty = 15.0
+
+                # Stage 7 & 8: Anomaly Check, Quality Scoring & Lineage Link
                 quality_score, quality_breakdown = calculate_quality_score(
                     price_date=record.price_date,
                     modal_price=record.modal_price,
@@ -182,8 +233,11 @@ class IngestionService:
                     alias_confidence=1.0,
                     arrival_quantity=record.arrival_quantity,
                 )
+                if geo_penalty > 0:
+                    quality_score = max(0.0, quality_score - geo_penalty)
+                    quality_breakdown["district_mismatch_penalty"] = -geo_penalty
 
-                # Check for existing record (dedup)
+                # Deduplication & Persistence
                 existing_q = self.db.query(MarketPrice).filter(
                     MarketPrice.crop_id == crop.id,
                     MarketPrice.market_id == market.id,
@@ -198,7 +252,7 @@ class IngestionService:
 
                 record_id = None
                 if existing:
-                    # Update if newer data
+                    # Update with latest observation and record lineage
                     existing.min_price = record.min_price
                     existing.max_price = record.max_price
                     existing.modal_price = record.modal_price
@@ -207,13 +261,15 @@ class IngestionService:
                     existing.arrival_quantity = record.arrival_quantity
                     existing.quality_score = quality_score
                     existing.quality_breakdown = quality_breakdown
+                    existing.ingestion_run_id = ingestion_run_id
+                    existing.raw_ingest_id = raw_ingest_id
                     record_id = str(existing.id)
                 else:
                     mp = MarketPrice(
                         crop_id=crop.id,
                         variety_id=variety_id,
                         market_id=market.id,
-                        district=record.district,
+                        district=record.district or market.district,
                         min_price=record.min_price,
                         max_price=record.max_price,
                         modal_price=record.modal_price,
@@ -224,6 +280,8 @@ class IngestionService:
                         source=record.source,
                         quality_score=quality_score,
                         quality_breakdown=quality_breakdown,
+                        ingestion_run_id=ingestion_run_id,
+                        raw_ingest_id=raw_ingest_id,
                     )
                     self.db.add(mp)
                     self.db.flush()
@@ -234,7 +292,7 @@ class IngestionService:
                     issue_type = (
                         "price_contradiction"
                         if record.min_price > record.max_price
-                        else "low_quality_data"
+                        else ("geographic_mismatch" if geo_penalty > 0 else "low_quality_data")
                     )
                     dq_event = DataQualityEvent(
                         record_type="market_price",
@@ -254,7 +312,7 @@ class IngestionService:
         return stored
 
     def _resolve_market(self, record: PriceRecord) -> Optional[Market]:
-        """Find or create a market entry with canonical resolution."""
+        """Find or create a market entry with deterministic source mapping & canonical resolution."""
         district_id = None
         if record.district:
             district_obj = (
@@ -265,8 +323,13 @@ class IngestionService:
             if district_obj:
                 district_id = district_obj.id
 
-        # 1. Try canonical resolver
-        market = resolve_market(record.market_name, district_id=district_id, db=self.db)
+        # 1. Try canonical resolver with source_code
+        market = resolve_market(
+            record.market_name,
+            district_id=district_id,
+            db=self.db,
+            source_code=record.source,
+        )
         if market:
             return market
 
@@ -274,7 +337,8 @@ class IngestionService:
         market = (
             self.db.query(Market)
             .filter(
-                Market.name == record.market_name,
+                (func.lower(Market.name) == record.market_name.strip().lower())
+                | (func.lower(Market.canonical_name) == record.market_name.strip().lower()),
                 Market.district == record.district,
             )
             .first()
@@ -284,10 +348,12 @@ class IngestionService:
             # Auto-create market with district linkage if available
             market = Market(
                 name=record.market_name,
+                canonical_name=record.market_name.strip().lower(),
                 district=record.district,
                 district_id=district_id,
                 state=record.state or "Tamil Nadu",
-                market_type="mandi",
+                market_type="regulated_market",
+                is_regulated=True,
                 is_active=True,
             )
             self.db.add(market)

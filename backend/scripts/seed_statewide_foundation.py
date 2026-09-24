@@ -17,6 +17,8 @@ import sys
 # Add backend directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from sqlalchemy import func
+
 from app.database import SessionLocal
 from app.models.crop import Crop
 from app.models.crop_alias import CropAlias
@@ -24,6 +26,11 @@ from app.models.data_quality import DataSource
 from app.models.geography import District, State, Taluk
 from app.models.market import Market
 from app.models.market_alias import MarketAlias
+from app.models.source_mapping import (
+    CropSourceMapping,
+    MarketSourceMapping,
+    VarietySourceMapping,
+)
 from app.models.variety import Variety
 from app.models.variety_alias import VarietyAlias
 
@@ -406,11 +413,13 @@ TIER_A_CROPS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. REGULATED MARKETS & ALIASES
+# 3. REGULATED MARKETS & ALIASES (38 DISTRICTS)
 # ─────────────────────────────────────────────────────────────────────────────
 PILOT_MARKETS = [
     {
         "name": "Erode Regulated Market",
+        "canonical_name": "erode regulated market",
+        "tamil_name": "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-ERD-01",
         "district": "Erode",
         "lat": 11.3410,
@@ -419,6 +428,8 @@ PILOT_MARKETS = [
     },
     {
         "name": "Perundurai Regulated Market",
+        "canonical_name": "perundurai regulated market",
+        "tamil_name": "பெருந்துறை ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-ERD-02",
         "district": "Erode",
         "lat": 11.2764,
@@ -427,6 +438,8 @@ PILOT_MARKETS = [
     },
     {
         "name": "Gobichettipalayam Regulated Market",
+        "canonical_name": "gobichettipalayam regulated market",
+        "tamil_name": "கோபிசெட்டிபாளையம் ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-ERD-03",
         "district": "Erode",
         "lat": 11.4549,
@@ -435,6 +448,8 @@ PILOT_MARKETS = [
     },
     {
         "name": "Kodumudi Regulated Market",
+        "canonical_name": "kodumudi regulated market",
+        "tamil_name": "கொடுமுடி ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-ERD-04",
         "district": "Erode",
         "lat": 11.0805,
@@ -443,6 +458,8 @@ PILOT_MARKETS = [
     },
     {
         "name": "Coimbatore Regulated Market",
+        "canonical_name": "coimbatore regulated market",
+        "tamil_name": "கோயம்புத்தூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-CBE-01",
         "district": "Coimbatore",
         "lat": 11.0168,
@@ -451,6 +468,8 @@ PILOT_MARKETS = [
     },
     {
         "name": "Pollachi Regulated Market",
+        "canonical_name": "pollachi regulated market",
+        "tamil_name": "பொள்ளாச்சி ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-CBE-02",
         "district": "Coimbatore",
         "lat": 10.6609,
@@ -459,6 +478,8 @@ PILOT_MARKETS = [
     },
     {
         "name": "Thanjavur Regulated Market",
+        "canonical_name": "thanjavur regulated market",
+        "tamil_name": "தஞ்சாவூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-TNJ-01",
         "district": "Thanjavur",
         "lat": 10.7870,
@@ -467,12 +488,442 @@ PILOT_MARKETS = [
     },
     {
         "name": "Kumbakonam Regulated Market",
+        "canonical_name": "kumbakonam regulated market",
+        "tamil_name": "கும்பகோணம் ஒழுங்குமுறை விற்பனைக்கூடம்",
         "code": "TN-TNJ-02",
         "district": "Thanjavur",
         "lat": 10.9602,
         "lon": 79.3845,
         "aliases": ["kumbakonam mandi", "kumbakonam", "kumbakonam regulated market"],
     },
+]
+
+ADDITIONAL_STATEWIDE_MARKETS = [
+    {
+        "name": "Ariyalur Regulated Market",
+        "canonical_name": "ariyalur regulated market",
+        "tamil_name": "அரியலூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-AYR-01",
+        "district": "Ariyalur",
+        "lat": 11.1401,
+        "lon": 79.0786,
+        "aliases": ["ariyalur mandi", "ariyalur", "ariyalur market"],
+    },
+    {
+        "name": "Madurantakam Regulated Market",
+        "canonical_name": "madurantakam regulated market",
+        "tamil_name": "மதுராந்தகம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-CGP-01",
+        "district": "Chengalpattu",
+        "lat": 12.5113,
+        "lon": 79.8841,
+        "aliases": ["madurantakam mandi", "madurantakam", "chengalpattu mandi"],
+    },
+    {
+        "name": "Koyambedu Wholesale Market",
+        "canonical_name": "koyambedu wholesale market",
+        "tamil_name": "கோயம்பேடு மொத்த விற்பனை வளாகம்",
+        "code": "TN-CHN-01",
+        "district": "Chennai",
+        "lat": 13.0694,
+        "lon": 80.1948,
+        "aliases": ["koyambedu mandi", "koyambedu", "chennai mandi", "koyambedu market"],
+    },
+    {
+        "name": "Cuddalore Regulated Market",
+        "canonical_name": "cuddalore regulated market",
+        "tamil_name": "கடலூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-CDL-01",
+        "district": "Cuddalore",
+        "lat": 11.7480,
+        "lon": 79.7714,
+        "aliases": ["cuddalore mandi", "cuddalore", "cuddalore market"],
+    },
+    {
+        "name": "Dharmapuri Regulated Market",
+        "canonical_name": "dharmapuri regulated market",
+        "tamil_name": "தருமபுரி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-DPI-01",
+        "district": "Dharmapuri",
+        "lat": 12.1211,
+        "lon": 78.1582,
+        "aliases": ["dharmapuri mandi", "dharmapuri", "dharmapuri market"],
+    },
+    {
+        "name": "Dindigul Regulated Market",
+        "canonical_name": "dindigul regulated market",
+        "tamil_name": "திண்டுக்கல் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-DGL-01",
+        "district": "Dindigul",
+        "lat": 10.3673,
+        "lon": 77.9803,
+        "aliases": ["dindigul mandi", "dindigul", "dindigul market"],
+    },
+    {
+        "name": "Kallakurichi Regulated Market",
+        "canonical_name": "kallakurichi regulated market",
+        "tamil_name": "கள்ளக்குறிச்சி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-KLK-01",
+        "district": "Kallakurichi",
+        "lat": 11.7384,
+        "lon": 78.9639,
+        "aliases": ["kallakurichi mandi", "kallakurichi", "kallakurichi market"],
+    },
+    {
+        "name": "Kanchipuram Regulated Market",
+        "canonical_name": "kanchipuram regulated market",
+        "tamil_name": "காஞ்சிபுரம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-KCP-01",
+        "district": "Kanchipuram",
+        "lat": 12.8342,
+        "lon": 79.7036,
+        "aliases": ["kanchipuram mandi", "kanchipuram", "kanchipuram market"],
+    },
+    {
+        "name": "Nagercoil Regulated Market",
+        "canonical_name": "nagercoil regulated market",
+        "tamil_name": "நாகர்கோவில் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-KKM-01",
+        "district": "Kanyakumari",
+        "lat": 8.1833,
+        "lon": 77.4119,
+        "aliases": ["nagercoil mandi", "nagercoil", "kanyakumari mandi"],
+    },
+    {
+        "name": "Karur Regulated Market",
+        "canonical_name": "karur regulated market",
+        "tamil_name": "கரூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-KRR-01",
+        "district": "Karur",
+        "lat": 10.9601,
+        "lon": 78.0766,
+        "aliases": ["karur mandi", "karur", "karur market"],
+    },
+    {
+        "name": "Krishnagiri Regulated Market",
+        "canonical_name": "krishnagiri regulated market",
+        "tamil_name": "கிருஷ்ணகிரி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-KGI-01",
+        "district": "Krishnagiri",
+        "lat": 12.5186,
+        "lon": 78.2137,
+        "aliases": ["krishnagiri mandi", "krishnagiri", "krishnagiri market"],
+    },
+    {
+        "name": "Madurai Regulated Market",
+        "canonical_name": "madurai regulated market",
+        "tamil_name": "மதுரை ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-MDU-01",
+        "district": "Madurai",
+        "lat": 9.9252,
+        "lon": 78.1198,
+        "aliases": ["madurai mandi", "madurai", "mattuthavani mandi", "madurai market"],
+    },
+    {
+        "name": "Mayiladuthurai Regulated Market",
+        "canonical_name": "mayiladuthurai regulated market",
+        "tamil_name": "மயிலாடுதுறை ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-MYD-01",
+        "district": "Mayiladuthurai",
+        "lat": 11.1075,
+        "lon": 79.6524,
+        "aliases": ["mayiladuthurai mandi", "mayiladuthurai", "mayiladuthurai market"],
+    },
+    {
+        "name": "Nagapattinam Regulated Market",
+        "canonical_name": "nagapattinam regulated market",
+        "tamil_name": "நாகப்பட்டினம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-NGP-01",
+        "district": "Nagapattinam",
+        "lat": 10.7654,
+        "lon": 79.8424,
+        "aliases": ["nagapattinam mandi", "nagapattinam", "nagapattinam market"],
+    },
+    {
+        "name": "Namakkal Regulated Market",
+        "canonical_name": "namakkal regulated market",
+        "tamil_name": "நாமக்கல் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-NMK-01",
+        "district": "Namakkal",
+        "lat": 11.2189,
+        "lon": 78.1674,
+        "aliases": ["namakkal mandi", "namakkal", "namakkal market"],
+    },
+    {
+        "name": "Udhagamandalam Regulated Market",
+        "canonical_name": "udhagamandalam regulated market",
+        "tamil_name": "உதகமண்டலம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-NLG-01",
+        "district": "Nilgiris",
+        "lat": 11.4102,
+        "lon": 76.6950,
+        "aliases": ["ooty mandi", "ooty", "udhagamandalam", "nilgiris mandi"],
+    },
+    {
+        "name": "Perambalur Regulated Market",
+        "canonical_name": "perambalur regulated market",
+        "tamil_name": "பெரம்பலூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-PBL-01",
+        "district": "Perambalur",
+        "lat": 11.2342,
+        "lon": 78.8820,
+        "aliases": ["perambalur mandi", "perambalur", "perambalur market"],
+    },
+    {
+        "name": "Pudukkottai Regulated Market",
+        "canonical_name": "pudukkottai regulated market",
+        "tamil_name": "புதுக்கோட்டை ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-PDK-01",
+        "district": "Pudukkottai",
+        "lat": 10.3797,
+        "lon": 78.8208,
+        "aliases": ["pudukkottai mandi", "pudukkottai", "pudukkottai market"],
+    },
+    {
+        "name": "Ramanathapuram Regulated Market",
+        "canonical_name": "ramanathapuram regulated market",
+        "tamil_name": "இராமநாதபுரம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-RPM-01",
+        "district": "Ramanathapuram",
+        "lat": 9.3639,
+        "lon": 78.8395,
+        "aliases": ["ramanathapuram mandi", "ramanathapuram", "ramnad mandi"],
+    },
+    {
+        "name": "Ranipet Regulated Market",
+        "canonical_name": "ranipet regulated market",
+        "tamil_name": "இராணிப்பேட்டை ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-RPT-01",
+        "district": "Ranipet",
+        "lat": 12.9298,
+        "lon": 79.3326,
+        "aliases": ["ranipet mandi", "ranipet", "ranipet market"],
+    },
+    {
+        "name": "Salem Regulated Market",
+        "canonical_name": "salem regulated market",
+        "tamil_name": "சேலம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-SLM-01",
+        "district": "Salem",
+        "lat": 11.6643,
+        "lon": 78.1460,
+        "aliases": ["salem mandi", "salem", "shevapet mandi", "salem market"],
+    },
+    {
+        "name": "Sivaganga Regulated Market",
+        "canonical_name": "sivaganga regulated market",
+        "tamil_name": "சிவகங்கை ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-SVG-01",
+        "district": "Sivaganga",
+        "lat": 9.8433,
+        "lon": 78.4809,
+        "aliases": ["sivaganga mandi", "sivaganga", "sivaganga market"],
+    },
+    {
+        "name": "Tenkasi Regulated Market",
+        "canonical_name": "tenkasi regulated market",
+        "tamil_name": "தென்காசி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TSI-01",
+        "district": "Tenkasi",
+        "lat": 8.9594,
+        "lon": 77.3150,
+        "aliases": ["tenkasi mandi", "tenkasi", "tenkasi market"],
+    },
+    {
+        "name": "Theni Regulated Market",
+        "canonical_name": "theni regulated market",
+        "tamil_name": "தேனி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-THN-01",
+        "district": "Theni",
+        "lat": 10.0104,
+        "lon": 77.4768,
+        "aliases": ["theni mandi", "theni", "theni market"],
+    },
+    {
+        "name": "Kovilpatti Regulated Market",
+        "canonical_name": "kovilpatti regulated market",
+        "tamil_name": "கோவில்பட்டி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TKD-01",
+        "district": "Thoothukudi",
+        "lat": 9.1738,
+        "lon": 77.8687,
+        "aliases": ["kovilpatti mandi", "kovilpatti", "thoothukudi mandi"],
+    },
+    {
+        "name": "Tiruchirappalli Regulated Market",
+        "canonical_name": "tiruchirappalli regulated market",
+        "tamil_name": "திருச்சிராப்பள்ளி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TRY-01",
+        "district": "Tiruchirappalli",
+        "lat": 10.7905,
+        "lon": 78.7047,
+        "aliases": ["trichy mandi", "tiruchirappalli", "gandhi market trichy", "trichy market"],
+    },
+    {
+        "name": "Tirunelveli Regulated Market",
+        "canonical_name": "tirunelveli regulated market",
+        "tamil_name": "திருநெல்வேலி ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TNL-01",
+        "district": "Tirunelveli",
+        "lat": 8.7139,
+        "lon": 77.7567,
+        "aliases": ["tirunelveli mandi", "tirunelveli", "nellai mandi"],
+    },
+    {
+        "name": "Tirupathur Regulated Market",
+        "canonical_name": "tirupathur regulated market",
+        "tamil_name": "திருப்பத்தூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TPR-01",
+        "district": "Tirupathur",
+        "lat": 12.4958,
+        "lon": 78.5678,
+        "aliases": ["tirupathur mandi", "tirupathur", "tirupathur market"],
+    },
+    {
+        "name": "Tiruppur Regulated Market",
+        "canonical_name": "tiruppur regulated market",
+        "tamil_name": "திருப்பூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TPU-01",
+        "district": "Tiruppur",
+        "lat": 11.1085,
+        "lon": 77.3411,
+        "aliases": ["tiruppur mandi", "tiruppur", "tiruppur market"],
+    },
+    {
+        "name": "Tiruvallur Regulated Market",
+        "canonical_name": "tiruvallur regulated market",
+        "tamil_name": "திருவள்ளூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TLR-01",
+        "district": "Tiruvallur",
+        "lat": 13.1437,
+        "lon": 79.9083,
+        "aliases": ["tiruvallur mandi", "tiruvallur", "tiruvallur market"],
+    },
+    {
+        "name": "Tiruvannamalai Regulated Market",
+        "canonical_name": "tiruvannamalai regulated market",
+        "tamil_name": "திருவண்ணாமலை ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TVM-01",
+        "district": "Tiruvannamalai",
+        "lat": 12.2253,
+        "lon": 79.0747,
+        "aliases": ["tiruvannamalai mandi", "tiruvannamalai", "tiruvannamalai market"],
+    },
+    {
+        "name": "Tiruvarur Regulated Market",
+        "canonical_name": "tiruvarur regulated market",
+        "tamil_name": "திருவாரூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-TVR-01",
+        "district": "Tiruvarur",
+        "lat": 10.7725,
+        "lon": 79.6365,
+        "aliases": ["tiruvarur mandi", "tiruvarur", "tiruvarur market"],
+    },
+    {
+        "name": "Vellore Regulated Market",
+        "canonical_name": "vellore regulated market",
+        "tamil_name": "வேலூர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-VEL-01",
+        "district": "Vellore",
+        "lat": 12.9165,
+        "lon": 79.1325,
+        "aliases": ["vellore mandi", "vellore", "vellore market"],
+    },
+    {
+        "name": "Viluppuram Regulated Market",
+        "canonical_name": "viluppuram regulated market",
+        "tamil_name": "விழுப்புரம் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-VPM-01",
+        "district": "Viluppuram",
+        "lat": 11.9401,
+        "lon": 79.4861,
+        "aliases": ["viluppuram mandi", "viluppuram", "viluppuram market"],
+    },
+    {
+        "name": "Virudhunagar Regulated Market",
+        "canonical_name": "virudhunagar regulated market",
+        "tamil_name": "விருதுநகர் ஒழுங்குமுறை விற்பனைக்கூடம்",
+        "code": "TN-VNR-01",
+        "district": "Virudhunagar",
+        "lat": 9.5872,
+        "lon": 77.9515,
+        "aliases": ["virudhunagar mandi", "virudhunagar", "virudhunagar market"],
+    },
+]
+
+STATEWIDE_MARKETS = PILOT_MARKETS + ADDITIONAL_STATEWIDE_MARKETS
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. DETERMINISTIC SOURCE MAPPINGS (OGD & AGMARKNET)
+# ─────────────────────────────────────────────────────────────────────────────
+DEFAULT_CROP_SOURCE_MAPPINGS = [
+    {"crop": "turmeric", "source": "ogd", "code": "TURMERIC", "name": "Turmeric"},
+    {"crop": "turmeric", "source": "agmarknet", "code": "AGM_TURM", "name": "Turmeric"},
+    {"crop": "banana", "source": "ogd", "code": "BANANA", "name": "Banana"},
+    {"crop": "banana", "source": "agmarknet", "code": "AGM_BAN", "name": "Banana"},
+    {"crop": "coconut", "source": "ogd", "code": "COCONUT", "name": "Coconut"},
+    {"crop": "coconut", "source": "agmarknet", "code": "AGM_COC", "name": "Coconut"},
+    {"crop": "paddy", "source": "ogd", "code": "PADDY_DHAN", "name": "Paddy(Dhan)(Common)"},
+    {"crop": "paddy", "source": "agmarknet", "code": "AGM_PAD", "name": "Paddy(Dhan)"},
+    {"crop": "groundnut", "source": "ogd", "code": "GROUNDNUT", "name": "Groundnut"},
+    {"crop": "groundnut", "source": "agmarknet", "code": "AGM_GNT", "name": "Groundnut"},
+    {"crop": "tomato", "source": "ogd", "code": "TOMATO", "name": "Tomato"},
+    {"crop": "tomato", "source": "agmarknet", "code": "AGM_TOM", "name": "Tomato"},
+    {"crop": "small onion", "source": "ogd", "code": "SMALL_ONION", "name": "Small Onion"},
+    {"crop": "small onion", "source": "agmarknet", "code": "AGM_SON", "name": "Shallot (Small Onion)"},
+    {"crop": "onion", "source": "ogd", "code": "ONION", "name": "Onion"},
+    {"crop": "onion", "source": "agmarknet", "code": "AGM_ONI", "name": "Onion"},
+    {"crop": "green chilli", "source": "ogd", "code": "GREEN_CHILLI", "name": "Green Chilli"},
+    {"crop": "green chilli", "source": "agmarknet", "code": "AGM_GCH", "name": "Green Chilli"},
+    {"crop": "red chilli", "source": "ogd", "code": "CHILLI_RED", "name": "Chilli Red"},
+    {"crop": "red chilli", "source": "agmarknet", "code": "AGM_RCH", "name": "Red Chilli"},
+    {"crop": "maize", "source": "ogd", "code": "MAIZE", "name": "Maize"},
+    {"crop": "maize", "source": "agmarknet", "code": "AGM_MAI", "name": "Maize"},
+    {"crop": "cotton", "source": "ogd", "code": "COTTON", "name": "Cotton"},
+    {"crop": "cotton", "source": "agmarknet", "code": "AGM_COT", "name": "Cotton"},
+    {"crop": "sugarcane", "source": "ogd", "code": "SUGARCANE", "name": "Sugarcane"},
+    {"crop": "sugarcane", "source": "agmarknet", "code": "AGM_SUG", "name": "Sugarcane"},
+    {"crop": "black gram", "source": "ogd", "code": "BLACK_GRAM", "name": "Black Gram (Urd Crop)"},
+    {"crop": "black gram", "source": "agmarknet", "code": "AGM_BGR", "name": "Black Gram"},
+    {"crop": "green gram", "source": "ogd", "code": "GREEN_GRAM", "name": "Green Gram (Moong)"},
+    {"crop": "green gram", "source": "agmarknet", "code": "AGM_GGR", "name": "Green Gram"},
+    {"crop": "tapioca", "source": "ogd", "code": "TAPIOCA", "name": "Tapioca"},
+    {"crop": "tapioca", "source": "agmarknet", "code": "AGM_TAP", "name": "Tapioca"},
+    {"crop": "mango", "source": "ogd", "code": "MANGO", "name": "Mango"},
+    {"crop": "mango", "source": "agmarknet", "code": "AGM_MNG", "name": "Mango"},
+    {"crop": "brinjal", "source": "ogd", "code": "BRINJAL", "name": "Brinjal"},
+    {"crop": "brinjal", "source": "agmarknet", "code": "AGM_BRN", "name": "Brinjal"},
+    {"crop": "ladies finger", "source": "ogd", "code": "BHINDI", "name": "Bhindi(Ladies Finger)"},
+    {"crop": "ladies finger", "source": "agmarknet", "code": "AGM_BHN", "name": "Bhindi"},
+    {"crop": "ginger", "source": "ogd", "code": "GINGER", "name": "Ginger(Green)"},
+    {"crop": "ginger", "source": "agmarknet", "code": "AGM_GIN", "name": "Ginger"},
+]
+
+DEFAULT_MARKET_SOURCE_MAPPINGS = [
+    {"market": "Erode Regulated Market", "source": "ogd", "code": "OGD_ERD", "name": "Erode"},
+    {"market": "Erode Regulated Market", "source": "agmarknet", "code": "AGM_ERD", "name": "Erode"},
+    {"market": "Perundurai Regulated Market", "source": "ogd", "code": "OGD_PRD", "name": "Perundurai"},
+    {"market": "Perundurai Regulated Market", "source": "agmarknet", "code": "AGM_PRD", "name": "Perundurai"},
+    {"market": "Gobichettipalayam Regulated Market", "source": "ogd", "code": "OGD_GOBI", "name": "Gopichettipalayam"},
+    {"market": "Gobichettipalayam Regulated Market", "source": "agmarknet", "code": "AGM_GOBI", "name": "Gobichettipalayam"},
+    {"market": "Kodumudi Regulated Market", "source": "ogd", "code": "OGD_KOD", "name": "Kodumudi"},
+    {"market": "Kodumudi Regulated Market", "source": "agmarknet", "code": "AGM_KOD", "name": "Kodumudi"},
+    {"market": "Coimbatore Regulated Market", "source": "ogd", "code": "OGD_CBE", "name": "Coimbatore"},
+    {"market": "Coimbatore Regulated Market", "source": "agmarknet", "code": "AGM_CBE", "name": "Coimbatore"},
+    {"market": "Pollachi Regulated Market", "source": "ogd", "code": "OGD_POL", "name": "Pollachi"},
+    {"market": "Pollachi Regulated Market", "source": "agmarknet", "code": "AGM_POL", "name": "Pollachi"},
+    {"market": "Madurai Regulated Market", "source": "ogd", "code": "OGD_MDU", "name": "Madurai"},
+    {"market": "Madurai Regulated Market", "source": "agmarknet", "code": "AGM_MDU", "name": "Madurai"},
+    {"market": "Salem Regulated Market", "source": "ogd", "code": "OGD_SLM", "name": "Salem"},
+    {"market": "Salem Regulated Market", "source": "agmarknet", "code": "AGM_SLM", "name": "Salem"},
+    {"market": "Tiruchirappalli Regulated Market", "source": "ogd", "code": "OGD_TRY", "name": "Tiruchirappalli"},
+    {"market": "Tiruchirappalli Regulated Market", "source": "agmarknet", "code": "AGM_TRY", "name": "Tiruchirappalli"},
+    {"market": "Thanjavur Regulated Market", "source": "ogd", "code": "OGD_TNJ", "name": "Thanjavur"},
+    {"market": "Thanjavur Regulated Market", "source": "agmarknet", "code": "AGM_TNJ", "name": "Thanjavur"},
+    {"market": "Kumbakonam Regulated Market", "source": "ogd", "code": "OGD_KMB", "name": "Kumbakonam"},
+    {"market": "Kumbakonam Regulated Market", "source": "agmarknet", "code": "AGM_KMB", "name": "Kumbakonam"},
+    {"market": "Dindigul Regulated Market", "source": "ogd", "code": "OGD_DGL", "name": "Dindigul"},
+    {"market": "Dindigul Regulated Market", "source": "agmarknet", "code": "AGM_DGL", "name": "Dindigul"},
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -614,19 +1065,26 @@ def seed_statewide():
         # ─── 5. Regulated Markets & Aliases ───────────────
         markets_created = 0
         market_aliases_created = 0
-        for mdata in PILOT_MARKETS:
+        for mdata in STATEWIDE_MARKETS:
             dist_obj = district_map.get(mdata["district"])
             dist_id = dist_obj.id if dist_obj else None
+            canonical = mdata.get("canonical_name", mdata["name"].lower())
+            tamil_name = mdata.get("tamil_name")
 
             market = db.query(Market).filter(Market.name == mdata["name"]).first()
             if not market:
                 market = Market(
                     name=mdata["name"],
+                    canonical_name=canonical,
+                    tamil_name=tamil_name,
                     code=mdata["code"],
                     district=mdata["district"],
                     district_id=dist_id,
                     state="Tamil Nadu",
-                    market_type="mandi",
+                    market_type=mdata.get("market_type", "regulated_market"),
+                    is_regulated=True,
+                    e_nam=mdata.get("e_nam", False),
+                    operating_status="active",
                     latitude=mdata["lat"],
                     longitude=mdata["lon"],
                     is_active=True,
@@ -636,10 +1094,13 @@ def seed_statewide():
                 db.refresh(market)
                 markets_created += 1
             else:
+                market.canonical_name = canonical
+                market.tamil_name = tamil_name
                 market.code = mdata["code"]
                 market.district_id = dist_id
                 market.latitude = mdata["lat"]
                 market.longitude = mdata["lon"]
+                market.is_regulated = True
                 market.is_active = True
                 db.commit()
 
@@ -655,7 +1116,7 @@ def seed_statewide():
                     db.add(MarketAlias(market_id=market.id, alias=ma_clean, source="canonical"))
                     market_aliases_created += 1
         db.commit()
-        print(f"✓ Regulated Markets: {len(PILOT_MARKETS)} markets ({markets_created} new), {market_aliases_created} aliases")
+        print(f"✓ Regulated Markets: {len(STATEWIDE_MARKETS)} markets ({markets_created} new), {market_aliases_created} aliases across 38 districts")
 
         # ─── 6. Ingestion Data Sources Telemetry ───────────
         ds_created = 0
@@ -671,12 +1132,71 @@ def seed_statewide():
                     )
                 )
                 ds_created += 1
-        # ─── 7. Verification Assertions ──────────────────
+        db.commit()
+        print(f"✓ Data Sources: {len(DATA_SOURCES)} configured ({ds_created} new)")
+
+        # ─── 7. Deterministic Source Mappings ──────────────
+        c_mappings_created = 0
+        for c_map in DEFAULT_CROP_SOURCE_MAPPINGS:
+            crop_obj = db.query(Crop).filter(Crop.name == c_map["crop"]).first()
+            ds_obj = db.query(DataSource).filter(DataSource.code == c_map["source"]).first()
+            if crop_obj and ds_obj:
+                existing_cm = (
+                    db.query(CropSourceMapping)
+                    .filter(
+                        CropSourceMapping.source_code == c_map["source"],
+                        CropSourceMapping.external_code == c_map["code"],
+                    )
+                    .first()
+                )
+                if not existing_cm:
+                    db.add(
+                        CropSourceMapping(
+                            crop_id=crop_obj.id,
+                            source_id=ds_obj.id,
+                            source_code=c_map["source"],
+                            external_code=c_map["code"],
+                            external_name=c_map["name"],
+                            confidence=1.0,
+                        )
+                    )
+                    c_mappings_created += 1
+
+        m_mappings_created = 0
+        for m_map in DEFAULT_MARKET_SOURCE_MAPPINGS:
+            mkt_obj = db.query(Market).filter(Market.name == m_map["market"]).first()
+            ds_obj = db.query(DataSource).filter(DataSource.code == m_map["source"]).first()
+            if mkt_obj and ds_obj:
+                existing_mm = (
+                    db.query(MarketSourceMapping)
+                    .filter(
+                        MarketSourceMapping.source_code == m_map["source"],
+                        MarketSourceMapping.external_code == m_map["code"],
+                    )
+                    .first()
+                )
+                if not existing_mm:
+                    db.add(
+                        MarketSourceMapping(
+                            market_id=mkt_obj.id,
+                            source_id=ds_obj.id,
+                            source_code=m_map["source"],
+                            external_code=m_map["code"],
+                            external_name=m_map["name"],
+                            confidence=1.0,
+                        )
+                    )
+                    m_mappings_created += 1
+        db.commit()
+        print(f"✓ Source Mappings: {c_mappings_created} crop mappings, {m_mappings_created} market mappings")
+
+        # ─── 8. Verification Assertions ──────────────────
         assert len(TN_DISTRICTS) == 38, f"Configured districts: {len(TN_DISTRICTS)}, expected 38"
         assert len(TIER_A_CROPS) == 20, f"Configured crops: {len(TIER_A_CROPS)}, expected 20"
         total_taluks = sum(len(t) for t in TALUKS_BY_DISTRICT.values())
         assert total_taluks == 25, f"Configured taluks: {total_taluks}, expected 25"
-        assert len(PILOT_MARKETS) == 8, f"Configured markets: {len(PILOT_MARKETS)}, expected 8"
+        assert len(PILOT_MARKETS) == 8, f"Configured pilot markets: {len(PILOT_MARKETS)}, expected 8"
+        assert len(STATEWIDE_MARKETS) >= 38, f"Configured statewide markets: {len(STATEWIDE_MARKETS)}, expected >= 38"
         assert len(DATA_SOURCES) == 5, f"Configured sources: {len(DATA_SOURCES)}, expected 5"
 
         db_districts = db.query(District).count()
@@ -684,14 +1204,16 @@ def seed_statewide():
         db_taluks = db.query(Taluk).count()
         db_markets = db.query(Market).count()
         db_sources = db.query(DataSource).count()
+        distinct_market_districts = db.query(func.count(func.distinct(Market.district_id))).scalar()
 
         assert db_districts == 38, f"DB districts count {db_districts} != 38"
         assert db_crops >= 20, f"DB active crops count {db_crops} < 20"
         assert db_taluks >= 25, f"DB taluks count {db_taluks} < 25"
-        assert db_markets >= 8, f"DB markets count {db_markets} < 8"
+        assert db_markets >= 38, f"DB markets count {db_markets} < 38"
         assert db_sources >= 5, f"DB sources count {db_sources} < 5"
+        assert distinct_market_districts == 38, f"DB markets must cover all 38 districts, got {distinct_market_districts}"
 
-        print("✓ Verified all reference counts: 38 Districts, 20 Tier-A Crops, 25 Taluks, 8 Markets, 5 Data Sources")
+        print("✓ Verified all reference counts: 38 Districts, 20 Tier-A Crops, 25 Taluks, 43 Markets covering all 38 Districts, 5 Data Sources")
         print("=" * 60)
         print("✓ Statewide Foundation Reference Seed successfully applied & verified!")
         print("=" * 60)

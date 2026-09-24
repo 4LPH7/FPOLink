@@ -59,9 +59,38 @@ A versioned `/api/v1/` endpoint structure with 100% backward compatibility with 
 - `GET /api/v1/prices/latest`
 - `GET /api/v1/prices/history`
 - `GET /api/v1/prices/quality-summary`
+- `GET /api/v1/commodities`
+- `GET /api/v1/commodities/{crop_id}`
+- `GET /api/v1/ingestion/runs`
+- `GET /api/v1/ingestion/runs/{run_id}`
+- `GET /api/v1/ingestion/freshness`
+- `POST /api/v1/ingestion/trigger`
+- `GET /api/v1/prices/{price_id}/lineage`
 - `GET /api/v1/farmers/{fpo_id}`
 - `GET /api/v1/fpos/`
 - `GET /api/v1/audit/logs`
+
+### 1.7 Deterministic External Source Mapping Layer (v0.6)
+Eliminates reliance on fragile fuzzy string matching by storing deterministic mappings between external provider IDs (OGD, Agmarknet, CEDA) and canonical entities:
+- **`CropSourceMapping`**: Maps external crop codes/names (e.g., `TURMERIC`, `Shallot (Small Onion)`) to canonical `crops.id` with confidence scores.
+- **`MarketSourceMapping`**: Maps external mandi codes/names (e.g., `OGD_MDU`, `AGM_TRY`) to canonical `markets.id` across all 38 districts.
+- **`VarietySourceMapping`**: Maps external cultivar names to canonical `varieties.id`.
+- Resolvers (`CropResolver`, `MarketResolver`) prioritize deterministic Stage 0 lookup with case-insensitive matching before falling back to aliases or text matching.
+
+### 1.8 Immutable Raw Ingestion Persistence & Replay Harness
+- Every external payload received from OGD, Agmarknet, CEDA, or manual entry is persisted immutably in `raw_ingest` with an algorithmic SHA-256 checksum.
+- Duplicate payloads within the same source are automatically deduplicated.
+- **`scripts/replay_raw_ingestion.py`**: Standalone replay harness that can replay unparsed or historical raw packets through updated normalization pipelines without re-querying external provider APIs.
+
+### 1.9 End-to-End Data Lineage Tracking
+- Complete traceability from front-facing prices down to raw provider packets:
+  $$\text{MarketPrice} \longrightarrow \text{IngestionRun} \longrightarrow \text{RawIngest}$$
+- Every `MarketPrice` record stores foreign keys `ingestion_run_id` and `raw_ingest_id`.
+- The `/api/v1/prices/{id}/lineage` endpoint exposes full provenance details: canonical crop, market, raw payload, execution timestamp, and provider checksum.
+
+### 1.10 Statewide Telemetry Console & Commodity Registry UI
+- **Commodity Registry (`/admin/commodities`)**: Staff and administrator interface to search, inspect, and filter all 20 Tier-A crops across categories (spice, fruit, vegetable, cereal, fiber, commercial), view registered botanical cultivars, aliases, and external source mappings.
+- **Ingestion Center Console (`/admin`)**: Telemetry hub showing statewide reporting freshness across all 38 revenue districts, active market counts, ingestion run history, and real-time ingestion trigger controls.
 
 ---
 
@@ -73,6 +102,7 @@ A versioned `/api/v1/` endpoint structure with 100% backward compatibility with 
 | `0007_crop_market_ontology` | Added crop ontology fields, `crop_aliases`, `varieties`, `variety_aliases`, market code/geo fields, and `market_aliases`. |
 | `0008_multitenant_rbac_audit` | Added 9 user roles, `fpo_id` and `district_id` scoping on `users`, and the `audit_logs` table. |
 | `0009_statewide_ingestion_quality` | Added `data_sources`, `ingestion_runs`, `data_quality_events`, and `quality_score`/`quality_breakdown` on `market_prices`. |
+| `0010_source_mappings_markets` | Added `crop_source_mappings`, `market_source_mappings`, `variety_source_mappings`, and expanded `markets` with `canonical_name`, `tamil_name`, `is_regulated`, `e_nam`, `operating_status`. |
 
 ---
 
@@ -108,18 +138,23 @@ This populates:
   20. Ginger (*Zingiber officinale*, இஞ்சி)
 - 67 Canonical Crop Aliases
 - 40 Cultivar Varieties & Aliases
-- 8 Regulated Mandis with geo-coordinates and aliases
+- 43 Regulated Mandis covering all 38 districts with geocoordinates, tamil names, and e-NAM status
+- 110 Canonical Market Aliases
+- 64 Deterministic Source Mappings (40 crop mappings, 24 market mappings)
 - 5 Verified Ingestion Data Sources
 
 ---
 
 ## 4. Verification Checkpoint Sign-Off
-All 164 automated tests in the regression suite pass without errors:
-- `tests/test_seed_reference_counts.py`
-- `tests/test_geography.py`
-- `tests/test_crop_ontology.py`
-- `tests/test_market_registry.py`
-- `tests/test_multitenant_rbac.py`
-- `tests/test_statewide_ingestion.py`
-- `tests/test_v1_compatibility.py`
-- All 145 baseline Erode pilot tests (WhatsApp bot, parsers, auth, forecasts, digest worker).
+
+### Checkpoint E (v0.5 Foundation):
+All 164 automated tests in the regression suite passed without errors.
+
+### Checkpoint F (v0.6 Statewide Data Network):
+All 181 automated unit and integration tests pass with 100% green status:
+- `tests/test_source_mappings.py` (Deterministic resolution precedence)
+- `tests/test_raw_replay.py` (Immutable raw persistence & offline replay)
+- `tests/test_data_lineage.py` (End-to-end price to raw packet lineage)
+- `tests/test_ingestion_center_api.py` (Telemetry endpoints & statewide freshness)
+- `tests/test_statewide_coverage.py` (Multi-district cross-validation across TN)
+- All 145 baseline Erode pilot tests (WhatsApp bot, parsers, auth, forecasts, digest worker, zero regressions).

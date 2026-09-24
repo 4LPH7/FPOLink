@@ -20,6 +20,11 @@ from app.models.notification import Notification
 from app.models.order import Order
 from app.models.prediction import Prediction
 from app.models.raw_ingest import RawIngest
+from app.models.source_mapping import (
+    CropSourceMapping,
+    MarketSourceMapping,
+    VarietySourceMapping,
+)
 from app.models.user import User, UserRole
 from app.models.variety import Variety
 from app.models.variety_alias import VarietyAlias
@@ -51,6 +56,9 @@ __all__ = [
     "Farm",
     "Market",
     "MarketAlias",
+    "CropSourceMapping",
+    "MarketSourceMapping",
+    "VarietySourceMapping",
     "Harvest",
     "MarketPrice",
     "Prediction",

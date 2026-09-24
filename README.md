@@ -33,14 +33,14 @@ A self-hostable, production-ready, open-source platform that empowers Farmer Pro
              ┌───────────────────────────┼───────────────────────────┐
              │                           │                           │
        PostgreSQL 16             APScheduler Worker            Notifications
-    (28 Relational Tables)      (Container Isolation)      (WhatsApp Cloud API)
+    (31 Relational Tables)      (Container Isolation)      (WhatsApp Cloud API)
              │                           │                           │
     Statewide Foundation:       Ingestion & Quality:        At-Least-Once Sweeper:
     ├── 38 Revenue Districts    ├── OGD India Mandi Feed    ├── Interactive Menus
     ├── Taluk/Block/Village     ├── CEDA Ashoka Mandi Feed  ├── Daily Price Digest
-    ├── Canonical Crop Ontology ├── Open-Meteo & NASA POWER └── Price-Move Alerts
-    ├── Regulated Market Master ├── Explainable QA (0–100)
-    └── Tamper-Evident Audit    └── MAD Anomaly Detection
+    ├── Canonical Crop Ontology ├── Source Mapping Layer    └── Price-Move Alerts
+    ├── Regulated Market Master ├── Raw Replay & Lineage
+    └── Tamper-Evident Audit    └── Explainable QA (0–100)
 ```
 
 ---
@@ -52,6 +52,11 @@ A self-hostable, production-ready, open-source platform that empowers Farmer Pro
 | **Administrative Geography** | Full 5-tier relational hierarchy: State, 38 Districts, Taluks, Blocks, and Villages | **Active** |
 | **Agricultural Crop Ontology** | Canonical crop catalog with botanical classifications, Tamil names, and aliases | **Active** |
 | **Market Master Registry** | Normalized mandi master registry with geo-coordinates and regional aliases | **Active** |
+| **Source Mapping Layer** | Deterministic Stage 0 mapping (OGD, Agmarknet, CEDA) with confidence scoring | **Active** |
+| **Raw Persistence & Replay** | Immutable raw packet storage with SHA-256 deduplication and offline replay harness | **Active** |
+| **End-to-End Data Lineage** | Complete provenance tracking (MarketPrice -> IngestionRun -> RawIngest) | **Active** |
+| **Commodity Registry UI** | Staff UI (/admin/commodities) to browse botanical cultivars, aliases & mappings | **Active** |
+| **Ingestion Center Console** | Telemetry dashboard (/admin) tracking 38-district reporting freshness & runs | **Active** |
 | **Multi-Tenant RBAC & Audit** | 9 discrete roles (`STATE_ADMIN`, `DISTRICT_ADMIN`, `FPO_ADMIN`, etc.) with audit logging | **Active** |
 | **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Active** |
 | **Mandi Price Ingestion** | Real-time adapters for data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes | **Active** |
@@ -70,7 +75,7 @@ A self-hostable, production-ready, open-source platform that empowers Farmer Pro
 | **Frontend** | Next.js 14 (App Router), React 18, Tailwind CSS, shadcn/ui | High performance, responsive PWA, bilingual support (Tamil/English) |
 | **Backend API** | FastAPI, Pydantic v2, Python 3.11 | Asynchronous capability, automated OpenAPI v3 documentation |
 | **Database** | PostgreSQL 16 (`psycopg` 3 native driver), SQLAlchemy 2.0 | Transactional integrity, UUID primary keys, JSONB for telemetry |
-| **Migrations** | Alembic | Strict, version-controlled schema migrations (`0001` through `0009`) |
+| **Migrations** | Alembic | Strict, version-controlled schema migrations (`0001` through `0010`) |
 | **Security & Auth** | `pwdlib[argon2]`, `PyJWT` | OWASP-recommended password hashing and stateless JWT bearer tokens |
 | **Background Worker** | APScheduler | Dedicated worker container for mandi ingestion and broadcast digests |
 | **Quality & Anomaly** | Custom QA Scoring (0–100), Median Absolute Deviation (MAD) | Outlier detection robust against agricultural price volatility |

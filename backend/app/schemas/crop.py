@@ -59,6 +59,8 @@ class CropListResponse(BaseModel):
 
 class CropResolveRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Raw name or alias to resolve")
+    source_code: Optional[str] = None
+    external_code: Optional[str] = None
 
 
 class CropResolveResponse(BaseModel):

@@ -1,11 +1,13 @@
 """Statewide Prices API (v1) with quality score filtering and telemetry."""
 
 from typing import Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.market_price import MarketPrice
 from app.schemas.price import QualitySummaryResponse
 from app.services.prices import (
     get_latest_prices,
@@ -53,3 +55,44 @@ def quality_summary(
 ):
     """Get statewide or district-level data quality summary metrics."""
     return get_quality_summary(db, district=district, days=days)
+
+
+@router.get("/{price_id}/lineage")
+def get_price_lineage(price_id: UUID, db: Session = Depends(get_db)):
+    """Retrieve end-to-end data provenance for a normalized market price observation."""
+    price = db.query(MarketPrice).filter(MarketPrice.id == price_id).first()
+    if not price:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Price record not found")
+
+    return {
+        "price_id": str(price.id),
+        "price_date": price.price_date.isoformat(),
+        "crop_name": price.crop.name if price.crop else None,
+        "variety_name": price.variety.name if price.variety else None,
+        "market_name": price.market.name if price.market else None,
+        "district": price.district,
+        "modal_price": float(price.modal_price),
+        "min_price": float(price.min_price),
+        "max_price": float(price.max_price),
+        "raw_price": float(price.raw_price) if price.raw_price is not None else None,
+        "raw_unit": price.raw_unit,
+        "source": price.source,
+        "quality_score": price.quality_score,
+        "quality_breakdown": price.quality_breakdown,
+        "ingestion_run": {
+            "id": str(price.ingestion_run.id),
+            "source_code": price.ingestion_run.source_code,
+            "status": price.ingestion_run.status,
+            "district": price.ingestion_run.district,
+            "started_at": price.ingestion_run.started_at.isoformat() if price.ingestion_run.started_at else None,
+            "completed_at": price.ingestion_run.completed_at.isoformat() if price.ingestion_run.completed_at else None,
+        } if price.ingestion_run else None,
+        "raw_ingest": {
+            "id": str(price.raw_ingest.id),
+            "checksum": price.raw_ingest.checksum,
+            "source_record_id": price.raw_ingest.source_record_id,
+            "retrieved_at": price.raw_ingest.retrieved_at.isoformat() if price.raw_ingest.retrieved_at else None,
+            "payload": price.raw_ingest.payload,
+        } if price.raw_ingest else None,
+    }
+

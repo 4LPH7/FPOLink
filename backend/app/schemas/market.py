@@ -19,10 +19,15 @@ class MarketAliasResponse(BaseModel):
 class MarketResponse(BaseModel):
     id: UUID
     name: str
+    canonical_name: Optional[str] = None
+    tamil_name: Optional[str] = None
     code: Optional[str] = None
     district: str
     state: str = "Tamil Nadu"
-    market_type: str = "mandi"
+    market_type: str = "regulated_market"
+    is_regulated: bool = True
+    e_nam: bool = False
+    operating_status: str = "active"
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     is_active: bool = True
@@ -40,6 +45,8 @@ class MarketDetailResponse(MarketResponse):
 class MarketResolveRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Raw market name or code to resolve")
     district_id: Optional[UUID] = None
+    source_code: Optional[str] = None
+    external_code: Optional[str] = None
 
 
 class MarketResolveResponse(BaseModel):

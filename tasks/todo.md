@@ -78,17 +78,17 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 
 ## Phase 9: Statewide Data Network (v0.6 Data Layer)
 - [x] T9.1 Reference Invariants & Automated Count Assertions (38 districts, 20 crops, 25 taluks, 8 markets, 5 data sources)
-- [ ] T9.2 Complete Regulated Market Master Registry across all 38 districts
-- [ ] T9.3 External Source Mapping Models (`CropSourceMapping`, `MarketSourceMapping`, `VarietySourceMapping`) + Migration 0010
-- [ ] T9.4 Commodity Registry UI (`/admin/commodities`) & Admin API (`/api/v1/commodities`)
-- [ ] T9.5 Raw Ingestion Persistence & Replay Harness (`raw_ingest` with checksum)
-- [ ] T9.6 8-Stage Statewide Ingestion Pipeline
-- [ ] T9.7 Ingestion Center Telemetry Console (`/admin/ingestion` & `/api/v1/ingestion/runs`)
-- [ ] T9.8 End-to-End Price Data Lineage Tracking (`MarketPrice` -> `IngestionRun` -> `RawIngest`)
-- [ ] T9.9 Statewide Integration & Multi-District Regression Test Suite
-- [ ] T9.10 Checkpoint F: Statewide Data Network Sign-Off
+- [x] T9.2 Complete Regulated Market Master Registry across all 38 districts
+- [x] T9.3 External Source Mapping Models (`CropSourceMapping`, `MarketSourceMapping`, `VarietySourceMapping`) + Migration 0010
+- [x] T9.4 Commodity Registry UI (`/admin/commodities`) & Admin API (`/api/v1/commodities`)
+- [x] T9.5 Raw Ingestion Persistence & Replay Harness (`raw_ingest` with checksum)
+- [x] T9.6 8-Stage Statewide Ingestion Pipeline
+- [x] T9.7 Ingestion Center Telemetry Console (`/admin/ingestion` & `/api/v1/ingestion/runs`)
+- [x] T9.8 End-to-End Price Data Lineage Tracking (`MarketPrice` -> `IngestionRun` -> `RawIngest`)
+- [x] T9.9 Statewide Integration & Multi-District Regression Test Suite
+- [x] T9.10 Checkpoint F: Statewide Data Network Sign-Off
 ### Checkpoint F: Statewide Data Network Sign-Off
-- [ ] Migration 0010 applied, 38 districts with registered mandis, deterministic source mappings, raw replay verified, 0 Erode regressions
+- [x] Migration 0010 applied, 38 districts with registered mandis, deterministic source mappings, raw replay verified, 0 Erode regressions
 
 ## Future Strategic Roadmap (v0.7 to v1.0)
 - **Phase 11–12 (v0.7 Agricultural Intelligence)**: Multi-market forecasting, global LightGBM models, feature store, price spread comparisons.

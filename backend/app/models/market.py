@@ -14,12 +14,17 @@ class Market(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(200), nullable=False)
+    canonical_name = Column(String(200), nullable=True)
+    tamil_name = Column(String(200), nullable=True)
     code = Column(String(50), unique=True, nullable=True)
     district = Column(String(100), nullable=False)
     state = Column(String(100), default="Tamil Nadu")
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
-    market_type = Column(String(50), nullable=False, default="mandi")  # regulated_market / uzhavar_sandhai / private_mandi
+    market_type = Column(String(50), nullable=False, default="regulated_market")  # regulated_market / uzhavar_sandhai / private_mandi
+    is_regulated = Column(Boolean, nullable=False, default=True)
+    e_nam = Column(Boolean, nullable=False, default=False)
+    operating_status = Column(String(50), nullable=False, default="active")  # active, seasonal, inactive
     is_active = Column(Boolean, nullable=False, default=True)
 
     state_id = Column(UUID(as_uuid=True), ForeignKey("states.id"), nullable=True)

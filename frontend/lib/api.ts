@@ -15,6 +15,40 @@ export interface Crop {
   unit: string;
 }
 
+export interface CommoditySummary {
+  id: string;
+  name: string;
+  canonical_name?: string;
+  tamil_name?: string;
+  scientific_name?: string;
+  category?: string;
+  unit: string;
+  is_active: boolean;
+  variety_count: number;
+  alias_count: number;
+  source_mapping_count: number;
+  reporting_market_count: number;
+}
+
+export interface CommodityDetail extends CommoditySummary {
+  subcategory?: string;
+  default_unit?: string;
+  market_unit?: string;
+  season_type?: string;
+  is_horticulture?: boolean;
+  is_commercial?: boolean;
+  varieties: Array<{ id: string; name: string; canonical_name?: string; grade?: string }>;
+  aliases: Array<{ id: string; alias: string; source?: string; confidence: number }>;
+  source_mappings: Array<{
+    id: string;
+    source_code: string;
+    external_code: string;
+    external_name: string;
+    confidence: number;
+  }>;
+  active_markets: string[];
+}
+
 export interface PriceTrend {
   amount: number;
   percent: number;
@@ -406,3 +440,112 @@ export async function getHarvestAggregation(): Promise<HarvestAggregation> {
   }
   return { total_pooled_kg: 0, batch_count: 0, batches: [] };
 }
+
+// ─── Commodity Registry ──────────────────────────────────────
+
+export async function getCommodities(category?: string): Promise<CommoditySummary[]> {
+  try {
+    const url = new URL(`${API_BASE}/api/v1/commodities`);
+    if (category) url.searchParams.set("category", category);
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch commodities:", err);
+  }
+  return [];
+}
+
+export async function getCommodityDetail(id: string): Promise<CommodityDetail | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/commodities/${id}`, { cache: "no-store" });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch commodity detail:", err);
+  }
+  return null;
+}
+
+// ─── Ingestion Center Telemetry ──────────────────────────────
+
+export interface IngestionRunItem {
+  id: string;
+  source_code: string;
+  status: string;
+  district?: string | null;
+  records_fetched: number;
+  records_ingested: number;
+  error_count: number;
+  duration_seconds?: number | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface StatewideFreshness {
+  total_districts: number;
+  total_canonical_markets: number;
+  all_time: {
+    reporting_districts: number;
+    active_markets: number;
+    crops_covered: number;
+    latest_price_date?: string | null;
+    total_observations: number;
+    average_quality_score: number;
+  };
+  recent_7d: {
+    reporting_districts: number;
+    active_markets: number;
+    crops_covered: number;
+  };
+  data_sources: Array<{
+    code: string;
+    name: string;
+    priority: number;
+    is_active: boolean;
+  }>;
+}
+
+export async function getIngestionRuns(
+  page: number = 1,
+  pageSize: number = 10
+): Promise<{ items: IngestionRunItem[]; total: number }> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/v1/ingestion/runs?page=${page}&page_size=${pageSize}`,
+      { cache: "no-store" }
+    );
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch ingestion runs:", err);
+  }
+  return { items: [], total: 0 };
+}
+
+export async function getStatewideFreshness(): Promise<StatewideFreshness | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/ingestion/freshness`, {
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch statewide freshness:", err);
+  }
+  return null;
+}
+
+export async function triggerIngestionRun(source?: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/ingestion/trigger`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source }),
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(err.detail || "Failed to trigger ingestion");
+  } catch (err) {
+    console.warn("Failed to trigger ingestion run:", err);
+    throw err;
+  }
+}
+
+
