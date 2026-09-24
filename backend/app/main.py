@@ -74,6 +74,7 @@ app.include_router(whatsapp.router)
 app.include_router(v1_router)
 
 
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     try:
