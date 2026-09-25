@@ -9,21 +9,17 @@ Verifies:
 6. Zero regression on existing Erode pilot endpoints and models.
 """
 
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
-import uuid
-import pytest
+
 from fastapi.testclient import TestClient
 
 from app.data_sources.base import PriceRecord
 from app.main import app
 from app.models.crop import Crop
-from app.models.crop_alias import CropAlias
 from app.models.data_quality import IngestionRun
-from app.models.raw_ingest import RawIngest
 from app.models.geography import District, State
 from app.models.market import Market
-from app.models.market_alias import MarketAlias
 from app.models.market_price import MarketPrice
 from app.models.source_mapping import CropSourceMapping, MarketSourceMapping
 from app.services.ingestion import IngestionService
@@ -54,15 +50,21 @@ def test_multi_district_ingestion_and_lineage(db):
 
     # Verify/Setup canonical markets for these districts
     markets_to_setup = [
-        {"name": "Madurai Mattuthavani Regulated Market", "district": "Madurai", "code": "TN-MDU-01"},
+        {
+            "name": "Madurai Mattuthavani Regulated Market",
+            "district": "Madurai",
+            "code": "TN-MDU-01",
+        },
         {"name": "Salem Shevapet Regulated Market", "district": "Salem", "code": "TN-SLM-01"},
         {"name": "Thanjavur Regulated Market", "district": "Thanjavur", "code": "TN-TNJ-01"},
     ]
     market_objs = {}
     for m_info in markets_to_setup:
-        m = db.query(Market).filter(
-            (Market.code == m_info["code"]) | (Market.name == m_info["name"])
-        ).first()
+        m = (
+            db.query(Market)
+            .filter((Market.code == m_info["code"]) | (Market.name == m_info["name"]))
+            .first()
+        )
         if not m:
             m = Market(
                 name=m_info["name"],
@@ -80,9 +82,27 @@ def test_multi_district_ingestion_and_lineage(db):
 
     # Verify/Setup Crops
     crops_to_setup = [
-        {"name": "banana", "canonical_name": "banana", "tamil": "வாழை", "unit": "bunch", "cat": "fruit"},
-        {"name": "paddy", "canonical_name": "paddy", "tamil": "நெல்", "unit": "quintal", "cat": "cereal"},
-        {"name": "coconut", "canonical_name": "coconut", "tamil": "தேங்காய்", "unit": "count", "cat": "commercial"},
+        {
+            "name": "banana",
+            "canonical_name": "banana",
+            "tamil": "வாழை",
+            "unit": "bunch",
+            "cat": "fruit",
+        },
+        {
+            "name": "paddy",
+            "canonical_name": "paddy",
+            "tamil": "நெல்",
+            "unit": "quintal",
+            "cat": "cereal",
+        },
+        {
+            "name": "coconut",
+            "canonical_name": "coconut",
+            "tamil": "தேங்காய்",
+            "unit": "count",
+            "cat": "commercial",
+        },
     ]
     crop_objs = {}
     for c_info in crops_to_setup:
@@ -103,10 +123,14 @@ def test_multi_district_ingestion_and_lineage(db):
 
     # Set up deterministic source mappings
     # Madurai source mapping: "MDU_MANDI" -> Madurai Mattuthavani
-    mdu_mapping = db.query(MarketSourceMapping).filter(
-        MarketSourceMapping.source_code == "ogd",
-        MarketSourceMapping.external_code == "MDU_MANDI"
-    ).first()
+    mdu_mapping = (
+        db.query(MarketSourceMapping)
+        .filter(
+            MarketSourceMapping.source_code == "ogd",
+            MarketSourceMapping.external_code == "MDU_MANDI",
+        )
+        .first()
+    )
     if not mdu_mapping:
         mdu_mapping = MarketSourceMapping(
             source_code="ogd",
@@ -117,10 +141,14 @@ def test_multi_district_ingestion_and_lineage(db):
         db.add(mdu_mapping)
 
     # Salem source mapping: "SLM_MANDI" -> Salem Shevapet
-    slm_mapping = db.query(MarketSourceMapping).filter(
-        MarketSourceMapping.source_code == "ceda",
-        MarketSourceMapping.external_code == "SLM_MANDI"
-    ).first()
+    slm_mapping = (
+        db.query(MarketSourceMapping)
+        .filter(
+            MarketSourceMapping.source_code == "ceda",
+            MarketSourceMapping.external_code == "SLM_MANDI",
+        )
+        .first()
+    )
     if not slm_mapping:
         slm_mapping = MarketSourceMapping(
             source_code="ceda",
@@ -131,10 +159,14 @@ def test_multi_district_ingestion_and_lineage(db):
         db.add(slm_mapping)
 
     # Crop source mapping: "CROP_BANANA_TN" -> banana
-    banana_mapping = db.query(CropSourceMapping).filter(
-        CropSourceMapping.source_code == "ogd",
-        CropSourceMapping.external_code == "CROP_BANANA_TN"
-    ).first()
+    banana_mapping = (
+        db.query(CropSourceMapping)
+        .filter(
+            CropSourceMapping.source_code == "ogd",
+            CropSourceMapping.external_code == "CROP_BANANA_TN",
+        )
+        .first()
+    )
     if not banana_mapping:
         banana_mapping = CropSourceMapping(
             source_code="ogd",
@@ -159,7 +191,11 @@ def test_multi_district_ingestion_and_lineage(db):
         modal_price=Decimal("400.00"),
         price_date=today,
         source="ogd",
-        raw_payload={"source_code": "ogd_feed_mdu", "ts": "2026-09-24T06:00:00", "source_record_id": "mdu_raw_01"},
+        raw_payload={
+            "source_code": "ogd_feed_mdu",
+            "ts": "2026-09-24T06:00:00",
+            "source_record_id": "mdu_raw_01",
+        },
     )
 
     # 2. Ingest Salem record using deterministic external market ID + canonical crop
@@ -173,7 +209,11 @@ def test_multi_district_ingestion_and_lineage(db):
         modal_price=Decimal("18.00"),
         price_date=today,
         source="ceda",
-        raw_payload={"source_code": "ceda_slm", "ts": "2026-09-24T06:15:00", "source_record_id": "slm_raw_02"},
+        raw_payload={
+            "source_code": "ceda_slm",
+            "ts": "2026-09-24T06:15:00",
+            "source_record_id": "slm_raw_02",
+        },
     )
 
     # 3. Ingest Thanjavur record using canonical market name
@@ -207,11 +247,15 @@ def test_multi_district_ingestion_and_lineage(db):
     assert stored == 3
 
     # Verify database records and data lineage
-    madurai_price = db.query(MarketPrice).filter(
-        MarketPrice.crop_id == crop_objs["banana"].id,
-        MarketPrice.market_id == market_objs["Madurai"].id,
-        MarketPrice.price_date == today,
-    ).first()
+    madurai_price = (
+        db.query(MarketPrice)
+        .filter(
+            MarketPrice.crop_id == crop_objs["banana"].id,
+            MarketPrice.market_id == market_objs["Madurai"].id,
+            MarketPrice.price_date == today,
+        )
+        .first()
+    )
     assert madurai_price is not None
     assert madurai_price.district == "Madurai"
     assert madurai_price.ingestion_run_id is not None

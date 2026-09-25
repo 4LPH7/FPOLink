@@ -26,7 +26,9 @@ class District(Base, TimestampMixin):
     __tablename__ = "districts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    state_id = Column(UUID(as_uuid=True), ForeignKey("states.id", ondelete="CASCADE"), nullable=False)
+    state_id = Column(
+        UUID(as_uuid=True), ForeignKey("states.id", ondelete="CASCADE"), nullable=False
+    )
     name = Column(String(100), nullable=False)
     code = Column(String(20), unique=True, nullable=False)
     latitude = Column(Float, nullable=True)
@@ -43,7 +45,9 @@ class Taluk(Base, TimestampMixin):
     __tablename__ = "taluks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id", ondelete="CASCADE"), nullable=False)
+    district_id = Column(
+        UUID(as_uuid=True), ForeignKey("districts.id", ondelete="CASCADE"), nullable=False
+    )
     name = Column(String(100), nullable=False)
 
     district = relationship("District", back_populates="taluks")
@@ -58,7 +62,9 @@ class Block(Base, TimestampMixin):
     __tablename__ = "blocks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    taluk_id = Column(UUID(as_uuid=True), ForeignKey("taluks.id", ondelete="CASCADE"), nullable=False)
+    taluk_id = Column(
+        UUID(as_uuid=True), ForeignKey("taluks.id", ondelete="CASCADE"), nullable=False
+    )
     name = Column(String(100), nullable=False)
 
     taluk = relationship("Taluk", back_populates="blocks")
@@ -71,8 +77,12 @@ class Village(Base, TimestampMixin):
     __tablename__ = "villages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    taluk_id = Column(UUID(as_uuid=True), ForeignKey("taluks.id", ondelete="CASCADE"), nullable=False)
-    block_id = Column(UUID(as_uuid=True), ForeignKey("blocks.id", ondelete="SET NULL"), nullable=True)
+    taluk_id = Column(
+        UUID(as_uuid=True), ForeignKey("taluks.id", ondelete="CASCADE"), nullable=False
+    )
+    block_id = Column(
+        UUID(as_uuid=True), ForeignKey("blocks.id", ondelete="SET NULL"), nullable=True
+    )
     name = Column(String(100), nullable=False)
 
     taluk = relationship("Taluk", back_populates="villages")

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.database import get_db
-from app.models.geography import Block, District, State, Taluk, Village
+from app.models.geography import District, State, Taluk, Village
 from app.models.user import User
 from app.schemas.geography import (
     DistrictCreate,
@@ -45,7 +45,10 @@ def create_state(
     """Register a new state (admin only)."""
     existing = db.query(State).filter((State.name == data.name) | (State.code == data.code)).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="State with this name or code already exists")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="State with this name or code already exists",
+        )
     state = State(name=data.name, code=data.code.upper())
     db.add(state)
     db.commit()
@@ -94,7 +97,9 @@ def create_district(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="State not found")
     existing = db.query(District).filter(District.code == data.code.upper()).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="District code already registered")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="District code already registered"
+        )
     district = District(
         state_id=data.state_id,
         name=data.name,

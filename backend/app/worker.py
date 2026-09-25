@@ -29,18 +29,14 @@ def run_weather_ingestion():
 def run_predictions():
     """Generate price forecasts using the active model for active crop/market pairs."""
     from app.database import SessionLocal
-    from app.models.market_price import MarketPrice
     from app.ml.forecasting import ForecastingService
+    from app.models.market_price import MarketPrice
 
     logger.info("Running automated price predictions...")
     db = SessionLocal()
     try:
         service = ForecastingService(db)
-        pairs = (
-            db.query(MarketPrice.crop_id, MarketPrice.market_id)
-            .distinct()
-            .all()
-        )
+        pairs = db.query(MarketPrice.crop_id, MarketPrice.market_id).distinct().all()
         total_forecasted = 0
         for crop_id, market_id in pairs:
             try:
@@ -50,7 +46,9 @@ def run_predictions():
             except Exception as e:
                 logger.warning(f"Error forecasting for {crop_id}/{market_id}: {e}")
 
-        logger.info(f"Predictions complete. Generated {total_forecasted} forecast points across {len(pairs)} markets.")
+        logger.info(
+            f"Predictions complete. Generated {total_forecasted} forecast points across {len(pairs)} markets."
+        )
     finally:
         db.close()
 

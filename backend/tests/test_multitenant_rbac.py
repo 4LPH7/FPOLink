@@ -1,9 +1,8 @@
 """Tests for multi-tenant RBAC, organization scoping, and audit logging."""
 
 import uuid
-import pytest
+
 from app.api.deps import verify_fpo_access
-from app.models.audit_log import AuditLog
 from app.models.fpo import FPO
 from app.models.geography import District, State
 from app.models.user import User, UserRole
@@ -68,9 +67,23 @@ def test_tenant_scoping_access_boundaries(db):
     fpo1_id = uuid.uuid4()
     fpo2_id = uuid.uuid4()
 
-    state_admin = User(name="State Admin", phone="9000000001", role=UserRole.STATE_ADMIN, hashed_password="x")
-    fpo1_staff = User(name="Staff 1", phone="9000000002", role=UserRole.FPO_STAFF, fpo_id=fpo1_id, hashed_password="x")
-    fpo2_staff = User(name="Staff 2", phone="9000000003", role=UserRole.FPO_STAFF, fpo_id=fpo2_id, hashed_password="x")
+    state_admin = User(
+        name="State Admin", phone="9000000001", role=UserRole.STATE_ADMIN, hashed_password="x"
+    )
+    fpo1_staff = User(
+        name="Staff 1",
+        phone="9000000002",
+        role=UserRole.FPO_STAFF,
+        fpo_id=fpo1_id,
+        hashed_password="x",
+    )
+    fpo2_staff = User(
+        name="Staff 2",
+        phone="9000000003",
+        role=UserRole.FPO_STAFF,
+        fpo_id=fpo2_id,
+        hashed_password="x",
+    )
 
     # State admin can access both
     assert verify_fpo_access(fpo1_id, state_admin) is True
@@ -87,7 +100,12 @@ def test_tenant_scoping_access_boundaries(db):
 
 def test_audit_logging_and_api(client, db):
     """Test recording an audit log event and querying via API."""
-    user = User(name="Auditor", phone=f"94{uuid.uuid4().hex[:8]}", role=UserRole.ADMIN, hashed_password=hash_password("admin123"))
+    user = User(
+        name="Auditor",
+        phone=f"94{uuid.uuid4().hex[:8]}",
+        role=UserRole.ADMIN,
+        hashed_password=hash_password("admin123"),
+    )
     db.add(user)
     db.commit()
 
@@ -109,6 +127,7 @@ def test_audit_logging_and_api(client, db):
 
     # Query via API
     from app.services.jwt import create_access_token
+
     token = create_access_token(user_id=str(user.id), role="admin")
 
     r = client.get(

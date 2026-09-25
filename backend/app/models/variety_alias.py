@@ -13,7 +13,9 @@ class VarietyAlias(Base, TimestampMixin):
     __tablename__ = "variety_aliases"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    variety_id = Column(UUID(as_uuid=True), ForeignKey("varieties.id", ondelete="CASCADE"), nullable=False)
+    variety_id = Column(
+        UUID(as_uuid=True), ForeignKey("varieties.id", ondelete="CASCADE"), nullable=False
+    )
     alias = Column(String(100), index=True, nullable=False)
     source = Column(String(50), nullable=True)
 

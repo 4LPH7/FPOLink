@@ -37,8 +37,12 @@ class MarketPrice(Base):
     source = Column(String(50), nullable=False)
     quality_score = Column(Float, nullable=True, default=100.0)
     quality_breakdown = Column(JSONB, nullable=True)
-    ingestion_run_id = Column(UUID(as_uuid=True), ForeignKey("ingestion_runs.id", ondelete="SET NULL"), nullable=True)
-    raw_ingest_id = Column(UUID(as_uuid=True), ForeignKey("raw_ingest.id", ondelete="SET NULL"), nullable=True)
+    ingestion_run_id = Column(
+        UUID(as_uuid=True), ForeignKey("ingestion_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    raw_ingest_id = Column(
+        UUID(as_uuid=True), ForeignKey("raw_ingest.id", ondelete="SET NULL"), nullable=True
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     crop = relationship("Crop")

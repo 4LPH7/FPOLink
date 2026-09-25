@@ -167,7 +167,9 @@ class IngestionService:
                 else:
                     raw = RawIngest(
                         source=record.source,
-                        source_record_id=str(raw_payload.get("source_record_id") or raw_payload.get("id") or ""),
+                        source_record_id=str(
+                            raw_payload.get("source_record_id") or raw_payload.get("id") or ""
+                        ),
                         checksum=checksum,
                         payload=raw_payload,
                         processed=True,

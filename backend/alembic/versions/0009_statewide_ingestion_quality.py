@@ -6,8 +6,9 @@ Create Date: 2026-09-24
 """
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+from alembic import op
 
 revision: str = "0009_statewide_ingestion_quality"
 down_revision: str = "0008_multitenant_rbac_audit"
@@ -17,7 +18,10 @@ depends_on = None
 
 def upgrade() -> None:
     # 1. Add quality scoring columns to market_prices
-    op.add_column("market_prices", sa.Column("quality_score", sa.Float(), nullable=True, server_default="100.0"))
+    op.add_column(
+        "market_prices",
+        sa.Column("quality_score", sa.Float(), nullable=True, server_default="100.0"),
+    )
     op.add_column("market_prices", sa.Column("quality_breakdown", JSONB(), nullable=True))
 
     # 2. Create data_sources table

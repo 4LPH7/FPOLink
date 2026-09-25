@@ -10,17 +10,16 @@ Verifies:
 
 from datetime import date, timedelta
 from decimal import Decimal
-import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.ml.forecasting import ForecastingService, compute_forecast_signal
+from app.ml.forecasting import ForecastingService
 from app.models.crop import Crop
 from app.models.geography import District, State
 from app.models.market import Market
 from app.models.market_price import MarketPrice
-from app.models.model_version import ModelVersion
 from app.models.prediction import Prediction
 from app.services.arbitrage import find_market_arbitrage, haversine_distance_km
 
@@ -117,37 +116,43 @@ def test_haversine_distance_and_arbitrage_calculation(db, intelligence_fixture):
 
     # Calculate distance: Erode to Coimbatore ~ 89 km
     dist = haversine_distance_km(
-        float(m_erode.latitude), float(m_erode.longitude),
-        float(m_cbe.latitude), float(m_cbe.longitude),
+        float(m_erode.latitude),
+        float(m_erode.longitude),
+        float(m_cbe.latitude),
+        float(m_cbe.longitude),
     )
     assert 80.0 <= dist <= 100.0
 
     today = date.today()
     # Add origin price: ₹14,000/quintal in Erode
-    db.add(MarketPrice(
-        crop_id=crop.id,
-        market_id=m_erode.id,
-        district="Erode",
-        modal_price=Decimal("14000.00"),
-        min_price=Decimal("13500.00"),
-        max_price=Decimal("14500.00"),
-        price_date=today,
-        source="ogd",
-        quality_score=Decimal("95.0"),
-    ))
+    db.add(
+        MarketPrice(
+            crop_id=crop.id,
+            market_id=m_erode.id,
+            district="Erode",
+            modal_price=Decimal("14000.00"),
+            min_price=Decimal("13500.00"),
+            max_price=Decimal("14500.00"),
+            price_date=today,
+            source="ogd",
+            quality_score=Decimal("95.0"),
+        )
+    )
 
     # Add destination price: ₹15,500/quintal in Coimbatore
-    db.add(MarketPrice(
-        crop_id=crop.id,
-        market_id=m_cbe.id,
-        district="Coimbatore",
-        modal_price=Decimal("15500.00"),
-        min_price=Decimal("15000.00"),
-        max_price=Decimal("16000.00"),
-        price_date=today,
-        source="ogd",
-        quality_score=Decimal("92.0"),
-    ))
+    db.add(
+        MarketPrice(
+            crop_id=crop.id,
+            market_id=m_cbe.id,
+            district="Coimbatore",
+            modal_price=Decimal("15500.00"),
+            min_price=Decimal("15000.00"),
+            max_price=Decimal("16000.00"),
+            price_date=today,
+            source="ogd",
+            quality_score=Decimal("92.0"),
+        )
+    )
     db.commit()
 
     # Calculate arbitrage
@@ -175,16 +180,18 @@ def test_forecasting_fallback_baseline_on_sparse_series(db, intelligence_fixture
     for i in range(10):
         d = today - timedelta(days=10 - i)
         price_val = 10000 + i * 20
-        db.add(MarketPrice(
-            crop_id=crop.id,
-            market_id=m_erode.id,
-            district="Erode",
-            modal_price=Decimal(str(price_val)),
-            min_price=Decimal(str(price_val - 50)),
-            max_price=Decimal(str(price_val + 50)),
-            price_date=d,
-            source="ogd",
-        ))
+        db.add(
+            MarketPrice(
+                crop_id=crop.id,
+                market_id=m_erode.id,
+                district="Erode",
+                modal_price=Decimal(str(price_val)),
+                min_price=Decimal(str(price_val - 50)),
+                max_price=Decimal(str(price_val + 50)),
+                price_date=d,
+                source="ogd",
+            )
+        )
     db.commit()
 
     service = ForecastingService(db)
@@ -198,10 +205,14 @@ def test_forecasting_fallback_baseline_on_sparse_series(db, intelligence_fixture
         assert 0.5 <= pt["confidence"] <= 1.0
 
     # Verify persisted in database
-    db_preds = db.query(Prediction).filter(
-        Prediction.crop_id == crop.id,
-        Prediction.market_id == m_erode.id,
-    ).all()
+    db_preds = (
+        db.query(Prediction)
+        .filter(
+            Prediction.crop_id == crop.id,
+            Prediction.market_id == m_erode.id,
+        )
+        .all()
+    )
     assert len(db_preds) >= 7
 
 
@@ -216,18 +227,20 @@ def test_forecasting_lightgbm_training_and_inference(db, intelligence_fixture):
     for i in range(35):
         d = today - timedelta(days=35 - i)
         price = base_price + (i * 30.0)
-        db.add(MarketPrice(
-            crop_id=crop.id,
-            market_id=m_cbe.id,
-            district="Coimbatore",
-            modal_price=Decimal(str(round(price, 2))),
-            min_price=Decimal(str(round(price - 50, 2))),
-            max_price=Decimal(str(round(price + 50, 2))),
-            arrival_quantity=60.0 + (i % 5) * 10,
-            quality_score=Decimal("95.0"),
-            price_date=d,
-            source="ogd",
-        ))
+        db.add(
+            MarketPrice(
+                crop_id=crop.id,
+                market_id=m_cbe.id,
+                district="Coimbatore",
+                modal_price=Decimal(str(round(price, 2))),
+                min_price=Decimal(str(round(price - 50, 2))),
+                max_price=Decimal(str(round(price + 50, 2))),
+                arrival_quantity=60.0 + (i % 5) * 10,
+                quality_score=Decimal("95.0"),
+                price_date=d,
+                source="ogd",
+            )
+        )
     db.commit()
 
     service = ForecastingService(db)
@@ -260,30 +273,36 @@ def test_intelligence_api_endpoints(db, intelligence_fixture):
 
     today = date.today()
     # Add prices so endpoints have data
-    db.add(MarketPrice(
-        crop_id=crop.id,
-        market_id=m_erode.id,
-        district="Erode",
-        modal_price=Decimal("12000.00"),
-        min_price=Decimal("11500.00"),
-        max_price=Decimal("12500.00"),
-        price_date=today,
-        source="ogd",
-    ))
-    db.add(MarketPrice(
-        crop_id=crop.id,
-        market_id=m_cbe.id,
-        district="Coimbatore",
-        modal_price=Decimal("13000.00"),
-        min_price=Decimal("12500.00"),
-        max_price=Decimal("13500.00"),
-        price_date=today,
-        source="ogd",
-    ))
+    db.add(
+        MarketPrice(
+            crop_id=crop.id,
+            market_id=m_erode.id,
+            district="Erode",
+            modal_price=Decimal("12000.00"),
+            min_price=Decimal("11500.00"),
+            max_price=Decimal("12500.00"),
+            price_date=today,
+            source="ogd",
+        )
+    )
+    db.add(
+        MarketPrice(
+            crop_id=crop.id,
+            market_id=m_cbe.id,
+            district="Coimbatore",
+            modal_price=Decimal("13000.00"),
+            min_price=Decimal("12500.00"),
+            max_price=Decimal("13500.00"),
+            price_date=today,
+            source="ogd",
+        )
+    )
     db.commit()
 
     # 1. Test Forecast API
-    resp_fc = client.get(f"/api/v1/intelligence/forecast?crop_id={crop.id}&market_id={m_erode.id}&days=7")
+    resp_fc = client.get(
+        f"/api/v1/intelligence/forecast?crop_id={crop.id}&market_id={m_erode.id}&days=7"
+    )
     assert resp_fc.status_code == 200
     fc_data = resp_fc.json()
     assert fc_data["crop_id"] == str(crop.id)
@@ -291,7 +310,9 @@ def test_intelligence_api_endpoints(db, intelligence_fixture):
     assert len(fc_data["forecast"]) == 7
 
     # 2. Test Arbitrage API
-    resp_arb = client.get(f"/api/v1/intelligence/arbitrage?crop_id={crop.id}&origin_market_id={m_erode.id}")
+    resp_arb = client.get(
+        f"/api/v1/intelligence/arbitrage?crop_id={crop.id}&origin_market_id={m_erode.id}"
+    )
     assert resp_arb.status_code == 200
     arb_data = resp_arb.json()
     assert arb_data["crop_id"] == str(crop.id)

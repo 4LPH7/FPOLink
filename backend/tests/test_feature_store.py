@@ -1,9 +1,8 @@
 """Unit tests for the Agricultural Feature Store engine."""
 
 from datetime import date, timedelta
-from decimal import Decimal
+
 import pandas as pd
-import numpy as np
 import pytest
 
 from app.ml.features import (
@@ -30,14 +29,16 @@ def test_feature_store_no_data_leakage():
     dates = [base_date + timedelta(days=i) for i in range(20)]
     prices = [100.0 + i * 10 for i in range(20)]  # 100, 110, 120, ...
 
-    df = pd.DataFrame({
-        "price_date": dates,
-        "modal_price": prices,
-        "min_price": [p - 5 for p in prices],
-        "max_price": [p + 5 for p in prices],
-        "arrival_quantity": [50.0] * 20,
-        "quality_score": [95.0] * 20,
-    })
+    df = pd.DataFrame(
+        {
+            "price_date": dates,
+            "modal_price": prices,
+            "min_price": [p - 5 for p in prices],
+            "max_price": [p + 5 for p in prices],
+            "arrival_quantity": [50.0] * 20,
+            "quality_score": [95.0] * 20,
+        }
+    )
 
     feats = extract_features_for_series(df, target_horizon_days=1)
 
@@ -63,10 +64,12 @@ def test_feature_store_tamil_calendar_festival_flags():
         date(2026, 6, 15),  # Non-festival date
     ]
 
-    df = pd.DataFrame({
-        "price_date": test_dates,
-        "modal_price": [7000.0, 7500.0, 7800.0, 8000.0, 6800.0],
-    })
+    df = pd.DataFrame(
+        {
+            "price_date": test_dates,
+            "modal_price": [7000.0, 7500.0, 7800.0, 8000.0, 6800.0],
+        }
+    )
 
     feats = extract_features_for_series(df)
 
@@ -83,16 +86,20 @@ def test_feature_store_tamil_calendar_festival_flags():
 def test_feature_store_weather_merging():
     """Verify agro-climatic signals are merged and lagged properly."""
     dates = [date(2026, 9, 1) + timedelta(days=i) for i in range(10)]
-    df = pd.DataFrame({
-        "price_date": dates,
-        "modal_price": [50.0] * 10,
-    })
+    df = pd.DataFrame(
+        {
+            "price_date": dates,
+            "modal_price": [50.0] * 10,
+        }
+    )
 
-    weather_df = pd.DataFrame({
-        "date": dates,
-        "rainfall_mm": [0.0, 10.0, 25.0, 5.0, 0.0, 0.0, 12.0, 0.0, 0.0, 0.0],
-        "temperature_max": [32.0, 31.0, 28.0, 30.0, 33.0, 34.0, 29.0, 32.0, 33.0, 32.0],
-    })
+    weather_df = pd.DataFrame(
+        {
+            "date": dates,
+            "rainfall_mm": [0.0, 10.0, 25.0, 5.0, 0.0, 0.0, 12.0, 0.0, 0.0, 0.0],
+            "temperature_max": [32.0, 31.0, 28.0, 30.0, 33.0, 34.0, 29.0, 32.0, 33.0, 32.0],
+        }
+    )
 
     feats = extract_features_for_series(df, weather_df=weather_df)
     assert "rainfall_lag_3d" in feats.columns
@@ -104,10 +111,12 @@ def test_feature_store_weather_merging():
 def test_get_latest_feature_vector():
     """Verify single-row feature vector generation for live inference."""
     dates = [date(2026, 9, 1) + timedelta(days=i) for i in range(15)]
-    df = pd.DataFrame({
-        "price_date": dates,
-        "modal_price": [2000.0 + i * 50 for i in range(15)],
-    })
+    df = pd.DataFrame(
+        {
+            "price_date": dates,
+            "modal_price": [2000.0 + i * 50 for i in range(15)],
+        }
+    )
 
     vec = get_latest_feature_vector(df)
     assert vec.shape[0] == 1

@@ -9,7 +9,7 @@ from app.data_sources.base import PriceRecord
 from app.main import app
 from app.models.crop import Crop
 from app.models.crop_alias import CropAlias
-from app.models.data_quality import DataQualityEvent, IngestionRun
+from app.models.data_quality import DataQualityEvent
 from app.models.geography import District, State
 from app.models.market import Market
 from app.models.market_alias import MarketAlias
@@ -154,9 +154,7 @@ def test_statewide_ingestion_canonical_resolution_and_quality(db):
 
     # Verify DataQualityEvent was recorded
     dq_event = (
-        db.query(DataQualityEvent)
-        .filter(DataQualityEvent.record_id == str(bad_mp.id))
-        .first()
+        db.query(DataQualityEvent).filter(DataQualityEvent.record_id == str(bad_mp.id)).first()
     )
     assert dq_event is not None
     assert dq_event.issue_type == "price_contradiction"
@@ -167,14 +165,18 @@ def test_v1_prices_api(db):
     # Ensure crop and market exist
     crop = db.query(Crop).filter(Crop.name == "tomato").first()
     if not crop:
-        crop = Crop(name="tomato", canonical_name="tomato", tamil_name="தக்காளி", unit="kg", is_active=True)
+        crop = Crop(
+            name="tomato", canonical_name="tomato", tamil_name="தக்காளி", unit="kg", is_active=True
+        )
         db.add(crop)
         db.commit()
         db.refresh(crop)
 
     market = db.query(Market).filter(Market.name == "Coimbatore Market").first()
     if not market:
-        market = Market(name="Coimbatore Market", district="Coimbatore", state="Tamil Nadu", is_active=True)
+        market = Market(
+            name="Coimbatore Market", district="Coimbatore", state="Tamil Nadu", is_active=True
+        )
         db.add(market)
         db.commit()
         db.refresh(market)

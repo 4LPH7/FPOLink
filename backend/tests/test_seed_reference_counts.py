@@ -2,7 +2,7 @@
 
 from app.models.crop import Crop
 from app.models.data_quality import DataSource
-from app.models.geography import District, State, Taluk
+from app.models.geography import District, Taluk
 from app.models.market import Market
 from scripts.seed_statewide_foundation import (
     DATA_SOURCES,
@@ -34,10 +34,26 @@ def test_seed_database_counts(db):
     # Verify each of the 20 Tier-A crops is present
     crop_names = {c.name.lower() for c in active_crops}
     expected_crops = [
-        "turmeric", "banana", "coconut", "paddy", "groundnut",
-        "tomato", "small onion", "onion", "green chilli", "red chilli",
-        "maize", "cotton", "sugarcane", "black gram", "green gram",
-        "tapioca", "mango", "brinjal", "ladies finger", "ginger"
+        "turmeric",
+        "banana",
+        "coconut",
+        "paddy",
+        "groundnut",
+        "tomato",
+        "small onion",
+        "onion",
+        "green chilli",
+        "red chilli",
+        "maize",
+        "cotton",
+        "sugarcane",
+        "black gram",
+        "green gram",
+        "tapioca",
+        "mango",
+        "brinjal",
+        "ladies finger",
+        "ginger",
     ]
     assert len(expected_crops) == 20
     for name in expected_crops:

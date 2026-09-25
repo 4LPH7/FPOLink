@@ -17,12 +17,16 @@ class Crop(Base):
     canonical_name = Column(String(100), unique=True, nullable=True)
     tamil_name = Column(String(100), nullable=True)
     scientific_name = Column(String(150), nullable=True)
-    category = Column(String(50), nullable=True)  # Cereals, Pulses, Oilseeds, Commercial, Horticulture, Plantation
+    category = Column(
+        String(50), nullable=True
+    )  # Cereals, Pulses, Oilseeds, Commercial, Horticulture, Plantation
     subcategory = Column(String(50), nullable=True)
     unit = Column(String(20), default="kg")
     default_unit = Column(String(20), default="kg")
     market_unit = Column(String(20), default="quintal")
-    season_type = Column(String(50), nullable=True)  # Kharif, Rabi, Zaid, Kuruvai, Samba, Navarai, Perennial
+    season_type = Column(
+        String(50), nullable=True
+    )  # Kharif, Rabi, Zaid, Kuruvai, Samba, Navarai, Perennial
     water_requirement = Column(String(20), nullable=True)  # Low, Medium, High
     perishability = Column(String(20), nullable=True)  # Low, Medium, High
     storage_days = Column(Integer, nullable=True)

@@ -29,11 +29,9 @@ from app.models.market_alias import MarketAlias
 from app.models.source_mapping import (
     CropSourceMapping,
     MarketSourceMapping,
-    VarietySourceMapping,
 )
 from app.models.variety import Variety
 from app.models.variety_alias import VarietyAlias
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. TAMIL NADU 38 DISTRICTS
@@ -126,7 +124,14 @@ TIER_A_CROPS = [
         "tamil_name": "மஞ்சள்",
         "unit": "kg",
         "hs_code": "091030",
-        "aliases": ["manjal", "haldi", "turmeric", "erode turmeric", "raw turmeric", "dry turmeric"],
+        "aliases": [
+            "manjal",
+            "haldi",
+            "turmeric",
+            "erode turmeric",
+            "raw turmeric",
+            "dry turmeric",
+        ],
         "varieties": [
             ("Salem", ["salem manjal", "salem variety"]),
             ("Erode Local", ["erode local", "chinna manjal"]),
@@ -424,7 +429,12 @@ PILOT_MARKETS = [
         "district": "Erode",
         "lat": 11.3410,
         "lon": 77.7172,
-        "aliases": ["erode mandi", "erode", "semmampalayam mandi", "erode regulated market committee"],
+        "aliases": [
+            "erode mandi",
+            "erode",
+            "semmampalayam mandi",
+            "erode regulated market committee",
+        ],
     },
     {
         "name": "Perundurai Regulated Market",
@@ -870,7 +880,12 @@ DEFAULT_CROP_SOURCE_MAPPINGS = [
     {"crop": "tomato", "source": "ogd", "code": "TOMATO", "name": "Tomato"},
     {"crop": "tomato", "source": "agmarknet", "code": "AGM_TOM", "name": "Tomato"},
     {"crop": "small onion", "source": "ogd", "code": "SMALL_ONION", "name": "Small Onion"},
-    {"crop": "small onion", "source": "agmarknet", "code": "AGM_SON", "name": "Shallot (Small Onion)"},
+    {
+        "crop": "small onion",
+        "source": "agmarknet",
+        "code": "AGM_SON",
+        "name": "Shallot (Small Onion)",
+    },
     {"crop": "onion", "source": "ogd", "code": "ONION", "name": "Onion"},
     {"crop": "onion", "source": "agmarknet", "code": "AGM_ONI", "name": "Onion"},
     {"crop": "green chilli", "source": "ogd", "code": "GREEN_CHILLI", "name": "Green Chilli"},
@@ -902,28 +917,108 @@ DEFAULT_CROP_SOURCE_MAPPINGS = [
 DEFAULT_MARKET_SOURCE_MAPPINGS = [
     {"market": "Erode Regulated Market", "source": "ogd", "code": "OGD_ERD", "name": "Erode"},
     {"market": "Erode Regulated Market", "source": "agmarknet", "code": "AGM_ERD", "name": "Erode"},
-    {"market": "Perundurai Regulated Market", "source": "ogd", "code": "OGD_PRD", "name": "Perundurai"},
-    {"market": "Perundurai Regulated Market", "source": "agmarknet", "code": "AGM_PRD", "name": "Perundurai"},
-    {"market": "Gobichettipalayam Regulated Market", "source": "ogd", "code": "OGD_GOBI", "name": "Gopichettipalayam"},
-    {"market": "Gobichettipalayam Regulated Market", "source": "agmarknet", "code": "AGM_GOBI", "name": "Gobichettipalayam"},
+    {
+        "market": "Perundurai Regulated Market",
+        "source": "ogd",
+        "code": "OGD_PRD",
+        "name": "Perundurai",
+    },
+    {
+        "market": "Perundurai Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_PRD",
+        "name": "Perundurai",
+    },
+    {
+        "market": "Gobichettipalayam Regulated Market",
+        "source": "ogd",
+        "code": "OGD_GOBI",
+        "name": "Gopichettipalayam",
+    },
+    {
+        "market": "Gobichettipalayam Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_GOBI",
+        "name": "Gobichettipalayam",
+    },
     {"market": "Kodumudi Regulated Market", "source": "ogd", "code": "OGD_KOD", "name": "Kodumudi"},
-    {"market": "Kodumudi Regulated Market", "source": "agmarknet", "code": "AGM_KOD", "name": "Kodumudi"},
-    {"market": "Coimbatore Regulated Market", "source": "ogd", "code": "OGD_CBE", "name": "Coimbatore"},
-    {"market": "Coimbatore Regulated Market", "source": "agmarknet", "code": "AGM_CBE", "name": "Coimbatore"},
+    {
+        "market": "Kodumudi Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_KOD",
+        "name": "Kodumudi",
+    },
+    {
+        "market": "Coimbatore Regulated Market",
+        "source": "ogd",
+        "code": "OGD_CBE",
+        "name": "Coimbatore",
+    },
+    {
+        "market": "Coimbatore Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_CBE",
+        "name": "Coimbatore",
+    },
     {"market": "Pollachi Regulated Market", "source": "ogd", "code": "OGD_POL", "name": "Pollachi"},
-    {"market": "Pollachi Regulated Market", "source": "agmarknet", "code": "AGM_POL", "name": "Pollachi"},
+    {
+        "market": "Pollachi Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_POL",
+        "name": "Pollachi",
+    },
     {"market": "Madurai Regulated Market", "source": "ogd", "code": "OGD_MDU", "name": "Madurai"},
-    {"market": "Madurai Regulated Market", "source": "agmarknet", "code": "AGM_MDU", "name": "Madurai"},
+    {
+        "market": "Madurai Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_MDU",
+        "name": "Madurai",
+    },
     {"market": "Salem Regulated Market", "source": "ogd", "code": "OGD_SLM", "name": "Salem"},
     {"market": "Salem Regulated Market", "source": "agmarknet", "code": "AGM_SLM", "name": "Salem"},
-    {"market": "Tiruchirappalli Regulated Market", "source": "ogd", "code": "OGD_TRY", "name": "Tiruchirappalli"},
-    {"market": "Tiruchirappalli Regulated Market", "source": "agmarknet", "code": "AGM_TRY", "name": "Tiruchirappalli"},
-    {"market": "Thanjavur Regulated Market", "source": "ogd", "code": "OGD_TNJ", "name": "Thanjavur"},
-    {"market": "Thanjavur Regulated Market", "source": "agmarknet", "code": "AGM_TNJ", "name": "Thanjavur"},
-    {"market": "Kumbakonam Regulated Market", "source": "ogd", "code": "OGD_KMB", "name": "Kumbakonam"},
-    {"market": "Kumbakonam Regulated Market", "source": "agmarknet", "code": "AGM_KMB", "name": "Kumbakonam"},
+    {
+        "market": "Tiruchirappalli Regulated Market",
+        "source": "ogd",
+        "code": "OGD_TRY",
+        "name": "Tiruchirappalli",
+    },
+    {
+        "market": "Tiruchirappalli Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_TRY",
+        "name": "Tiruchirappalli",
+    },
+    {
+        "market": "Thanjavur Regulated Market",
+        "source": "ogd",
+        "code": "OGD_TNJ",
+        "name": "Thanjavur",
+    },
+    {
+        "market": "Thanjavur Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_TNJ",
+        "name": "Thanjavur",
+    },
+    {
+        "market": "Kumbakonam Regulated Market",
+        "source": "ogd",
+        "code": "OGD_KMB",
+        "name": "Kumbakonam",
+    },
+    {
+        "market": "Kumbakonam Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_KMB",
+        "name": "Kumbakonam",
+    },
     {"market": "Dindigul Regulated Market", "source": "ogd", "code": "OGD_DGL", "name": "Dindigul"},
-    {"market": "Dindigul Regulated Market", "source": "agmarknet", "code": "AGM_DGL", "name": "Dindigul"},
+    {
+        "market": "Dindigul Regulated Market",
+        "source": "agmarknet",
+        "code": "AGM_DGL",
+        "name": "Dindigul",
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -975,7 +1070,9 @@ def seed_statewide():
         db.commit()
         for name in district_map:
             db.refresh(district_map[name])
-        print(f"✓ Tamil Nadu Districts: {len(TN_DISTRICTS)} total ({districts_created} newly created)")
+        print(
+            f"✓ Tamil Nadu Districts: {len(TN_DISTRICTS)} total ({districts_created} newly created)"
+        )
 
         # ─── 3. Pilot Taluks ──────────────────────────────
         taluks_created = 0
@@ -1054,13 +1151,19 @@ def seed_statewide():
                     va_clean = va_str.strip().lower()
                     existing_va = (
                         db.query(VarietyAlias)
-                        .filter(VarietyAlias.variety_id == var_obj.id, VarietyAlias.alias == va_clean)
+                        .filter(
+                            VarietyAlias.variety_id == var_obj.id, VarietyAlias.alias == va_clean
+                        )
                         .first()
                     )
                     if not existing_va:
-                        db.add(VarietyAlias(variety_id=var_obj.id, alias=va_clean, source="canonical"))
+                        db.add(
+                            VarietyAlias(variety_id=var_obj.id, alias=va_clean, source="canonical")
+                        )
         db.commit()
-        print(f"✓ Tier-A Commodities: {len(TIER_A_CROPS)} crops ({crops_created} new), {aliases_created} aliases, {varieties_created} varieties")
+        print(
+            f"✓ Tier-A Commodities: {len(TIER_A_CROPS)} crops ({crops_created} new), {aliases_created} aliases, {varieties_created} varieties"
+        )
 
         # ─── 5. Regulated Markets & Aliases ───────────────
         markets_created = 0
@@ -1116,7 +1219,9 @@ def seed_statewide():
                     db.add(MarketAlias(market_id=market.id, alias=ma_clean, source="canonical"))
                     market_aliases_created += 1
         db.commit()
-        print(f"✓ Regulated Markets: {len(STATEWIDE_MARKETS)} markets ({markets_created} new), {market_aliases_created} aliases across 38 districts")
+        print(
+            f"✓ Regulated Markets: {len(STATEWIDE_MARKETS)} markets ({markets_created} new), {market_aliases_created} aliases across 38 districts"
+        )
 
         # ─── 6. Ingestion Data Sources Telemetry ───────────
         ds_created = 0
@@ -1188,15 +1293,21 @@ def seed_statewide():
                     )
                     m_mappings_created += 1
         db.commit()
-        print(f"✓ Source Mappings: {c_mappings_created} crop mappings, {m_mappings_created} market mappings")
+        print(
+            f"✓ Source Mappings: {c_mappings_created} crop mappings, {m_mappings_created} market mappings"
+        )
 
         # ─── 8. Verification Assertions ──────────────────
         assert len(TN_DISTRICTS) == 38, f"Configured districts: {len(TN_DISTRICTS)}, expected 38"
         assert len(TIER_A_CROPS) == 20, f"Configured crops: {len(TIER_A_CROPS)}, expected 20"
         total_taluks = sum(len(t) for t in TALUKS_BY_DISTRICT.values())
         assert total_taluks == 25, f"Configured taluks: {total_taluks}, expected 25"
-        assert len(PILOT_MARKETS) == 8, f"Configured pilot markets: {len(PILOT_MARKETS)}, expected 8"
-        assert len(STATEWIDE_MARKETS) >= 38, f"Configured statewide markets: {len(STATEWIDE_MARKETS)}, expected >= 38"
+        assert len(PILOT_MARKETS) == 8, (
+            f"Configured pilot markets: {len(PILOT_MARKETS)}, expected 8"
+        )
+        assert len(STATEWIDE_MARKETS) >= 38, (
+            f"Configured statewide markets: {len(STATEWIDE_MARKETS)}, expected >= 38"
+        )
         assert len(DATA_SOURCES) == 5, f"Configured sources: {len(DATA_SOURCES)}, expected 5"
 
         db_districts = db.query(District).count()
@@ -1211,9 +1322,13 @@ def seed_statewide():
         assert db_taluks >= 25, f"DB taluks count {db_taluks} < 25"
         assert db_markets >= 38, f"DB markets count {db_markets} < 38"
         assert db_sources >= 5, f"DB sources count {db_sources} < 5"
-        assert distinct_market_districts == 38, f"DB markets must cover all 38 districts, got {distinct_market_districts}"
+        assert distinct_market_districts == 38, (
+            f"DB markets must cover all 38 districts, got {distinct_market_districts}"
+        )
 
-        print("✓ Verified all reference counts: 38 Districts, 20 Tier-A Crops, 25 Taluks, 43 Markets covering all 38 Districts, 5 Data Sources")
+        print(
+            "✓ Verified all reference counts: 38 Districts, 20 Tier-A Crops, 25 Taluks, 43 Markets covering all 38 Districts, 5 Data Sources"
+        )
         print("=" * 60)
         print("✓ Statewide Foundation Reference Seed successfully applied & verified!")
         print("=" * 60)

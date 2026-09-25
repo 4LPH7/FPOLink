@@ -1,6 +1,6 @@
 """Ingestion Center Telemetry and Control API (v1)."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from typing import List, Optional
 from uuid import UUID
 
@@ -10,7 +10,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.data_quality import DataQualityEvent, DataSource, IngestionRun
+from app.models.data_quality import DataSource, IngestionRun
 from app.models.geography import District
 from app.models.market import Market
 from app.models.market_price import MarketPrice
@@ -54,18 +54,20 @@ def list_ingestion_runs(
         if r.started_at and r.completed_at:
             duration = round((r.completed_at - r.started_at).total_seconds(), 2)
 
-        items.append({
-            "id": str(r.id),
-            "source_code": r.source_code,
-            "status": r.status,
-            "district": r.district,
-            "records_fetched": r.records_fetched,
-            "records_ingested": r.records_ingested,
-            "error_count": len(r.errors) if r.errors else 0,
-            "duration_seconds": duration,
-            "started_at": r.started_at.isoformat() if r.started_at else None,
-            "completed_at": r.completed_at.isoformat() if r.completed_at else None,
-        })
+        items.append(
+            {
+                "id": str(r.id),
+                "source_code": r.source_code,
+                "status": r.status,
+                "district": r.district,
+                "records_fetched": r.records_fetched,
+                "records_ingested": r.records_ingested,
+                "error_count": len(r.errors) if r.errors else 0,
+                "duration_seconds": duration,
+                "started_at": r.started_at.isoformat() if r.started_at else None,
+                "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+            }
+        )
 
     return {
         "items": items,
@@ -108,7 +110,9 @@ def get_ingestion_run(run_id: UUID, db: Session = Depends(get_db)):
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "completed_at": run.completed_at.isoformat() if run.completed_at else None,
         "prices_produced": stats.price_count if stats else 0,
-        "average_quality_score": round(float(stats.avg_quality), 2) if stats and stats.avg_quality else 100.0,
+        "average_quality_score": round(float(stats.avg_quality), 2)
+        if stats and stats.avg_quality
+        else 100.0,
     }
 
 
@@ -120,17 +124,14 @@ def get_statewide_freshness(db: Session = Depends(get_db)):
 
     seven_days_ago = date.today() - timedelta(days=7)
 
-    recent_stats = (
-        db.query(
-            func.count(func.distinct(MarketPrice.district)).label("reporting_districts"),
-            func.count(func.distinct(MarketPrice.market_id)).label("active_markets"),
-            func.count(func.distinct(MarketPrice.crop_id)).label("crops_covered"),
-            func.max(MarketPrice.price_date).label("latest_date"),
-            func.count(MarketPrice.id).label("total_records"),
-            func.avg(MarketPrice.quality_score).label("avg_score"),
-        )
-        .first()
-    )
+    recent_stats = db.query(
+        func.count(func.distinct(MarketPrice.district)).label("reporting_districts"),
+        func.count(func.distinct(MarketPrice.market_id)).label("active_markets"),
+        func.count(func.distinct(MarketPrice.crop_id)).label("crops_covered"),
+        func.max(MarketPrice.price_date).label("latest_date"),
+        func.count(MarketPrice.id).label("total_records"),
+        func.avg(MarketPrice.quality_score).label("avg_score"),
+    ).first()
 
     recent_7d = (
         db.query(
@@ -156,9 +157,13 @@ def get_statewide_freshness(db: Session = Depends(get_db)):
             "reporting_districts": recent_stats.reporting_districts or 0,
             "active_markets": recent_stats.active_markets or 0,
             "crops_covered": recent_stats.crops_covered or 0,
-            "latest_price_date": recent_stats.latest_date.isoformat() if recent_stats.latest_date else None,
+            "latest_price_date": recent_stats.latest_date.isoformat()
+            if recent_stats.latest_date
+            else None,
             "total_observations": recent_stats.total_records or 0,
-            "average_quality_score": round(float(recent_stats.avg_score), 1) if recent_stats.avg_score else 100.0,
+            "average_quality_score": round(float(recent_stats.avg_score), 1)
+            if recent_stats.avg_score
+            else 100.0,
         },
         "recent_7d": {
             "reporting_districts": recent_7d.districts_7d or 0,

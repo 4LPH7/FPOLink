@@ -1,15 +1,9 @@
 """Tests for Ingestion Center Telemetry and Control API (v1)."""
 
-from datetime import date
-from decimal import Decimal
-import uuid
 from fastapi.testclient import TestClient
 
-from app.data_sources.base import PriceRecord
 from app.main import app
 from app.models.data_quality import IngestionRun
-from app.models.market import Market
-from app.services.ingestion import IngestionService
 
 client = TestClient(app)
 

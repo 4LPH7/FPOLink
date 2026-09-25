@@ -105,20 +105,12 @@ def resolve_crop(
         return crop
 
     # 3. Match in CropAlias
-    alias = (
-        db.query(CropAlias)
-        .filter(func.lower(CropAlias.alias) == clean)
-        .first()
-    )
+    alias = db.query(CropAlias).filter(func.lower(CropAlias.alias) == clean).first()
     if alias and alias.crop and alias.crop.is_active:
         return alias.crop
 
     # 4. Partial / word boundary match in CropAlias
-    alias = (
-        db.query(CropAlias)
-        .filter(func.lower(CropAlias.alias).like(f"%{clean}%"))
-        .first()
-    )
+    alias = db.query(CropAlias).filter(func.lower(CropAlias.alias).like(f"%{clean}%")).first()
     if alias and alias.crop and alias.crop.is_active:
         return alias.crop
 

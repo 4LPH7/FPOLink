@@ -2,9 +2,9 @@
 
 import hashlib
 import json
+import uuid
 from datetime import date
 from decimal import Decimal
-import uuid
 
 from app.data_sources.base import PriceRecord
 from app.models.crop import Crop
@@ -118,22 +118,16 @@ def test_raw_ingest_deduplication(db):
     # First ingest
     service._store_records([record])
 
-    initial_raw_count = (
-        db.query(RawIngest)
-        .filter(RawIngest.source == "agmarknet")
-        .count()
-    )
+    initial_raw_count = db.query(RawIngest).filter(RawIngest.source == "agmarknet").count()
 
     # Second ingest of identical payload
     service._store_records([record])
 
-    final_raw_count = (
-        db.query(RawIngest)
-        .filter(RawIngest.source == "agmarknet")
-        .count()
-    )
+    final_raw_count = db.query(RawIngest).filter(RawIngest.source == "agmarknet").count()
 
-    assert final_raw_count == initial_raw_count, "Identical raw payload should not create duplicate RawIngest"
+    assert final_raw_count == initial_raw_count, (
+        "Identical raw payload should not create duplicate RawIngest"
+    )
 
 
 def test_replay_harness_reproduces_prices(db):

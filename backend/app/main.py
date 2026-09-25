@@ -19,6 +19,7 @@ from app.api import (
     prices,
     whatsapp,
 )
+from app.api.v1 import router as v1_router
 from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -57,8 +58,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from app.api.v1 import router as v1_router
 
 app.include_router(auth.router)
 app.include_router(fpo.router)
