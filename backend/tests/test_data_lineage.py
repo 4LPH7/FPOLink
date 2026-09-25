@@ -1,8 +1,8 @@
 """Tests for end-to-end price data lineage and provenance tracking."""
 
+import uuid
 from datetime import date
 from decimal import Decimal
-import uuid
 
 from fastapi.testclient import TestClient
 
@@ -12,7 +12,6 @@ from app.models.crop import Crop
 from app.models.data_quality import IngestionRun
 from app.models.market import Market
 from app.models.market_price import MarketPrice
-from app.models.raw_ingest import RawIngest
 from app.services.ingestion import IngestionService
 
 client = TestClient(app)

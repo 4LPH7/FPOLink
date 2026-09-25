@@ -90,7 +90,9 @@ def record_manual_price(
 ):
     """Record a verified manual mandi price quote."""
     from uuid import UUID
+
     from fastapi import HTTPException
+
     from app.models.market import Market
     from app.models.market_price import MarketPrice
 

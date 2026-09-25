@@ -84,15 +84,24 @@ def get_price_lineage(price_id: UUID, db: Session = Depends(get_db)):
             "source_code": price.ingestion_run.source_code,
             "status": price.ingestion_run.status,
             "district": price.ingestion_run.district,
-            "started_at": price.ingestion_run.started_at.isoformat() if price.ingestion_run.started_at else None,
-            "completed_at": price.ingestion_run.completed_at.isoformat() if price.ingestion_run.completed_at else None,
-        } if price.ingestion_run else None,
+            "started_at": price.ingestion_run.started_at.isoformat()
+            if price.ingestion_run.started_at
+            else None,
+            "completed_at": price.ingestion_run.completed_at.isoformat()
+            if price.ingestion_run.completed_at
+            else None,
+        }
+        if price.ingestion_run
+        else None,
         "raw_ingest": {
             "id": str(price.raw_ingest.id),
             "checksum": price.raw_ingest.checksum,
             "source_record_id": price.raw_ingest.source_record_id,
-            "retrieved_at": price.raw_ingest.retrieved_at.isoformat() if price.raw_ingest.retrieved_at else None,
+            "retrieved_at": price.raw_ingest.retrieved_at.isoformat()
+            if price.raw_ingest.retrieved_at
+            else None,
             "payload": price.raw_ingest.payload,
-        } if price.raw_ingest else None,
+        }
+        if price.raw_ingest
+        else None,
     }
-

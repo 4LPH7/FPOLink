@@ -184,16 +184,22 @@ def get_harvest_aggregation(
             grade_breakdown[g] = {"kg": round(g_kg, 1), "pct": pct}
 
         c_lower = data["crop_name"].lower()
-        batches.append({
-            "crop_id": data["crop_id"],
-            "crop_name": data["crop_name"],
-            "crop_tamil_name": data["crop_tamil_name"],
-            "total_kg": round(total_kg, 1),
-            "farmer_count": len(data["farmer_ids"]),
-            "grade_breakdown": grade_breakdown,
-            "status": "Ready for Wholesale Dispatch" if "turmeric" in c_lower else "Matched with Buyer Contract",
-            "warehouse": "Erode Warehouse #2" if "turmeric" in c_lower else "Kodumudi Cold Storage",
-        })
+        batches.append(
+            {
+                "crop_id": data["crop_id"],
+                "crop_name": data["crop_name"],
+                "crop_tamil_name": data["crop_tamil_name"],
+                "total_kg": round(total_kg, 1),
+                "farmer_count": len(data["farmer_ids"]),
+                "grade_breakdown": grade_breakdown,
+                "status": "Ready for Wholesale Dispatch"
+                if "turmeric" in c_lower
+                else "Matched with Buyer Contract",
+                "warehouse": "Erode Warehouse #2"
+                if "turmeric" in c_lower
+                else "Kodumudi Cold Storage",
+            }
+        )
 
     return {
         "total_pooled_kg": round(total_pooled_kg, 1),

@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
 from app.data_sources.base import PriceRecord
+from app.database import SessionLocal
 from app.models.raw_ingest import RawIngest
 from app.services.ingestion import IngestionService
 
@@ -45,7 +45,9 @@ def replay_raw_records(
 
         records_to_replay = query.order_by(RawIngest.ingested_at.asc()).limit(limit).all()
         total_found = len(records_to_replay)
-        logger.info(f"Found {total_found} raw ingest records to replay (source={source or 'all'}, dry_run={dry_run})")
+        logger.info(
+            f"Found {total_found} raw ingest records to replay (source={source or 'all'}, dry_run={dry_run})"
+        )
 
         if total_found == 0:
             return {"total": 0, "replayed": 0, "stored": 0, "errors": 0}
@@ -75,7 +77,9 @@ def replay_raw_records(
                     min_price=Decimal(str(payload.get("min_price", 0))),
                     max_price=Decimal(str(payload.get("max_price", 0))),
                     modal_price=Decimal(str(payload.get("modal_price", 0))),
-                    raw_price=Decimal(str(payload["raw_price"])) if payload.get("raw_price") is not None else None,
+                    raw_price=Decimal(str(payload["raw_price"]))
+                    if payload.get("raw_price") is not None
+                    else None,
                     raw_unit=payload.get("raw_unit", "kg"),
                     arrival_quantity=payload.get("arrival_quantity"),
                     price_date=p_date,
@@ -112,11 +116,21 @@ def replay_raw_records(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Replay raw ingested payloads through the pipeline")
-    parser.add_argument("--source", type=str, default=None, help="Filter by data source (e.g. ogd, agmarknet)")
-    parser.add_argument("--limit", type=int, default=100, help="Maximum number of records to replay")
-    parser.add_argument("--unprocessed-only", action="store_true", help="Only replay unprocessed records")
-    parser.add_argument("--dry-run", action="store_true", help="Parse records without committing changes")
+    parser = argparse.ArgumentParser(
+        description="Replay raw ingested payloads through the pipeline"
+    )
+    parser.add_argument(
+        "--source", type=str, default=None, help="Filter by data source (e.g. ogd, agmarknet)"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=100, help="Maximum number of records to replay"
+    )
+    parser.add_argument(
+        "--unprocessed-only", action="store_true", help="Only replay unprocessed records"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Parse records without committing changes"
+    )
     args = parser.parse_args()
 
     replay_raw_records(

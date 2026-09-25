@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -70,7 +70,9 @@ def get_crop_forecast(
 def get_arbitrage_opportunities(
     crop_id: UUID = Query(..., description="Canonical Crop UUID"),
     origin_market_id: UUID = Query(..., description="Origin Market UUID"),
-    max_distance_km: float = Query(default=300.0, ge=10.0, le=1000.0, description="Search radius in km"),
+    max_distance_km: float = Query(
+        default=300.0, ge=10.0, le=1000.0, description="Search radius in km"
+    ),
     base_cost: float = Query(default=50.0, ge=0.0, description="Base loading cost per quintal (₹)"),
     rate_per_km: float = Query(default=1.20, ge=0.1, description="Freight cost ₹/km/quintal"),
     db: Session = Depends(get_db),
@@ -150,16 +152,18 @@ def get_price_spreads(
     for mp, m in results:
         modal = float(mp.modal_price)
         prices_list.append(modal)
-        markets_list.append({
-            "market_id": str(m.id),
-            "market_name": m.name,
-            "district": m.district,
-            "modal_price": modal,
-            "min_price": float(mp.min_price) if mp.min_price is not None else modal,
-            "max_price": float(mp.max_price) if mp.max_price is not None else modal,
-            "price_date": mp.price_date.isoformat(),
-            "quality_score": float(mp.quality_score) if mp.quality_score is not None else None,
-        })
+        markets_list.append(
+            {
+                "market_id": str(m.id),
+                "market_name": m.name,
+                "district": m.district,
+                "modal_price": modal,
+                "min_price": float(mp.min_price) if mp.min_price is not None else modal,
+                "max_price": float(mp.max_price) if mp.max_price is not None else modal,
+                "price_date": mp.price_date.isoformat(),
+                "quality_score": float(mp.quality_score) if mp.quality_score is not None else None,
+            }
+        )
 
     prices_list.sort()
     min_p = prices_list[0]

@@ -4,13 +4,12 @@ Computes geographical distance (Haversine formula), freight cost estimates,
 and net arbitrage margins across Tamil Nadu regulated agricultural markets.
 """
 
-from datetime import date, timedelta
-from decimal import Decimal
 import math
-from typing import Dict, List, Optional
+from datetime import timedelta
+from typing import Dict
 from uuid import UUID
 
-from sqlalchemy import desc, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.crop import Crop
@@ -26,9 +25,7 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
     dlon = math.radians(lon2 - lon1)
     a = (
         math.sin(dlat / 2) ** 2
-        + math.cos(math.radians(lat1))
-        * math.cos(math.radians(lat2))
-        * math.sin(dlon / 2) ** 2
+        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return round(R * c, 1)
@@ -103,8 +100,12 @@ def find_market_arbitrage(
 
     opportunities = []
     for mp, target_market in candidate_prices:
-        target_lat = float(target_market.latitude) if target_market.latitude is not None else origin_lat
-        target_lon = float(target_market.longitude) if target_market.longitude is not None else origin_lon
+        target_lat = (
+            float(target_market.latitude) if target_market.latitude is not None else origin_lat
+        )
+        target_lon = (
+            float(target_market.longitude) if target_market.longitude is not None else origin_lon
+        )
 
         distance_km = haversine_distance_km(origin_lat, origin_lon, target_lat, target_lon)
         if distance_km > max_distance_km:
@@ -122,18 +123,20 @@ def find_market_arbitrage(
         else:
             recommendation = "local_preferred"
 
-        opportunities.append({
-            "target_market_id": str(target_market.id),
-            "target_market_name": target_market.name,
-            "district": target_market.district,
-            "target_price": target_modal,
-            "price_date": mp.price_date.isoformat(),
-            "distance_km": distance_km,
-            "gross_spread": gross_spread,
-            "transport_cost": transport_cost,
-            "net_spread": net_spread,
-            "recommendation": recommendation,
-        })
+        opportunities.append(
+            {
+                "target_market_id": str(target_market.id),
+                "target_market_name": target_market.name,
+                "district": target_market.district,
+                "target_price": target_modal,
+                "price_date": mp.price_date.isoformat(),
+                "distance_km": distance_km,
+                "gross_spread": gross_spread,
+                "transport_cost": transport_cost,
+                "net_spread": net_spread,
+                "recommendation": recommendation,
+            }
+        )
 
     # Sort opportunities: highest net gain first
     opportunities.sort(key=lambda x: x["net_spread"], reverse=True)

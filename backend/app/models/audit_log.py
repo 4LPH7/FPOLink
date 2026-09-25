@@ -14,8 +14,12 @@ class AuditLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    action = Column(String(100), nullable=False)  # CREATE_FARMER, UPDATE_PRICE, TRIGGER_INGESTION, VERIFY_HARVEST, etc.
-    target_type = Column(String(50), nullable=False)  # farmer, fpo, market_price, harvest, user, crop
+    action = Column(
+        String(100), nullable=False
+    )  # CREATE_FARMER, UPDATE_PRICE, TRIGGER_INGESTION, VERIFY_HARVEST, etc.
+    target_type = Column(
+        String(50), nullable=False
+    )  # farmer, fpo, market_price, harvest, user, crop
     target_id = Column(String(100), nullable=False)
     before_state = Column(JSONB, nullable=True)
     after_state = Column(JSONB, nullable=True)

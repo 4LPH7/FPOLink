@@ -196,7 +196,7 @@ def get_quality_summary(
         if src not in by_source:
             by_source[src] = {"count": 0, "total_score": 0.0}
         by_source[src]["count"] += 1
-        by_source[src]["total_score"] += (r.quality_score if r.quality_score is not None else 100.0)
+        by_source[src]["total_score"] += r.quality_score if r.quality_score is not None else 100.0
 
     for src, data in by_source.items():
         data["average_score"] = round(data["total_score"] / data["count"], 1)

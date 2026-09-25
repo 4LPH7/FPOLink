@@ -1,7 +1,7 @@
 """Tests for agricultural crop ontology and alias resolution."""
 
 import uuid
-import pytest
+
 from app.models.crop import Crop
 from app.models.crop_alias import CropAlias
 from app.models.variety import Variety

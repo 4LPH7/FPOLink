@@ -13,7 +13,9 @@ class DataSource(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
-    code = Column(String(50), unique=True, nullable=False)  # ogd, ceda, agmarknet, tn_agrinet, manual
+    code = Column(
+        String(50), unique=True, nullable=False
+    )  # ogd, ceda, agmarknet, tn_agrinet, manual
     priority = Column(Integer, nullable=False, default=1)  # lower number = higher priority
     is_active = Column(Boolean, nullable=False, default=True)
 
@@ -26,7 +28,9 @@ class IngestionRun(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_code = Column(String(50), nullable=False)
-    status = Column(String(20), nullable=False, default="running")  # running, success, partial, failed
+    status = Column(
+        String(20), nullable=False, default="running"
+    )  # running, success, partial, failed
     district = Column(String(100), nullable=True)
     records_fetched = Column(Integer, nullable=False, default=0)
     records_ingested = Column(Integer, nullable=False, default=0)
@@ -35,7 +39,9 @@ class IngestionRun(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
-        return f"<IngestionRun {self.source_code} ({self.status}) - {self.records_ingested} ingested>"
+        return (
+            f"<IngestionRun {self.source_code} ({self.status}) - {self.records_ingested} ingested>"
+        )
 
 
 class DataQualityEvent(Base):
@@ -44,7 +50,9 @@ class DataQualityEvent(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     record_type = Column(String(50), nullable=False)  # market_price, weather
     record_id = Column(String(100), nullable=False)
-    issue_type = Column(String(50), nullable=False)  # stale_price, price_spike, missing_arrival, fuzzy_market
+    issue_type = Column(
+        String(50), nullable=False
+    )  # stale_price, price_spike, missing_arrival, fuzzy_market
     penalty = Column(Float, nullable=False, default=0.0)
     details = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

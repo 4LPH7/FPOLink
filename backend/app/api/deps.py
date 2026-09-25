@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.services.jwt import decode_token
 
 security = HTTPBearer(auto_error=False)
@@ -84,7 +84,10 @@ def require_role(allowed_roles: List[str]):
             else str(current_user.role)
         )
         # Super-admin roles pass any admin check
-        if ("admin" in allowed_roles or "state_admin" in allowed_roles) and user_role in ("admin", "state_admin"):
+        if ("admin" in allowed_roles or "state_admin" in allowed_roles) and user_role in (
+            "admin",
+            "state_admin",
+        ):
             return current_user
 
         if user_role not in allowed_roles:
@@ -100,9 +103,7 @@ def require_role(allowed_roles: List[str]):
 def verify_fpo_access(target_fpo_id: UUID, current_user: User) -> bool:
     """Check if current user has authorization to access/modify a specific FPO tenant."""
     user_role = (
-        current_user.role.value
-        if hasattr(current_user.role, "value")
-        else str(current_user.role)
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     )
     # Statewide admins can access any FPO
     if user_role in ("admin", "state_admin", "data_operator", "analyst"):

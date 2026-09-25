@@ -6,8 +6,9 @@ Create Date: 2026-09-24
 """
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
+
+from alembic import op
 
 revision: str = "0007_crop_market_ontology"
 down_revision: str = "0006_statewide_foundation"
@@ -20,21 +21,36 @@ def upgrade() -> None:
     op.add_column("crops", sa.Column("canonical_name", sa.String(100), unique=True, nullable=True))
     op.add_column("crops", sa.Column("scientific_name", sa.String(150), nullable=True))
     op.add_column("crops", sa.Column("subcategory", sa.String(50), nullable=True))
-    op.add_column("crops", sa.Column("default_unit", sa.String(20), nullable=True, server_default="kg"))
-    op.add_column("crops", sa.Column("market_unit", sa.String(20), nullable=True, server_default="quintal"))
+    op.add_column(
+        "crops", sa.Column("default_unit", sa.String(20), nullable=True, server_default="kg")
+    )
+    op.add_column(
+        "crops", sa.Column("market_unit", sa.String(20), nullable=True, server_default="quintal")
+    )
     op.add_column("crops", sa.Column("season_type", sa.String(50), nullable=True))
     op.add_column("crops", sa.Column("water_requirement", sa.String(20), nullable=True))
     op.add_column("crops", sa.Column("perishability", sa.String(20), nullable=True))
     op.add_column("crops", sa.Column("storage_days", sa.Integer(), nullable=True))
-    op.add_column("crops", sa.Column("is_horticulture", sa.Boolean(), nullable=False, server_default="false"))
-    op.add_column("crops", sa.Column("is_commercial", sa.Boolean(), nullable=False, server_default="false"))
-    op.add_column("crops", sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"))
+    op.add_column(
+        "crops", sa.Column("is_horticulture", sa.Boolean(), nullable=False, server_default="false")
+    )
+    op.add_column(
+        "crops", sa.Column("is_commercial", sa.Boolean(), nullable=False, server_default="false")
+    )
+    op.add_column(
+        "crops", sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true")
+    )
 
     # 2. Create crop_aliases table
     op.create_table(
         "crop_aliases",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
-        sa.Column("crop_id", UUID(as_uuid=True), sa.ForeignKey("crops.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "crop_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("crops.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("alias", sa.String(100), unique=True, nullable=False),
         sa.Column("source", sa.String(50), nullable=True),
         sa.Column("confidence", sa.Float(), nullable=False, server_default="1.0"),
@@ -51,7 +67,12 @@ def upgrade() -> None:
     op.create_table(
         "variety_aliases",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
-        sa.Column("variety_id", UUID(as_uuid=True), sa.ForeignKey("varieties.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "variety_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("varieties.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("alias", sa.String(100), nullable=False),
         sa.Column("source", sa.String(50), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
@@ -63,7 +84,12 @@ def upgrade() -> None:
     op.create_table(
         "market_aliases",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
-        sa.Column("market_id", UUID(as_uuid=True), sa.ForeignKey("markets.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "market_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("markets.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("alias", sa.String(200), unique=True, nullable=False),
         sa.Column("source", sa.String(50), nullable=True),
         sa.Column("confidence", sa.Float(), nullable=False, server_default="1.0"),

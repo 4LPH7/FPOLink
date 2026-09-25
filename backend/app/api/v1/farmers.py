@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.farmer import Farmer
 from app.models.fpo import FPO
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.farmer import (
     FarmerCreate,
     FarmerListResponse,
@@ -32,7 +32,9 @@ router = APIRouter(prefix="/farmers", tags=["farmers-v1"])
 
 def _enforce_farmer_fpo_scope(db: Session, current_user: User, fpo_id: UUID) -> None:
     """Ensure staff can only access farmers within their permitted FPOs."""
-    role_val = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    role_val = (
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    )
     if role_val in ("admin", "state_admin"):
         return
 

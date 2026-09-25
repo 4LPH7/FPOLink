@@ -56,7 +56,11 @@ def calculate_quality_score(
     market_match = max(0.0, min(1.0, float(alias_confidence)))
 
     # 4. Completeness
-    has_prices = (modal_price is not None and modal_price > 0) and (min_price is not None) and (max_price is not None)
+    has_prices = (
+        (modal_price is not None and modal_price > 0)
+        and (min_price is not None)
+        and (max_price is not None)
+    )
     has_arrival = arrival_quantity is not None and arrival_quantity > 0
     if has_prices and has_arrival:
         completeness = 1.0
@@ -93,7 +97,13 @@ def calculate_quality_score(
         "completeness": round(completeness, 2),
         "outlier_penalty": round(outlier_penalty, 2),
         "age_days": age_days,
-        "rating": "verified" if score >= 85 else "good" if score >= 70 else "limited" if score >= 50 else "unreliable",
+        "rating": "verified"
+        if score >= 85
+        else "good"
+        if score >= 70
+        else "limited"
+        if score >= 50
+        else "unreliable",
     }
 
     return score, breakdown

@@ -47,6 +47,16 @@ jobs:
           alembic upgrade head
           alembic check
 
+      - name: Seed test reference data
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://fpolink:fpolink@localhost:5432/fpolink_test
+          ENVIRONMENT: development
+          SEED_ADMIN_PASSWORD: ci-test-admin-password
+        run: |
+          python scripts/seed.py
+          python scripts/seed_statewide_foundation.py
+
       - name: Run tests
         working-directory: backend
         env:

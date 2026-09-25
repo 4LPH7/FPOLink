@@ -16,7 +16,9 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 @router.get("/logs", response_model=AuditLogListResponse)
 def list_audit_logs(
-    target_type: Optional[str] = Query(default=None, description="Filter by target type e.g. farmer, fpo"),
+    target_type: Optional[str] = Query(
+        default=None, description="Filter by target type e.g. farmer, fpo"
+    ),
     action: Optional[str] = Query(default=None, description="Filter by action name"),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),

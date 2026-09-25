@@ -1,6 +1,5 @@
 """FPO management endpoints (v1)."""
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status

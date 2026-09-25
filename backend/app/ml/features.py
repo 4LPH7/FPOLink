@@ -4,13 +4,12 @@ Extracts tabular feature vectors from historical mandi price observations,
 arrival records, Tamil Nadu agricultural calendar attributes, and agro-climatic signals.
 """
 
-from datetime import date, datetime
-from typing import List, Optional, Tuple
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 
 from app.data_sources.holidays_tn import days_to_nearest_festival, is_festival
-
 
 FEATURE_COLUMNS = [
     # Lags
@@ -118,7 +117,9 @@ def extract_features_for_series(
     rolling_arr_7 = df["arrival_quantity"].shift(1).rolling(window=7, min_periods=1)
     df["arrival_rolling_mean_7"] = rolling_arr_7.mean().fillna(0.0)
     prev_arrival = df["arrival_quantity"].shift(1).fillna(0.0)
-    df["arrival_momentum_7"] = (prev_arrival / (df["arrival_rolling_mean_7"] + 1e-4)).clip(0.0, 10.0)
+    df["arrival_momentum_7"] = (prev_arrival / (df["arrival_rolling_mean_7"] + 1e-4)).clip(
+        0.0, 10.0
+    )
 
     # 4. Calendar & Tamil Festival Features
     df["day_of_week"] = df["price_date"].dt.dayofweek
@@ -135,34 +136,47 @@ def extract_features_for_series(
         weather_df = weather_df.copy()
         if not np.issubdtype(weather_df["date"].dtype, np.datetime64):
             weather_df["date"] = pd.to_datetime(weather_df["date"])
-        w_merged = pd.merge(df[["price_date"]], weather_df, left_on="price_date", right_on="date", how="left")
-        df["rainfall_lag_3d"] = w_merged["rainfall_mm"].shift(1).rolling(3, min_periods=1).sum().fillna(0.0)
-        df["temp_max_lag_3d"] = w_merged["temperature_max"].shift(1).rolling(3, min_periods=1).mean().fillna(30.0)
+        w_merged = pd.merge(
+            df[["price_date"]], weather_df, left_on="price_date", right_on="date", how="left"
+        )
+        df["rainfall_lag_3d"] = (
+            w_merged["rainfall_mm"].shift(1).rolling(3, min_periods=1).sum().fillna(0.0)
+        )
+        df["temp_max_lag_3d"] = (
+            w_merged["temperature_max"].shift(1).rolling(3, min_periods=1).mean().fillna(30.0)
+        )
     else:
         df["rainfall_lag_3d"] = 0.0
         df["temp_max_lag_3d"] = 30.0
 
     # 6. Sample Weights from Ingestion Data Quality Score (0 to 100 normalized to 0.1 to 1.0)
-    df["sample_weight"] = (df["quality_score"].clip(10.0, 100.0) / 100.0)
+    df["sample_weight"] = df["quality_score"].clip(10.0, 100.0) / 100.0
 
     # 7. Target Price (Forward Horizon)
     df["target_price"] = df["modal_price"].shift(-target_horizon_days)
 
     # Impute missing initial lags with the earliest available modal price
-    first_modal = df["modal_price"].dropna().iloc[0] if not df["modal_price"].dropna().empty else 0.0
+    first_modal = (
+        df["modal_price"].dropna().iloc[0] if not df["modal_price"].dropna().empty else 0.0
+    )
     for lag in [1, 2, 3, 7, 14, 30]:
         df[f"lag_{lag}"] = df[f"lag_{lag}"].bfill().fillna(first_modal)
 
     for col in [
-        "rolling_mean_7", "rolling_min_7", "rolling_max_7",
-        "rolling_mean_14", "rolling_mean_30",
+        "rolling_mean_7",
+        "rolling_min_7",
+        "rolling_max_7",
+        "rolling_mean_14",
+        "rolling_mean_30",
     ]:
         df[col] = df[col].bfill().fillna(first_modal)
 
     return df
 
 
-def get_latest_feature_vector(df: pd.DataFrame, weather_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def get_latest_feature_vector(
+    df: pd.DataFrame, weather_df: Optional[pd.DataFrame] = None
+) -> pd.DataFrame:
     """Generate the single inference feature vector for the most recent observation to predict tomorrow."""
     features_df = extract_features_for_series(df, target_horizon_days=1, weather_df=weather_df)
     if features_df.empty:

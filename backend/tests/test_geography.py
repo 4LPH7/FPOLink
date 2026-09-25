@@ -1,9 +1,9 @@
 """Tests for geography models and API v1 geography endpoints."""
 
 import uuid
-import pytest
-from app.models.geography import Block, District, State, Taluk, Village
+
 from app.models.fpo import FPO
+from app.models.geography import Block, District, State, Taluk, Village
 from app.models.market import Market
 
 
@@ -14,7 +14,13 @@ def test_geography_model_hierarchy(db):
     db.commit()
     db.refresh(state)
 
-    district = District(state_id=state.id, name="Erode", code=f"ERD-{uuid.uuid4().hex[:4]}", latitude=11.3410, longitude=77.7172)
+    district = District(
+        state_id=state.id,
+        name="Erode",
+        code=f"ERD-{uuid.uuid4().hex[:4]}",
+        latitude=11.3410,
+        longitude=77.7172,
+    )
     db.add(district)
     db.commit()
     db.refresh(district)
@@ -100,11 +106,15 @@ def test_fpo_market_geography_foreign_keys(db):
 def test_api_v1_geography_endpoints(client, db):
     """Test public GET /api/v1/geography/ endpoints."""
     # Setup test data
-    state = State(name=f"Tamil Nadu Test {uuid.uuid4().hex[:4]}", code=f"T{uuid.uuid4().hex[:3].upper()}")
+    state = State(
+        name=f"Tamil Nadu Test {uuid.uuid4().hex[:4]}", code=f"T{uuid.uuid4().hex[:3].upper()}"
+    )
     db.add(state)
     db.commit()
 
-    district = District(state_id=state.id, name="Test District", code=f"TD{uuid.uuid4().hex[:3].upper()}")
+    district = District(
+        state_id=state.id, name="Test District", code=f"TD{uuid.uuid4().hex[:3].upper()}"
+    )
     db.add(district)
     db.commit()
 

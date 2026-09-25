@@ -1,7 +1,7 @@
 """Tests for market registry and market alias resolution."""
 
 import uuid
-import pytest
+
 from app.models.geography import District, State
 from app.models.market import Market
 from app.models.market_alias import MarketAlias

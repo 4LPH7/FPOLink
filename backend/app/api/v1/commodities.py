@@ -21,7 +21,9 @@ router = APIRouter(prefix="/commodities", tags=["commodities"])
 
 @router.get("", response_model=List[CommoditySummary])
 def list_commodities(
-    category: Optional[str] = Query(default=None, description="Filter by category (spice, fruit, cereal, etc.)"),
+    category: Optional[str] = Query(
+        default=None, description="Filter by category (spice, fruit, cereal, etc.)"
+    ),
     is_active: bool = Query(default=True),
     db: Session = Depends(get_db),
 ):
@@ -34,15 +36,11 @@ def list_commodities(
 
     # Pre-aggregate counts for high performance
     variety_counts = dict(
-        db.query(Variety.crop_id, func.count(Variety.id))
-        .group_by(Variety.crop_id)
-        .all()
+        db.query(Variety.crop_id, func.count(Variety.id)).group_by(Variety.crop_id).all()
     )
 
     alias_counts = dict(
-        db.query(CropAlias.crop_id, func.count(CropAlias.id))
-        .group_by(CropAlias.crop_id)
-        .all()
+        db.query(CropAlias.crop_id, func.count(CropAlias.id)).group_by(CropAlias.crop_id).all()
     )
 
     mapping_counts = dict(

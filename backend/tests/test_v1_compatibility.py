@@ -5,14 +5,13 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
-from app.services.jwt import create_access_token
 from app.main import app
 from app.models.crop import Crop
-from app.models.farmer import Farmer
 from app.models.fpo import FPO
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.user import User, UserRole
+from app.services.jwt import create_access_token
 
 client = TestClient(app)
 

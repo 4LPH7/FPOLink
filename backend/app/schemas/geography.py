@@ -1,6 +1,6 @@
 """Geography request/response schemas for State, District, Taluk, Block, Village."""
 
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field

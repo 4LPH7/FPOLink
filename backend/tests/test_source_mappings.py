@@ -1,13 +1,12 @@
 """Unit tests for deterministic source-to-canonical mappings and statewide market coverage."""
 
 import uuid
+
 from sqlalchemy import func
+
 from app.models.crop import Crop
-from app.models.geography import District
 from app.models.market import Market
 from app.models.source_mapping import (
-    CropSourceMapping,
-    MarketSourceMapping,
     VarietySourceMapping,
 )
 from app.models.variety import Variety
@@ -22,7 +21,9 @@ def test_statewide_market_coverage_all_38_districts(db):
         .filter(Market.is_active.is_(True))
         .scalar()
     )
-    assert distinct_districts == 38, f"Expected 38 districts with active markets, found {distinct_districts}"
+    assert (
+        distinct_districts == 38
+    ), f"Expected 38 districts with active markets, found {distinct_districts}"
 
 
 def test_crop_source_mapping_resolution(db):
@@ -51,7 +52,9 @@ def test_market_source_mapping_resolution(db):
     assert market.district == "Madurai"
 
     # Test Trichy mandi via Agmarknet code
-    trichy = resolve_market("Random String", db=db, source_code="agmarknet", external_code="AGM_TRY")
+    trichy = resolve_market(
+        "Random String", db=db, source_code="agmarknet", external_code="AGM_TRY"
+    )
     assert trichy is not None
     assert trichy.district == "Tiruchirappalli"
 
@@ -100,6 +103,8 @@ def test_fallback_to_canonical_when_no_source_mapping(db):
     assert crop.name.lower() == "turmeric"
 
     # Market fallback
-    market = resolve_market("Erode Regulated Market", db=db, source_code="unknown_src", external_code="NON_EXISTENT")
+    market = resolve_market(
+        "Erode Regulated Market", db=db, source_code="unknown_src", external_code="NON_EXISTENT"
+    )
     assert market is not None
     assert market.district == "Erode"

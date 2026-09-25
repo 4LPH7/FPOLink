@@ -48,8 +48,8 @@ def trigger_retention_purge(
 ):
     """Manually trigger DPDP retention purge."""
     from app.services.retention import (
-        purge_inbound,
         purge_conversation_state,
+        purge_inbound,
         purge_outbound,
     )
 

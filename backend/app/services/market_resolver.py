@@ -114,12 +114,9 @@ def resolve_market(
         return alias.market
 
     # 4. Partial substring match in Market.name
-    partial = (
-        db.query(Market)
-        .filter(
-            func.lower(Market.name).like(f"%{clean}%"),
-            Market.is_active.is_(True),
-        )
+    partial = db.query(Market).filter(
+        func.lower(Market.name).like(f"%{clean}%"),
+        Market.is_active.is_(True),
     )
     if district_id:
         scoped_p = partial.filter(Market.district_id == district_id).first()
