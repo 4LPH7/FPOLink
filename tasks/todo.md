@@ -104,11 +104,27 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 ### Checkpoint G: Agricultural Intelligence Sign-Off
 - [x] Dual-engine forecasting verified, feature store tested, arbitrage net freight calculated, 189 tests green (100%), 0 regressions
 
-## Future Strategic Roadmap (v0.8 to v1.0)
-- **Phase 13–15 (v0.8 Supply + Demand Network)**: Farm acreage tracking, expected yield/supply aggregation heatmaps, buyer matching engine.
+## Phase 13: Supply + Demand Network (v0.8 Network Layer)
+- [ ] T13.1 Model Expansion: Discrete `Farm/Plot`, staff-mediated `Buyer`, `BuyerRequirement`, and `SupplyMatch` models
+- [ ] T13.2 Database Migration: Alembic `0011_supply_demand_network`
+- [ ] T13.3 Schemas: `schemas/farm.py`, `schemas/buyer.py`, `schemas/matching.py`
+- [ ] T13.4 Rule-Based Yield Estimator: Agro-climatic benchmarks + soil/irrigation factors (`backend/app/services/yield_estimator.py`)
+- [ ] T13.5 Farm & Buyer Management Services with CSV Import Harness (`backend/app/services/farm_service.py`, `backend/app/services/buyer_service.py`, `backend/app/services/csv_import.py`)
+- [ ] T13.6 Semi-Automatic Demand-Supply Matching Engine (`backend/app/services/matching_service.py`)
+- [ ] T13.7 REST API v1 Routing: `/api/v1/farms`, `/api/v1/buyers`, `/api/v1/matching`
+- [ ] T13.8 WhatsApp Zero-Cost Inbound Match Queries & Staff-Confirmed Utility Nudges (`backend/app/services/bot.py`)
+- [ ] T13.9 Synthetic Erode Pilot Dataset: Multi-plot farms, commercial buyers, and requirements (`backend/scripts/seed_supply_demand.py`)
+- [ ] T13.10 Frontend Supply-Demand Management UI: Buyer registry, plot manager, and candidate matching drawer
+- [ ] T13.11 Comprehensive Integration & Regression Test Suite (`backend/tests/test_supply_demand.py`)
+- [ ] T13.12 Checkpoint H: Supply + Demand Network Sign-Off
+### Checkpoint H: Supply + Demand Network Sign-Off
+- [ ] Migration 0011 applied, multi-plot farms operational, semi-automatic matching verified, zero Erode pilot regressions
+
+## Future Strategic Roadmap (v0.9 to v1.0)
 - **Phase 16–17 (v0.9 State Command Center)**: State Agricultural Pulse dashboard, role-specific views (State Admin, District Admin, FPO, Analyst, Buyer, Farmer).
 - **Phase 18–20 (v1.0 Tamil Nadu Agricultural Intelligence Platform)**: Integrated farmer PWA & WhatsApp intelligence network, province-wide scaling.
 
 ## Pilot Deployment
 - [ ] 2-week pilot with 10–20 farmers from one FPO (runbook: `docs/PILOT_RUNBOOK.md`)
 - [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision (evaluation rubric: `docs/PILOT_RUNBOOK.md`)
+
