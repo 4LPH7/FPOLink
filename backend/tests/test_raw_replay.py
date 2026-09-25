@@ -125,9 +125,9 @@ def test_raw_ingest_deduplication(db):
 
     final_raw_count = db.query(RawIngest).filter(RawIngest.source == "agmarknet").count()
 
-    assert final_raw_count == initial_raw_count, (
-        "Identical raw payload should not create duplicate RawIngest"
-    )
+    assert (
+        final_raw_count == initial_raw_count
+    ), "Identical raw payload should not create duplicate RawIngest"
 
 
 def test_replay_harness_reproduces_prices(db):
