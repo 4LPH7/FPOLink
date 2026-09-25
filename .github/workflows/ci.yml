@@ -69,7 +69,6 @@ jobs:
         working-directory: backend
         run: |
           ruff check .
-          ruff format --diff scripts/verify_mvp_e2e.py
           ruff format --check .
 
   docker-smoke:
