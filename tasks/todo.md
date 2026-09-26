@@ -105,9 +105,9 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] Dual-engine forecasting verified, feature store tested, arbitrage net freight calculated, 189 tests green (100%), 0 regressions
 
 ## Phase 13: Supply + Demand Network (v0.8 Network Layer)
-- [ ] T13.1 Model Expansion: Discrete `Farm/Plot`, staff-mediated `Buyer`, `BuyerRequirement`, and `SupplyMatch` models
-- [ ] T13.2 Database Migration: Alembic `0011_supply_demand_network`
-- [ ] T13.3 Schemas: `schemas/farm.py`, `schemas/buyer.py`, `schemas/matching.py`
+- [x] T13.1 Model Expansion: Discrete `Farm/Plot`, staff-mediated `Buyer`, `BuyerRequirement`, and `SupplyMatch` models
+- [x] T13.2 Database Migration: Alembic `0011_supply_demand_network`
+- [x] T13.3 Schemas: `schemas/farm.py`, `schemas/buyer.py`, `schemas/matching.py`
 - [ ] T13.4 Rule-Based Yield Estimator: Agro-climatic benchmarks + soil/irrigation factors (`backend/app/services/yield_estimator.py`)
 - [ ] T13.5 Farm & Buyer Management Services with CSV Import Harness (`backend/app/services/farm_service.py`, `backend/app/services/buyer_service.py`, `backend/app/services/csv_import.py`)
 - [ ] T13.6 Semi-Automatic Demand-Supply Matching Engine (`backend/app/services/matching_service.py`)

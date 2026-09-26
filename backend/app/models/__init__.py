@@ -25,6 +25,7 @@ from app.models.source_mapping import (
     MarketSourceMapping,
     VarietySourceMapping,
 )
+from app.models.supply_match import SupplyMatch
 from app.models.user import User, UserRole
 from app.models.variety import Variety
 from app.models.variety_alias import VarietyAlias
@@ -64,6 +65,7 @@ __all__ = [
     "Prediction",
     "Buyer",
     "BuyerRequirement",
+    "SupplyMatch",
     "AggregationBatch",
     "BatchItem",
     "Notification",
