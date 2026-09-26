@@ -12,6 +12,8 @@ import {
   Sprout,
   ShieldCheck,
   Radio,
+  Building2,
+  GitCompare,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
@@ -19,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
   href: string;
-  labelKey: "dashboard" | "prices" | "farmers" | "admin" | "whatsapp";
+  labelKey: "dashboard" | "prices" | "farmers" | "buyers" | "matching" | "admin" | "whatsapp";
   icon: React.ComponentType<{ className?: string }>;
   badgeKey?: string;
 }
@@ -28,6 +30,8 @@ const navItems: NavItem[] = [
   { href: "/", labelKey: "dashboard", icon: LayoutDashboard },
   { href: "/prices", labelKey: "prices", icon: TrendingUp },
   { href: "/farmers", labelKey: "farmers", icon: Users },
+  { href: "/buyers", labelKey: "buyers", icon: Building2 },
+  { href: "/matching", labelKey: "matching", icon: GitCompare },
   { href: "/admin", labelKey: "admin", icon: Activity },
   { href: "/whatsapp", labelKey: "whatsapp", icon: MessageSquare },
 ];

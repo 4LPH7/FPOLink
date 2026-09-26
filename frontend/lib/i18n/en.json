@@ -13,6 +13,7 @@
     "harvest": "Harvest",
     "aggregation": "Aggregation",
     "buyers": "Buyers",
+    "matching": "Demand Matching",
     "orders": "Orders",
     "predictions": "Predictions",
     "alerts": "Alerts",

@@ -690,4 +690,593 @@ export async function getSpreads(
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 13 (v0.8): Supply + Demand Network API Client
+// ---------------------------------------------------------------------------
+
+export interface FarmPlot {
+  id: string;
+  farmer_id: string;
+  farmer_name?: string | null;
+  farmer_phone?: string | null;
+  crop_id: string;
+  crop_name?: string | null;
+  crop_tamil_name?: string | null;
+  plot_name: string;
+  area_acres: number;
+  village: string;
+  soil_type?: string | null;
+  irrigation_type?: string | null;
+  sowing_date?: string | null;
+  expected_harvest_date?: string | null;
+  expected_yield_kg?: number | null;
+  actual_yield_kg?: number | null;
+  status: string;
+  district_id?: string | null;
+  district_name?: string | null;
+  taluk_id?: string | null;
+  taluk_name?: string | null;
+  created_at?: string | null;
+}
+
+export interface FarmPlotListResponse {
+  plots: FarmPlot[];
+  total: number;
+  total_area_acres: number;
+}
+
+export interface FarmCreatePayload {
+  farmer_id: string;
+  crop_id: string;
+  plot_name: string;
+  area_acres: number;
+  village: string;
+  soil_type?: string;
+  irrigation_type?: string;
+  sowing_date?: string;
+  status?: string;
+  district_id?: string;
+  taluk_id?: string;
+}
+
+export interface FarmYieldEstimate {
+  crop_name: string;
+  area_acres: number;
+  base_yield_kg_per_acre: number;
+  soil_factor: number;
+  irrigation_factor: number;
+  estimated_yield_kg: number;
+  estimated_harvest_window_start?: string | null;
+  estimated_harvest_window_end?: string | null;
+  confidence_note: string;
+}
+
+export async function getFarmPlots(
+  params: {
+    farmer_id?: string;
+    fpo_id?: string;
+    crop_id?: string;
+    district?: string;
+    status?: string;
+    page?: number;
+    page_size?: number;
+  },
+  token?: string
+): Promise<FarmPlotListResponse> {
+  try {
+    const q = new URLSearchParams();
+    if (params.farmer_id) q.set("farmer_id", params.farmer_id);
+    if (params.fpo_id) q.set("fpo_id", params.fpo_id);
+    if (params.crop_id) q.set("crop_id", params.crop_id);
+    if (params.district) q.set("district", params.district);
+    if (params.status) q.set("status", params.status);
+    if (params.page) q.set("page", params.page.toString());
+    if (params.page_size) q.set("page_size", params.page_size.toString());
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/farms/?${q.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch farm plots:", err);
+  }
+  return { plots: [], total: 0, total_area_acres: 0 };
+}
+
+export async function createFarmPlot(
+  payload: FarmCreatePayload,
+  token?: string
+): Promise<FarmPlot | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/farms/`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to create farm plot");
+  } catch (err: any) {
+    console.error("createFarmPlot error:", err);
+    throw err;
+  }
+}
+
+export async function getFarmYieldEstimate(
+  farmId: string,
+  token?: string
+): Promise<FarmYieldEstimate | null> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/farms/${farmId}/yield-estimate`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch yield estimate:", err);
+  }
+  return null;
+}
+
+export async function deleteFarmPlot(farmId: string, token?: string): Promise<boolean> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/farms/${farmId}`, {
+      method: "DELETE",
+      headers,
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("Failed to delete farm plot:", err);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Buyers & Requirements
+// ---------------------------------------------------------------------------
+
+export interface Buyer {
+  id: string;
+  company_name: string;
+  buyer_type: string;
+  contact_name?: string | null;
+  contact_phone: string;
+  contact_email?: string | null;
+  location: string;
+  district?: string | null;
+  gstin?: string | null;
+  verified: boolean;
+  open_requirements_count: number;
+  created_at?: string | null;
+}
+
+export interface BuyerListResponse {
+  buyers: Buyer[];
+  total: number;
+}
+
+export interface BuyerCreatePayload {
+  company_name: string;
+  buyer_type: string;
+  contact_name?: string;
+  contact_phone: string;
+  contact_email?: string;
+  location: string;
+  district?: string;
+  fpo_id?: string;
+  gstin?: string;
+  verified?: boolean;
+}
+
+export interface BuyerRequirement {
+  id: string;
+  buyer_id: string;
+  buyer_name?: string | null;
+  buyer_phone?: string | null;
+  fpo_id?: string | null;
+  crop_id: string;
+  crop_name?: string | null;
+  crop_tamil_name?: string | null;
+  variety_id?: string | null;
+  variety_name?: string | null;
+  quantity_kg: number;
+  fulfilled_quantity_kg: number;
+  min_grade: string;
+  required_date: string;
+  delivery_window_days: number;
+  max_price_per_kg?: number | null;
+  delivery_location?: string | null;
+  status: string;
+  notes?: string | null;
+  created_at?: string | null;
+}
+
+export interface BuyerRequirementListResponse {
+  requirements: BuyerRequirement[];
+  total: number;
+  total_quantity_kg: number;
+}
+
+export interface BuyerRequirementCreatePayload {
+  buyer_id: string;
+  fpo_id?: string;
+  crop_id: string;
+  variety_id?: string;
+  quantity_kg: number;
+  min_grade: string;
+  required_date: string;
+  delivery_window_days?: number;
+  max_price_per_kg?: number;
+  delivery_location?: string;
+  notes?: string;
+}
+
+export async function getBuyers(
+  params?: {
+    fpo_id?: string;
+    district?: string;
+    buyer_type?: string;
+    page?: number;
+    page_size?: number;
+  },
+  token?: string
+): Promise<BuyerListResponse> {
+  try {
+    const q = new URLSearchParams();
+    if (params?.fpo_id) q.set("fpo_id", params.fpo_id);
+    if (params?.district) q.set("district", params.district);
+    if (params?.buyer_type) q.set("buyer_type", params.buyer_type);
+    if (params?.page) q.set("page", params.page.toString());
+    if (params?.page_size) q.set("page_size", params.page_size.toString());
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/buyers/?${q.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch buyers:", err);
+  }
+  return { buyers: [], total: 0 };
+}
+
+export async function createBuyer(
+  payload: BuyerCreatePayload,
+  token?: string
+): Promise<Buyer | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/buyers/`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to create buyer");
+  } catch (err: any) {
+    console.error("createBuyer error:", err);
+    throw err;
+  }
+}
+
+export async function getBuyerRequirements(
+  params?: {
+    buyer_id?: string;
+    fpo_id?: string;
+    crop_id?: string;
+    status?: string;
+    page?: number;
+    page_size?: number;
+  },
+  token?: string
+): Promise<BuyerRequirementListResponse> {
+  try {
+    const q = new URLSearchParams();
+    if (params?.buyer_id) q.set("buyer_id", params.buyer_id);
+    if (params?.fpo_id) q.set("fpo_id", params.fpo_id);
+    if (params?.crop_id) q.set("crop_id", params.crop_id);
+    if (params?.status) q.set("status", params.status);
+    if (params?.page) q.set("page", params.page.toString());
+    if (params?.page_size) q.set("page_size", params.page_size.toString());
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/buyers/requirements?${q.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch buyer requirements:", err);
+  }
+  return { requirements: [], total: 0, total_quantity_kg: 0 };
+}
+
+export async function createBuyerRequirement(
+  payload: BuyerRequirementCreatePayload,
+  token?: string
+): Promise<BuyerRequirement | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/buyers/requirements`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to create buyer requirement");
+  } catch (err: any) {
+    console.error("createBuyerRequirement error:", err);
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Matching Engine & Balance Summary
+// ---------------------------------------------------------------------------
+
+export interface MatchBreakdown {
+  crop_match: boolean;
+  distance_km?: number | null;
+  proximity_score: number;
+  quantity_fit_ratio: number;
+  timing_days_delta?: number | null;
+  timing_score: number;
+  grade_score: number;
+  composite_score: number;
+}
+
+export interface MatchCandidate {
+  candidate_type: "farm_plot" | "harvest";
+  source_id: string;
+  farmer_id: string;
+  farmer_name: string;
+  farmer_phone: string;
+  farmer_alerts_opt_in: boolean;
+  village?: string | null;
+  district?: string | null;
+  crop_id: string;
+  crop_name: string;
+  crop_tamil_name?: string | null;
+  available_quantity_kg: number;
+  grade?: string | null;
+  available_date?: string | null;
+  distance_km?: number | null;
+  match_score: number;
+  match_breakdown: MatchBreakdown;
+}
+
+export interface MatchCandidateListResponse {
+  requirement_id: string;
+  buyer_id: string;
+  buyer_name: string;
+  crop_name: string;
+  required_quantity_kg: number;
+  required_date: string;
+  delivery_location?: string | null;
+  candidates: MatchCandidate[];
+  total_candidates: number;
+}
+
+export interface SupplyMatchItem {
+  id: string;
+  buyer_requirement_id: string;
+  buyer_name?: string | null;
+  farm_id?: string | null;
+  harvest_id?: string | null;
+  fpo_id: string;
+  farmer_id?: string | null;
+  farmer_name?: string | null;
+  farmer_phone?: string | null;
+  crop_name?: string | null;
+  matched_quantity_kg: number;
+  offered_price_per_kg?: number | null;
+  match_score: number;
+  match_breakdown?: MatchBreakdown | null;
+  status: string;
+  staff_notes?: string | null;
+  confirmed_by_name?: string | null;
+  confirmed_at?: string | null;
+  notified_at?: string | null;
+  farmer_responded_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface SupplyDemandCropSummary {
+  crop_id: string;
+  crop_name: string;
+  crop_tamil_name?: string | null;
+  standing_acres: number;
+  standing_yield_kg: number;
+  verified_harvest_kg: number;
+  total_supply_kg: number;
+  total_demand_kg: number;
+  net_balance_kg: number;
+  active_plots_count: number;
+  open_requirements_count: number;
+}
+
+export interface SupplyDemandSummary {
+  fpo_id?: string | null;
+  district?: string | null;
+  commodities: SupplyDemandCropSummary[];
+  total_standing_acres: number;
+  total_supply_kg: number;
+  total_demand_kg: number;
+  active_plots_total: number;
+  open_requirements_total: number;
+}
+
+export async function getCandidatesForRequirement(
+  requirementId: string,
+  maxCandidates: number = 15,
+  token?: string
+): Promise<MatchCandidateListResponse | null> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(
+      `${API_BASE}/api/v1/matching/candidates/${requirementId}?max_candidates=${maxCandidates}`,
+      { headers, cache: "no-store" }
+    );
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch matching candidates:", err);
+  }
+  return null;
+}
+
+export async function suggestMatch(
+  payload: {
+    buyer_requirement_id: string;
+    fpo_id: string;
+    farm_id?: string;
+    harvest_id?: string;
+    matched_quantity_kg: number;
+    match_score: number;
+    match_breakdown?: any;
+    offered_price_per_kg?: number;
+    staff_notes?: string;
+  },
+  token?: string
+): Promise<SupplyMatchItem | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/matching/suggest`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to create match");
+  } catch (err: any) {
+    console.error("suggestMatch error:", err);
+    throw err;
+  }
+}
+
+export async function confirmMatch(
+  matchId: string,
+  payload: { staff_notes?: string; offered_price_per_kg?: number },
+  token?: string
+): Promise<SupplyMatchItem | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/matching/${matchId}/confirm`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to confirm match");
+  } catch (err: any) {
+    console.error("confirmMatch error:", err);
+    throw err;
+  }
+}
+
+export async function rejectMatch(
+  matchId: string,
+  notes?: string,
+  token?: string
+): Promise<SupplyMatchItem | null> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const url = notes
+      ? `${API_BASE}/api/v1/matching/${matchId}/reject?notes=${encodeURIComponent(notes)}`
+      : `${API_BASE}/api/v1/matching/${matchId}/reject`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to reject match:", err);
+  }
+  return null;
+}
+
+export async function getSupplyDemandSummary(
+  params?: { fpo_id?: string; district?: string },
+  token?: string
+): Promise<SupplyDemandSummary | null> {
+  try {
+    const q = new URLSearchParams();
+    if (params?.fpo_id) q.set("fpo_id", params.fpo_id);
+    if (params?.district) q.set("district", params.district);
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/matching/summary?${q.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch supply demand summary:", err);
+  }
+  return null;
+}
+
+export async function listSupplyMatches(
+  params?: { fpo_id?: string; status?: string; page?: number; page_size?: number },
+  token?: string
+): Promise<{ matches: SupplyMatchItem[]; total: number }> {
+  try {
+    const q = new URLSearchParams();
+    if (params?.fpo_id) q.set("fpo_id", params.fpo_id);
+    if (params?.status) q.set("status", params.status);
+    if (params?.page) q.set("page", params.page.toString());
+    if (params?.page_size) q.set("page_size", params.page_size.toString());
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/matching/list?${q.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to list supply matches:", err);
+  }
+  return { matches: [], total: 0 };
+}
+
+
 
