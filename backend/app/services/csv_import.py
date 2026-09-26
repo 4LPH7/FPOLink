@@ -65,7 +65,7 @@ def import_farms_csv(db: Session, fpo_id: UUID, csv_text: str) -> Dict:
             farmer = farmer_phone_map[phone]
 
             # Resolve crop
-            crop_name_raw = row.get("crop_name", "").strip()
+            crop_name_raw = (row.get("crop_name") or row.get("crop") or "").strip()
             if not crop_name_raw:
                 errors.append({"row": row_idx, "error": "Missing crop_name column"})
                 continue

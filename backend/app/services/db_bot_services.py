@@ -359,3 +359,104 @@ class DbBotServices:
                 )
                 db.add(row)
             db.commit()
+
+    async def get_buyer_matches_text(self, farmer_id: str, lang: str = "ta") -> Optional[str]:
+        """Fetch active confirmed or open commercial buyer opportunities matching farmer's crops/FPO."""
+        with self.db_factory() as db:
+            from uuid import UUID
+            from app.models.farmer import Farmer as DbFarmer
+            from app.models.farm import Farm
+            from app.models.crop import Crop
+            from app.models.buyer import Buyer, BuyerRequirement
+            from app.models.supply_match import SupplyMatch
+
+            try:
+                f_uuid = UUID(farmer_id)
+            except (ValueError, TypeError):
+                return None
+
+            farmer = db.query(DbFarmer).filter(DbFarmer.id == f_uuid).first()
+            if not farmer:
+                return None
+
+            # 1. Check if farmer has any staff-confirmed matches
+            from sqlalchemy import or_
+            from app.models.harvest import Harvest
+
+            farmer_farm_ids = db.query(Farm.id).filter(Farm.farmer_id == farmer.id)
+            farmer_harvest_ids = db.query(Harvest.id).filter(Harvest.farmer_id == farmer.id)
+            confirmed_matches = (
+                db.query(SupplyMatch)
+                .join(BuyerRequirement, SupplyMatch.buyer_requirement_id == BuyerRequirement.id)
+                .join(Buyer, BuyerRequirement.buyer_id == Buyer.id)
+                .filter(
+                    SupplyMatch.status == "confirmed_by_staff",
+                    or_(
+                        SupplyMatch.farm_id.in_(farmer_farm_ids),
+                        SupplyMatch.harvest_id.in_(farmer_harvest_ids),
+                    ),
+                )
+                .limit(3)
+                .all()
+            )
+            if confirmed_matches:
+                lines = []
+                if lang == "ta":
+                    lines.append("🎉 உங்களுக்கு உறுதிப்படுத்தப்பட்ட கொள்முதல் வாய்ப்பு உள்ளது:")
+                    for m in confirmed_matches:
+                        crop_name = m.buyer_requirement.crop.tamil_name or m.buyer_requirement.crop.name
+                        company = m.buyer_requirement.buyer.company_name
+                        price_str = f"₹{m.offered_price_per_kg}/கிலோ" if m.offered_price_per_kg else ""
+                        lines.append(f"• {company}: {crop_name} {m.matched_quantity_kg:.0f} கிலோ {price_str}")
+                    lines.append("விவரங்களுக்கு உங்கள் FPO அலுவலரை உடனே தொடர்பு கொள்ளவும்!")
+                else:
+                    lines.append("🎉 You have confirmed buyer opportunities:")
+                    for m in confirmed_matches:
+                        crop_name = m.buyer_requirement.crop.name
+                        company = m.buyer_requirement.buyer.company_name
+                        price_str = f"@ ₹{m.offered_price_per_kg}/kg" if m.offered_price_per_kg else ""
+                        lines.append(f"• {company}: {crop_name} {m.matched_quantity_kg:.0f} kg {price_str}")
+                    lines.append("Contact your FPO staff immediately to schedule delivery!")
+                return "\n".join(lines)
+
+            # 2. Otherwise look up open requirements for crops the farmer grows
+            farmer_crop_ids = list(
+                {f.crop_id for f in farmer.farms if f.crop_id}
+                | {h.crop_id for h in farmer.harvests if h.crop_id}
+            )
+            if not farmer_crop_ids:
+                return None
+
+            open_reqs = (
+                db.query(BuyerRequirement)
+                .join(Buyer, BuyerRequirement.buyer_id == Buyer.id)
+                .join(Crop, BuyerRequirement.crop_id == Crop.id)
+                .filter(
+                    BuyerRequirement.crop_id.in_(farmer_crop_ids),
+                    BuyerRequirement.status.in_(["open", "partially_fulfilled"]),
+                    ((BuyerRequirement.fpo_id == farmer.fpo_id) | (BuyerRequirement.fpo_id.is_(None))),
+                )
+                .order_by(BuyerRequirement.required_date.asc())
+                .limit(3)
+                .all()
+            )
+            if not open_reqs:
+                return None
+
+            lines = []
+            if lang == "ta":
+                lines.append("📋 உங்கள் பயிர்களுக்கான தற்போதைய கொள்முதல் தேவைகள்:")
+                for r in open_reqs:
+                    c_name = r.crop.tamil_name or r.crop.name
+                    price_str = f"| ₹{r.max_price_per_kg}/கிலோ" if r.max_price_per_kg else ""
+                    lines.append(f"• {r.buyer.company_name}: {c_name} {r.quantity_kg:.0f} கிலோ {price_str}")
+                    lines.append(f"  தேதி: {r.required_date.strftime('%d-%b-%Y')}, இடம்: {r.delivery_location or r.buyer.location}")
+                lines.append("பங்கேற்க உங்கள் FPO அலுவலரைத் தொடர்பு கொள்ளவும்!")
+            else:
+                lines.append("📋 Current Buyer Demand for your crops:")
+                for r in open_reqs:
+                    price_str = f"| Max ₹{r.max_price_per_kg}/kg" if r.max_price_per_kg else ""
+                    lines.append(f"• {r.buyer.company_name}: {r.crop.name} {r.quantity_kg:.0f} kg {price_str}")
+                    lines.append(f"  Delivery: {r.required_date.strftime('%d-%b-%Y')} ({r.delivery_location or r.buyer.location})")
+                lines.append("Contact FPO staff to register your plot or harvest!")
+            return "\n".join(lines)

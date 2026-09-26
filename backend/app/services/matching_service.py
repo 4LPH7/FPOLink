@@ -166,7 +166,7 @@ def find_candidate_matches_for_requirement(
         )
         .filter(
             Farm.crop_id == req.crop_id,
-            Farm.status == "active",
+            Farm.status.in_(["active", "growing", "ready_for_harvest"]),
             (Farmer.fpo_id == req.fpo_id) if req.fpo_id else True,
         )
         .all()
@@ -440,7 +440,7 @@ def get_supply_demand_summary(
             .join(Farmer, Farm.farmer_id == Farmer.id)
             .filter(
                 Farm.crop_id == crop.id,
-                Farm.status == "active",
+                Farm.status.in_(["active", "growing", "ready_for_harvest"]),
                 (Farmer.fpo_id == fpo_id) if fpo_id else True,
                 (Farmer.district.ilike(f"%{district}%")) if district else True,
             )

@@ -34,15 +34,17 @@ INTENT_KEYWORDS = {
     "forecast": ["forecast", "கணிப்பு", "முன்னறிவிப்பு"],
     "weather": ["weather", "வானிலை"],
     "price": ["price", "rate", "விலை"],
+    "buyers": ["buyers", "buyer", "demand", "கொள்முதல்", "வாங்குபவர்", "match"],
     "menu": ["menu", "help", "hi", "hello", "start", "உதவி", "வணக்கம்"],
 }
 
 # Tamil copy is a first draft: have a native speaker (ideally a farmer) review it.
 T = {
     "en": {
-        "menu": "Hello {name}! What would you like?\nYou can also type: PRICE, FORECAST, WEATHER, HARVEST.",
+        "menu": "Hello {name}! What would you like?\nYou can also type: PRICE, FORECAST, BUYERS, WEATHER, HARVEST.",
         "not_registered": "This number is not registered. Please contact your FPO to register.",
         "unknown": "Sorry, I didn't understand. Send MENU to see the options.",
+        "no_buyers": "No open buyer demands currently matching your crops. We will notify you when buyers post new requirements!",
         "no_price": "No recent price available for {crop}.",
         "price_line": "{crop}: ₹{quintal}/quintal (min ₹{lo}, max ₹{hi}) - {market}, {date}",
         "ask_crop": "Which crop did you harvest?",
@@ -72,9 +74,10 @@ T = {
         "b_no": "No",
     },
     "ta": {
-        "menu": "வணக்கம் {name}! உங்களுக்கு என்ன வேண்டும்?\nநீங்கள் எழுதலாம்: விலை, கணிப்பு, வானிலை, அறுவடை.",
+        "menu": "வணக்கம் {name}! உங்களுக்கு என்ன வேண்டும்?\nவிருப்பங்கள்: விலை (PRICE), கணிப்பு (FORECAST), கொள்முதல் (BUYERS), வானிலை (WEATHER), அறுவடை (HARVEST).",
         "not_registered": "இந்த எண் பதிவு செய்யப்படவில்லை. பதிவு செய்ய உங்கள் FPO-வைத் தொடர்பு கொள்ளவும்.",
         "unknown": "மன்னிக்கவும், புரியவில்லை. விருப்பங்களுக்கு MENU என்று அனுப்பவும்.",
+        "no_buyers": "உங்கள் பயிர்களுக்கான கொள்முதல் தேவைகள் தற்போது இல்லை. புதிய தேவைகள் வரும்போது தெரிவிக்கப்படும்!",
         "no_price": "{crop} க்கு சமீபத்திய விலை இல்லை.",
         "price_line": "{crop}: ₹{quintal}/குவிண்டால் (குறைந்தது ₹{lo}, அதிகபட்சம் ₹{hi}) - {market}, {date}",
         "ask_crop": "எந்தப் பயிரை அறுவடை செய்தீர்கள்?",
@@ -149,6 +152,9 @@ class BotServices(Protocol):
     async def forecast_text(self, crop: str, lang: str) -> str | None: ...
 
     async def weather_text(self, district: str, lang: str) -> str | None: ...
+
+    async def get_buyer_matches_text(self, farmer_id: str, lang: str) -> str | None:
+        """Fetch open confirmed or candidate buyer requirements for farmer's crops/FPO."""
 
     async def submit_harvest(
         self,
@@ -367,6 +373,8 @@ class BotEngine:
         elif intent == "weather":
             text = await self.svc.weather_text(farmer.district, lang)
             await ch.send_text(msg.wa_id, text or t["unavailable"])
+        elif intent == "buyers":
+            await self._buyers(msg, ch, farmer, t, lang)
         elif intent == "harvest":
             await self.svc.set_state(msg.wa_id, ConvState("crop"))
             await self._ask_crop(msg, ch, t, lang)
@@ -417,6 +425,10 @@ class BotEngine:
             if text:
                 parts.append(text)
         await ch.send_text(msg.wa_id, "\n\n".join(parts) or t["unavailable"])
+
+    async def _buyers(self, msg, ch, farmer: Farmer, t, lang: str) -> None:
+        text = await self.svc.get_buyer_matches_text(farmer.id, lang)
+        await ch.send_text(msg.wa_id, text or t["no_buyers"])
 
     # ---- harvest submission flow: crop -> qty -> grade -> confirm
 
@@ -574,6 +586,9 @@ class InMemoryServices:
         return None
 
     async def weather_text(self, district: str, lang: str) -> str | None:
+        return None
+
+    async def get_buyer_matches_text(self, farmer_id: str, lang: str) -> str | None:
         return None
 
     async def submit_harvest(self, farmer_id, crop, qty_kg, grade, source_message_id=None) -> None:
