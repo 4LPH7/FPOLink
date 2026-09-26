@@ -165,7 +165,9 @@ def list_buyer_requirements(
     if buyer_id:
         query = query.filter(BuyerRequirement.buyer_id == buyer_id)
     if fpo_id:
-        query = query.filter((BuyerRequirement.fpo_id == fpo_id) | (BuyerRequirement.fpo_id.is_(None)))
+        query = query.filter(
+            (BuyerRequirement.fpo_id == fpo_id) | (BuyerRequirement.fpo_id.is_(None))
+        )
     if crop_id:
         query = query.filter(BuyerRequirement.crop_id == crop_id)
     if status:
@@ -176,7 +178,9 @@ def list_buyer_requirements(
         db.query(func.coalesce(func.sum(BuyerRequirement.quantity_kg), 0.0))
         .filter(
             (BuyerRequirement.buyer_id == buyer_id) if buyer_id else True,
-            ((BuyerRequirement.fpo_id == fpo_id) | (BuyerRequirement.fpo_id.is_(None))) if fpo_id else True,
+            ((BuyerRequirement.fpo_id == fpo_id) | (BuyerRequirement.fpo_id.is_(None)))
+            if fpo_id
+            else True,
             (BuyerRequirement.crop_id == crop_id) if crop_id else True,
             (BuyerRequirement.status == status) if status else True,
         )
@@ -185,10 +189,7 @@ def list_buyer_requirements(
     )
 
     requirements = (
-        query.order_by(BuyerRequirement.required_date.asc())
-        .offset(skip)
-        .limit(limit)
-        .all()
+        query.order_by(BuyerRequirement.required_date.asc()).offset(skip).limit(limit).all()
     )
     return requirements, total_count, float(total_qty)
 

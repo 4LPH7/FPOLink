@@ -1,9 +1,9 @@
 """Integration tests for Wave 3: REST API v1 endpoints and WhatsApp Bot Inbound Buyers intent."""
 
 import contextlib
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-import uuid
 
 import pytest
 
@@ -55,6 +55,7 @@ def auth_context(db):
     db.commit()
 
     import random
+
     rand_digits = f"{random.randint(10000000, 99999999)}"
 
     fpo = FPO(
@@ -394,7 +395,9 @@ def test_matching_engine_api_workflow(client, auth_context, db):
     assert float(res.json()["offered_price_per_kg"]) == 140.00
 
     # 5. Reject / Dismiss match (reverts fulfilled demand)
-    res = client.post(f"/api/v1/matching/{match_id}/reject?notes=Cancelled+by+staff", headers=headers)
+    res = client.post(
+        f"/api/v1/matching/{match_id}/reject?notes=Cancelled+by+staff", headers=headers
+    )
     assert res.status_code == 200
     assert res.json()["status"] == "rejected"
 
@@ -407,6 +410,7 @@ def test_matching_engine_api_workflow(client, auth_context, db):
 @pytest.mark.asyncio
 async def test_whatsapp_bot_buyers_intent(db, auth_context):
     """Verify WhatsApp bot inbound 'BUYERS' query handles both confirmed matches and open demand."""
+
     @contextlib.contextmanager
     def test_db_factory():
         yield db

@@ -4,38 +4,28 @@ import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
-
 from app.models.buyer import Buyer, BuyerRequirement
 from app.models.crop import Crop
 from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.models.fpo import FPO
 from app.models.harvest import Harvest, HarvestGrade, HarvestStatus
-from app.models.supply_match import SupplyMatch
 from app.models.user import User, UserRole
 from app.schemas.buyer import (
     BuyerCreate,
     BuyerRequirementCreate,
     BuyerRequirementUpdate,
-    BuyerUpdate,
 )
 from app.schemas.farm import FarmCreate, FarmUpdate
 from app.services.buyer_service import (
     create_buyer,
     create_buyer_requirement,
-    get_buyer,
-    get_buyer_requirement,
     list_buyer_requirements,
-    list_buyers,
-    update_buyer,
     update_buyer_requirement,
 )
 from app.services.csv_import import import_buyers_csv, import_farms_csv
 from app.services.farm_service import (
     create_farm,
-    delete_farm,
-    get_farm,
     get_farmer_plots,
     list_farms,
     update_farm,
@@ -49,9 +39,6 @@ from app.services.matching_service import (
 )
 from app.services.yield_estimator import (
     estimate_crop_yield,
-    estimate_farm_yield,
-    get_irrigation_factor,
-    get_soil_factor,
 )
 
 
@@ -294,10 +281,22 @@ def test_matching_engine_candidate_ranking_and_staff_workflow(db):
     db.flush()
 
     # 2. Setup Farmer 1 with matching Farm plot
-    u1 = User(name="Kavitha Farmer", phone=f"95{uuid.uuid4().int % 100000000:08d}", role=UserRole.FARMER, hashed_password="pw")
+    u1 = User(
+        name="Kavitha Farmer",
+        phone=f"95{uuid.uuid4().int % 100000000:08d}",
+        role=UserRole.FARMER,
+        hashed_password="pw",
+    )
     db.add(u1)
     db.flush()
-    farmer1 = Farmer(user_id=u1.id, fpo_id=fpo.id, village="Erode", taluk="Erode", district="Erode", farm_area_acres=4.0)
+    farmer1 = Farmer(
+        user_id=u1.id,
+        fpo_id=fpo.id,
+        village="Erode",
+        taluk="Erode",
+        district="Erode",
+        farm_area_acres=4.0,
+    )
     db.add(farmer1)
     db.flush()
     farm1 = Farm(
@@ -312,10 +311,22 @@ def test_matching_engine_candidate_ranking_and_staff_workflow(db):
     db.add(farm1)
 
     # 3. Setup Farmer 2 with verified Harvest
-    u2 = User(name="Nagaraj Farmer", phone=f"94{uuid.uuid4().int % 100000000:08d}", role=UserRole.FARMER, hashed_password="pw")
+    u2 = User(
+        name="Nagaraj Farmer",
+        phone=f"94{uuid.uuid4().int % 100000000:08d}",
+        role=UserRole.FARMER,
+        hashed_password="pw",
+    )
     db.add(u2)
     db.flush()
-    farmer2 = Farmer(user_id=u2.id, fpo_id=fpo.id, village="Bhavani", taluk="Bhavani", district="Erode", farm_area_acres=3.0)
+    farmer2 = Farmer(
+        user_id=u2.id,
+        fpo_id=fpo.id,
+        village="Bhavani",
+        taluk="Bhavani",
+        district="Erode",
+        farm_area_acres=3.0,
+    )
     db.add(farmer2)
     db.flush()
     harvest1 = Harvest(
@@ -341,7 +352,11 @@ def test_matching_engine_candidate_ranking_and_staff_workflow(db):
     assert top_candidate["match_breakdown"]["crop_match"] is True
 
     # 5. Create suggested match
-    staff_user = db.query(User).filter(User.role.in_([UserRole.ADMIN, UserRole.FPO_ADMIN, UserRole.FPO_STAFF])).first()
+    staff_user = (
+        db.query(User)
+        .filter(User.role.in_([UserRole.ADMIN, UserRole.FPO_ADMIN, UserRole.FPO_STAFF]))
+        .first()
+    )
     staff_id = staff_user.id if staff_user else u1.id
 
     match = create_or_suggest_match(
@@ -358,7 +373,9 @@ def test_matching_engine_candidate_ranking_and_staff_workflow(db):
     assert match.status == "suggested"
 
     # 6. Staff confirmation
-    confirmed = confirm_match_by_staff(db, match.id, staff_id, notes="Confirmed via phone call with farmer")
+    confirmed = confirm_match_by_staff(
+        db, match.id, staff_id, notes="Confirmed via phone call with farmer"
+    )
     assert confirmed.status == "confirmed_by_staff"
     assert confirmed.confirmed_at is not None
 

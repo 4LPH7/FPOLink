@@ -45,7 +45,9 @@ def create_farm(db: Session, data: FarmCreate) -> Farm:
     )
     farm_dict["expected_yield_kg"] = yield_est["estimated_yield_kg"]
 
-    if not farm_dict.get("expected_harvest_date") and yield_est.get("estimated_harvest_window_start"):
+    if not farm_dict.get("expected_harvest_date") and yield_est.get(
+        "estimated_harvest_window_start"
+    ):
         farm_dict["expected_harvest_date"] = yield_est["estimated_harvest_window_start"]
 
     farm = Farm(**farm_dict)
@@ -132,9 +134,13 @@ def update_farm(db: Session, farm_id: UUID, data: FarmUpdate) -> Optional[Farm]:
     update_dict = data.model_dump(exclude_unset=True)
 
     # Recalculate yield estimate if area or crop or soil or irrigation changed
-    needs_yield_recalc = any(
-        k in update_dict for k in ("area_acres", "crop_id", "soil_type", "irrigation_type", "sowing_date")
-    ) and "expected_yield_kg" not in update_dict
+    needs_yield_recalc = (
+        any(
+            k in update_dict
+            for k in ("area_acres", "crop_id", "soil_type", "irrigation_type", "sowing_date")
+        )
+        and "expected_yield_kg" not in update_dict
+    )
 
     for key, value in update_dict.items():
         setattr(farm, key, value)

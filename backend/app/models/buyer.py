@@ -26,7 +26,7 @@ class Buyer(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id"), nullable=True)
+    fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id", ondelete="SET NULL"), nullable=True)
     company_name = Column(String(200), nullable=False)
     buyer_type = Column(
         String(50), nullable=False, default="wholesaler"
@@ -36,11 +36,17 @@ class Buyer(Base, TimestampMixin):
     contact_email = Column(String, nullable=True)
     location = Column(String(200), nullable=False)
     district = Column(String(100), nullable=True)
-    district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id"), nullable=True)
-    state_id = Column(UUID(as_uuid=True), ForeignKey("states.id"), nullable=True)
+    district_id = Column(
+        UUID(as_uuid=True), ForeignKey("districts.id", ondelete="SET NULL"), nullable=True
+    )
+    state_id = Column(
+        UUID(as_uuid=True), ForeignKey("states.id", ondelete="SET NULL"), nullable=True
+    )
     gstin = Column(String(20), nullable=True)
     verified = Column(Boolean, nullable=False, default=False)
-    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     user = relationship("User", foreign_keys=[user_id])
     created_by = relationship("User", foreign_keys=[created_by_user_id])
@@ -56,10 +62,14 @@ class BuyerRequirement(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     buyer_id = Column(UUID(as_uuid=True), ForeignKey("buyers.id"), nullable=False)
-    fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id"), nullable=True)
+    fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id", ondelete="SET NULL"), nullable=True)
     crop_id = Column(UUID(as_uuid=True), ForeignKey("crops.id"), nullable=False)
-    variety_id = Column(UUID(as_uuid=True), ForeignKey("varieties.id"), nullable=True)
-    district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id"), nullable=True)
+    variety_id = Column(
+        UUID(as_uuid=True), ForeignKey("varieties.id", ondelete="SET NULL"), nullable=True
+    )
+    district_id = Column(
+        UUID(as_uuid=True), ForeignKey("districts.id", ondelete="SET NULL"), nullable=True
+    )
     quantity_kg = Column(Float, nullable=False)
     fulfilled_quantity_kg = Column(Float, nullable=False, default=0.0)
     min_grade = Column(Enum(HarvestGrade), nullable=False)
@@ -71,7 +81,9 @@ class BuyerRequirement(Base, TimestampMixin):
         String(20), default="open"
     )  # open, matched, partially_fulfilled, fulfilled, cancelled
     notes = Column(Text, nullable=True)
-    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     buyer = relationship("Buyer", back_populates="requirements")
     crop = relationship("Crop")

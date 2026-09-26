@@ -218,13 +218,13 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False,
+            nullable=True,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False,
+            nullable=True,
         ),
     )
 

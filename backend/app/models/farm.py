@@ -18,7 +18,9 @@ class Farm(Base, TimestampMixin):
     plot_name = Column(String(100), nullable=True)
     area_acres = Column(Float, nullable=False)
     village = Column(String(100), nullable=True)
-    soil_type = Column(String(50), nullable=True)  # Red Loam, Clay Loam, Black Cotton, Alluvial, Sandy
+    soil_type = Column(
+        String(50), nullable=True
+    )  # Red Loam, Clay Loam, Black Cotton, Alluvial, Sandy
     irrigation_type = Column(String(50), nullable=True)  # Drip, Canal, Borewell, Rainfed, Sprinkler
     sowing_date = Column(Date, nullable=True)
     expected_harvest_date = Column(Date, nullable=True)
@@ -27,10 +29,18 @@ class Farm(Base, TimestampMixin):
     status = Column(String(20), default="active")  # active, harvested, fallow, abandoned
 
     # Multi-tier administrative geography
-    state_id = Column(UUID(as_uuid=True), ForeignKey("states.id"), nullable=True)
-    district_id = Column(UUID(as_uuid=True), ForeignKey("districts.id"), nullable=True)
-    taluk_id = Column(UUID(as_uuid=True), ForeignKey("taluks.id"), nullable=True)
-    village_id = Column(UUID(as_uuid=True), ForeignKey("villages.id"), nullable=True)
+    state_id = Column(
+        UUID(as_uuid=True), ForeignKey("states.id", ondelete="SET NULL"), nullable=True
+    )
+    district_id = Column(
+        UUID(as_uuid=True), ForeignKey("districts.id", ondelete="SET NULL"), nullable=True
+    )
+    taluk_id = Column(
+        UUID(as_uuid=True), ForeignKey("taluks.id", ondelete="SET NULL"), nullable=True
+    )
+    village_id = Column(
+        UUID(as_uuid=True), ForeignKey("villages.id", ondelete="SET NULL"), nullable=True
+    )
 
     farmer = relationship("Farmer", back_populates="farms")
     crop = relationship("Crop")

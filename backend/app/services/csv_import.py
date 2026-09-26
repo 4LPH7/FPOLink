@@ -10,7 +10,6 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.buyer import Buyer, BuyerRequirement
-from app.models.crop import Crop
 from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.models.harvest import HarvestGrade
@@ -42,7 +41,9 @@ def import_farms_csv(db: Session, fpo_id: UUID, csv_text: str) -> Dict:
     errors: List[Dict] = []
 
     # Pre-cache farmers by normalized phone
-    farmers = db.query(Farmer).join(User, Farmer.user_id == User.id).filter(Farmer.fpo_id == fpo_id).all()
+    farmers = (
+        db.query(Farmer).join(User, Farmer.user_id == User.id).filter(Farmer.fpo_id == fpo_id).all()
+    )
     farmer_phone_map = {f.phone: f for f in farmers if f.phone}
     # Also index by User.phone
     for f in farmers:
@@ -55,11 +56,13 @@ def import_farms_csv(db: Session, fpo_id: UUID, csv_text: str) -> Dict:
             # Normalize phone (remove +91, spaces)
             phone = phone_raw.replace("+91", "").replace(" ", "").replace("-", "")[-10:]
             if not phone or phone not in farmer_phone_map:
-                errors.append({
-                    "row": row_idx,
-                    "phone": phone_raw,
-                    "error": f"Farmer with phone '{phone_raw}' not found under this FPO",
-                })
+                errors.append(
+                    {
+                        "row": row_idx,
+                        "phone": phone_raw,
+                        "error": f"Farmer with phone '{phone_raw}' not found under this FPO",
+                    }
+                )
                 continue
 
             farmer = farmer_phone_map[phone]
@@ -72,11 +75,13 @@ def import_farms_csv(db: Session, fpo_id: UUID, csv_text: str) -> Dict:
 
             crop = resolve_crop(crop_name_raw, db)
             if not crop:
-                errors.append({
-                    "row": row_idx,
-                    "crop": crop_name_raw,
-                    "error": f"Crop '{crop_name_raw}' could not be resolved",
-                })
+                errors.append(
+                    {
+                        "row": row_idx,
+                        "crop": crop_name_raw,
+                        "error": f"Crop '{crop_name_raw}' could not be resolved",
+                    }
+                )
                 continue
 
             # Parse area
@@ -142,7 +147,12 @@ def import_buyers_csv(
     """Import commercial buyers and optional procurement requirements from CSV text."""
     reader = csv.DictReader(io.StringIO(csv_text.strip()))
     if not reader.fieldnames:
-        return {"error": "Empty or invalid CSV file", "buyers_imported": 0, "requirements_imported": 0, "errors": []}
+        return {
+            "error": "Empty or invalid CSV file",
+            "buyers_imported": 0,
+            "requirements_imported": 0,
+            "errors": [],
+        }
 
     buyers_imported = 0
     requirements_imported = 0
@@ -155,10 +165,12 @@ def import_buyers_csv(
             location = row.get("location", "").strip()
 
             if not company_name or not contact_phone or not location:
-                errors.append({
-                    "row": row_idx,
-                    "error": "Missing required buyer fields (company_name, contact_phone, location)",
-                })
+                errors.append(
+                    {
+                        "row": row_idx,
+                        "error": "Missing required buyer fields (company_name, contact_phone, location)",
+                    }
+                )
                 continue
 
             # Look up or create buyer
@@ -190,10 +202,12 @@ def import_buyers_csv(
             if crop_name_raw and qty_raw:
                 crop = resolve_crop(crop_name_raw, db)
                 if not crop:
-                    errors.append({
-                        "row": row_idx,
-                        "error": f"Crop '{crop_name_raw}' for requirement could not be resolved",
-                    })
+                    errors.append(
+                        {
+                            "row": row_idx,
+                            "error": f"Crop '{crop_name_raw}' for requirement could not be resolved",
+                        }
+                    )
                     continue
 
                 try:
@@ -204,7 +218,9 @@ def import_buyers_csv(
                     errors.append({"row": row_idx, "error": "Invalid quantity_kg (must be > 0.0)"})
                     continue
 
-                req_date = parse_date(row.get("required_date")) or (date.today() + timedelta(days=30))
+                req_date = parse_date(row.get("required_date")) or (
+                    date.today() + timedelta(days=30)
+                )
 
                 # Parse grade
                 grade_raw = row.get("min_grade", "B").strip().upper()

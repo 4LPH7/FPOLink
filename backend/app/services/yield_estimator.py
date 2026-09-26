@@ -5,45 +5,44 @@ benchmarks, adjusted by acreage, irrigation method, soil type, and sowing timeli
 """
 
 from datetime import date, timedelta
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.crop import Crop
 from app.models.farm import Farm
 
 # Base yield in kg per acre based on TNAU / Govt of TN agricultural statistics
 BASE_YIELDS_KG_PER_ACRE: Dict[str, float] = {
-    "turmeric": 2500.0,      # Cured rhizomes (~10,000 kg fresh)
-    "banana": 18000.0,       # Commercial bunches (~18 tonnes/acre)
-    "coconut": 9600.0,       # ~8,000 nuts / ~9,600 kg fresh weight
-    "paddy": 2400.0,         # ~24 quintals paddy grain
-    "groundnut": 900.0,      # Pods in shell
-    "tomato": 12000.0,       # Fresh market tomatoes
-    "small onion": 4500.0,   # Shallot (chinnavegayam)
-    "onion": 6000.0,         # Big onion
+    "turmeric": 2500.0,  # Cured rhizomes (~10,000 kg fresh)
+    "banana": 18000.0,  # Commercial bunches (~18 tonnes/acre)
+    "coconut": 9600.0,  # ~8,000 nuts / ~9,600 kg fresh weight
+    "paddy": 2400.0,  # ~24 quintals paddy grain
+    "groundnut": 900.0,  # Pods in shell
+    "tomato": 12000.0,  # Fresh market tomatoes
+    "small onion": 4500.0,  # Shallot (chinnavegayam)
+    "onion": 6000.0,  # Big onion
     "green chilli": 3500.0,  # Fresh green chillies
-    "red chilli": 800.0,     # Dry red chillies
-    "maize": 2800.0,         # Grain yield
-    "cotton": 900.0,         # Seed cotton (kapas)
-    "sugarcane": 40000.0,    # Mill cane (~40 tonnes/acre)
-    "black gram": 400.0,     # Pulses (urad dal)
-    "green gram": 350.0,     # Moong dal
-    "tapioca": 14000.0,      # Fresh tubers (cassava)
-    "mango": 4000.0,         # Orchard yield
-    "brinjal": 10000.0,      # Eggplant
-    "ladies finger": 5000.0, # Okra
-    "ginger": 8000.0,        # Fresh rhizomes
+    "red chilli": 800.0,  # Dry red chillies
+    "maize": 2800.0,  # Grain yield
+    "cotton": 900.0,  # Seed cotton (kapas)
+    "sugarcane": 40000.0,  # Mill cane (~40 tonnes/acre)
+    "black gram": 400.0,  # Pulses (urad dal)
+    "green gram": 350.0,  # Moong dal
+    "tapioca": 14000.0,  # Fresh tubers (cassava)
+    "mango": 4000.0,  # Orchard yield
+    "brinjal": 10000.0,  # Eggplant
+    "ladies finger": 5000.0,  # Okra
+    "ginger": 8000.0,  # Fresh rhizomes
 }
 DEFAULT_BASE_YIELD_KG_PER_ACRE = 2000.0
 
 # Typical gestation / maturity days from sowing to peak harvest
 CROP_GESTATION_DAYS: Dict[str, int] = {
-    "turmeric": 270,      # 9 months
-    "banana": 330,        # 11 months
-    "coconut": 30,        # Monthly harvest cycle for perennial palms
-    "paddy": 120,         # 4 months
+    "turmeric": 270,  # 9 months
+    "banana": 330,  # 11 months
+    "coconut": 30,  # Monthly harvest cycle for perennial palms
+    "paddy": 120,  # 4 months
     "groundnut": 105,
     "tomato": 90,
     "small onion": 75,
@@ -65,22 +64,22 @@ DEFAULT_GESTATION_DAYS = 90
 
 # Irrigation multipliers
 IRRIGATION_MULTIPLIERS: Dict[str, float] = {
-    "drip": 1.15,        # Precision fertigation +15%
-    "sprinkler": 1.10,   # Micro-sprinklers +10%
-    "canal": 1.00,       # Surface canal irrigation baseline
-    "borewell": 1.00,    # Well/borewell baseline
-    "rainfed": 0.70,     # Dryland agriculture -30%
+    "drip": 1.15,  # Precision fertigation +15%
+    "sprinkler": 1.10,  # Micro-sprinklers +10%
+    "canal": 1.00,  # Surface canal irrigation baseline
+    "borewell": 1.00,  # Well/borewell baseline
+    "rainfed": 0.70,  # Dryland agriculture -30%
     "dryland": 0.70,
 }
 
 # Soil multipliers
 SOIL_MULTIPLIERS: Dict[str, float] = {
-    "red loam": 1.10,     # Optimal well-drained loam +10%
-    "alluvial": 1.10,     # High organic matter river basins +10%
-    "clay loam": 1.00,    # Baseline loam
-    "black cotton": 0.95, # High moisture retention (penalized for roots, good for cotton)
-    "sandy loam": 0.95,   # Lower nutrient retention -5%
-    "clay": 0.85,         # Heavy drainage issues -15%
+    "red loam": 1.10,  # Optimal well-drained loam +10%
+    "alluvial": 1.10,  # High organic matter river basins +10%
+    "clay loam": 1.00,  # Baseline loam
+    "black cotton": 0.95,  # High moisture retention (penalized for roots, good for cotton)
+    "sandy loam": 0.95,  # Lower nutrient retention -5%
+    "clay": 0.85,  # Heavy drainage issues -15%
 }
 
 

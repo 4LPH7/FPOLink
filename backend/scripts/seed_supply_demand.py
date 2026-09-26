@@ -8,9 +8,9 @@ Populates:
 """
 
 import datetime
-from decimal import Decimal
 import os
 import sys
+from decimal import Decimal
 
 # Add backend directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -76,12 +76,48 @@ def seed_supply_demand():
 
         # 4. Farmers (Ensure 6 farmers under this FPO)
         farmers_data = [
-            {"name": "Ramasamy", "phone": "9876543210", "village": "Perundurai", "taluk": "Perundurai", "area": 5.5},
-            {"name": "Marimuthu", "phone": "9876543211", "village": "Perundurai", "taluk": "Perundurai", "area": 5.5},
-            {"name": "Selvaraj K", "phone": "9876543212", "village": "Modakkurichi", "taluk": "Modakkurichi", "area": 5.5},
-            {"name": "Murugesan P", "phone": "9876543213", "village": "Kodumudi", "taluk": "Kodumudi", "area": 6.5},
-            {"name": "Thangavel M", "phone": "9876543214", "village": "Bhavani", "taluk": "Bhavani", "area": 7.0},
-            {"name": "Palanisamy S", "phone": "9876543215", "village": "Perundurai", "taluk": "Perundurai", "area": 9.5},
+            {
+                "name": "Ramasamy",
+                "phone": "9876543210",
+                "village": "Perundurai",
+                "taluk": "Perundurai",
+                "area": 5.5,
+            },
+            {
+                "name": "Marimuthu",
+                "phone": "9876543211",
+                "village": "Perundurai",
+                "taluk": "Perundurai",
+                "area": 5.5,
+            },
+            {
+                "name": "Selvaraj K",
+                "phone": "9876543212",
+                "village": "Modakkurichi",
+                "taluk": "Modakkurichi",
+                "area": 5.5,
+            },
+            {
+                "name": "Murugesan P",
+                "phone": "9876543213",
+                "village": "Kodumudi",
+                "taluk": "Kodumudi",
+                "area": 6.5,
+            },
+            {
+                "name": "Thangavel M",
+                "phone": "9876543214",
+                "village": "Bhavani",
+                "taluk": "Bhavani",
+                "area": 7.0,
+            },
+            {
+                "name": "Palanisamy S",
+                "phone": "9876543215",
+                "village": "Perundurai",
+                "taluk": "Perundurai",
+                "area": 9.5,
+            },
         ]
 
         farmer_objs = {}
@@ -349,7 +385,9 @@ def seed_supply_demand():
                 db.add(plot)
                 db.commit()
                 db.refresh(plot)
-                print(f"✓ Created plot '{plot.plot_name}' ({crop.name}, {plot.area_acres} ac, est: {plot.expected_yield_kg:.0f} kg)")
+                print(
+                    f"✓ Created plot '{plot.plot_name}' ({crop.name}, {plot.area_acres} ac, est: {plot.expected_yield_kg:.0f} kg)"
+                )
                 farm_objects[pd["plot_name"]] = plot
             else:
                 farm_objects[pd["plot_name"]] = existing_plot
@@ -404,7 +442,9 @@ def seed_supply_demand():
 
         buyer_objs = {}
         for bd in buyers_data:
-            existing_buyer = db.query(Buyer).filter(Buyer.company_name == bd["company_name"]).first()
+            existing_buyer = (
+                db.query(Buyer).filter(Buyer.company_name == bd["company_name"]).first()
+            )
             if not existing_buyer:
                 buyer = Buyer(
                     company_name=bd["company_name"],
@@ -414,7 +454,9 @@ def seed_supply_demand():
                     contact_email=bd["contact_email"],
                     location=bd["location"],
                     district=bd["district"],
-                    district_id=erode_district.id if (erode_district and bd["district"] == "Erode") else None,
+                    district_id=erode_district.id
+                    if (erode_district and bd["district"] == "Erode")
+                    else None,
                     fpo_id=fpo.id,
                     gstin=bd["gstin"],
                     verified=bd["verified"],
@@ -537,7 +579,9 @@ def seed_supply_demand():
                 db.add(req)
                 db.commit()
                 db.refresh(req)
-                print(f"✓ Created Requirement: {buyer.company_name} - {rd['crop'].name} ({req.quantity_kg:.0f} kg)")
+                print(
+                    f"✓ Created Requirement: {buyer.company_name} - {rd['crop'].name} ({req.quantity_kg:.0f} kg)"
+                )
                 req_objs.append(req)
             else:
                 req_objs.append(existing_req)

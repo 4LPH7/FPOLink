@@ -62,7 +62,9 @@ def _farm_to_response(farm) -> FarmResponse:
 def create(
     data: FarmCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent"])
+    ),
 ):
     """Register a new discrete farm plot under a farmer."""
     farmer = db.query(Farmer).filter(Farmer.id == data.farmer_id).first()
@@ -95,7 +97,9 @@ def list_all(
 ):
     """List farm plots with filtering and total acreage."""
     # Scope to FPO if current user is FPO-restricted
-    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    user_role = (
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    )
     if user_role in ("fpo_admin", "fpo_staff") and current_user.fpo_id:
         fpo_id = current_user.fpo_id
 
@@ -136,7 +140,9 @@ def update(
     farm_id: UUID,
     data: FarmUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent"])
+    ),
 ):
     """Update details of a farm plot."""
     farm = get_farm(db, farm_id)

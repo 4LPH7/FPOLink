@@ -12,7 +12,9 @@ from app.models.harvest import HarvestGrade
 
 class BuyerBase(BaseModel):
     company_name: str = Field(..., min_length=2, max_length=200)
-    buyer_type: str = Field(default="wholesaler", description="wholesaler, processor, exporter, retailer, trader")
+    buyer_type: str = Field(
+        default="wholesaler", description="wholesaler, processor, exporter, retailer, trader"
+    )
     contact_name: Optional[str] = Field(None, max_length=100)
     contact_phone: str = Field(..., min_length=10, max_length=15)
     contact_email: Optional[str] = None
@@ -71,7 +73,9 @@ class BuyerRequirementBase(BaseModel):
     crop_id: UUID = Field(..., description="Canonical crop UUID")
     variety_id: Optional[UUID] = None
     quantity_kg: float = Field(..., gt=0.0, description="Required quantity in kg")
-    min_grade: HarvestGrade = Field(default=HarvestGrade.B, description="Minimum acceptable quality grade")
+    min_grade: HarvestGrade = Field(
+        default=HarvestGrade.B, description="Minimum acceptable quality grade"
+    )
     required_date: date = Field(..., description="Target delivery date")
     delivery_window_days: int = Field(default=7, ge=1, le=60)
     max_price_per_kg: Optional[Decimal] = Field(None, gt=0.0)

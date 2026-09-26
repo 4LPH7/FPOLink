@@ -36,7 +36,11 @@ router = APIRouter(prefix="/buyers", tags=["buyers"])
 
 
 def _buyer_to_response(b) -> BuyerResponse:
-    open_reqs = len([r for r in b.requirements if r.status in ("open", "partially_fulfilled")]) if hasattr(b, "requirements") and b.requirements else 0
+    open_reqs = (
+        len([r for r in b.requirements if r.status in ("open", "partially_fulfilled")])
+        if hasattr(b, "requirements") and b.requirements
+        else 0
+    )
     return BuyerResponse(
         id=str(b.id),
         company_name=b.company_name,
@@ -87,7 +91,9 @@ def _req_to_response(r) -> BuyerRequirementResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/requirements", response_model=BuyerRequirementResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/requirements", response_model=BuyerRequirementResponse, status_code=status.HTTP_201_CREATED
+)
 def post_requirement(
     data: BuyerRequirementCreate,
     db: Session = Depends(get_db),
@@ -95,7 +101,9 @@ def post_requirement(
 ):
     """Post a commercial crop procurement requirement."""
     if data.fpo_id and not verify_fpo_access(data.fpo_id, current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to post requirement for this FPO")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to post requirement for this FPO"
+        )
 
     try:
         req = create_buyer_requirement(db, data, created_by_user_id=current_user.id)
@@ -160,7 +168,9 @@ def update_requirement(
         raise HTTPException(status_code=404, detail="Requirement not found")
 
     if req.fpo_id and not verify_fpo_access(req.fpo_id, current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to modify requirement for this FPO")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to modify requirement for this FPO"
+        )
 
     updated = update_buyer_requirement(db, req_id, data)
     full_req = get_buyer_requirement(db, req_id)

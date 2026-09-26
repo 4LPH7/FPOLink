@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Numeric,
     String,
     Text,
@@ -19,18 +20,21 @@ from app.models.base import Base, TimestampMixin
 
 class SupplyMatch(Base, TimestampMixin):
     __tablename__ = "supply_matches"
+    __table_args__ = (
+        Index("ix_supply_matches_buyer_req", "buyer_requirement_id"),
+        Index("ix_supply_matches_fpo", "fpo_id"),
+        Index("ix_supply_matches_status", "status"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     buyer_requirement_id = Column(
         UUID(as_uuid=True), ForeignKey("buyer_requirements.id", ondelete="CASCADE"), nullable=False
     )
-    farm_id = Column(
-        UUID(as_uuid=True), ForeignKey("farms.id", ondelete="SET NULL"), nullable=True
-    )
+    farm_id = Column(UUID(as_uuid=True), ForeignKey("farms.id", ondelete="SET NULL"), nullable=True)
     harvest_id = Column(
         UUID(as_uuid=True), ForeignKey("harvests.id", ondelete="SET NULL"), nullable=True
     )
-    fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id"), nullable=False)
+    fpo_id = Column(UUID(as_uuid=True), ForeignKey("fpos.id", ondelete="CASCADE"), nullable=False)
     matched_quantity_kg = Column(Float, nullable=False)
     offered_price_per_kg = Column(Numeric(12, 2), nullable=True)
     match_score = Column(Float, nullable=False)  # 0.0 to 100.0 composite ranking score
@@ -39,7 +43,9 @@ class SupplyMatch(Base, TimestampMixin):
         String(30), nullable=False, default="suggested"
     )  # suggested, confirmed_by_staff, notified_farmer, farmer_accepted, farmer_declined, fulfilled, cancelled, rejected
     staff_notes = Column(Text, nullable=True)
-    confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    confirmed_by_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
     notified_at = Column(DateTime(timezone=True), nullable=True)
     farmer_responded_at = Column(DateTime(timezone=True), nullable=True)

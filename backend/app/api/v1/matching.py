@@ -1,6 +1,5 @@
 """Semi-Automatic Demand-Supply Matching API endpoints."""
 
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -47,7 +46,11 @@ def _match_to_response(m) -> MatchResponse:
         farmer = m.harvest.farmer
         crop_name = m.harvest.crop.name if m.harvest.crop else None
 
-    buyer_name = m.buyer_requirement.buyer.company_name if (m.buyer_requirement and m.buyer_requirement.buyer) else None
+    buyer_name = (
+        m.buyer_requirement.buyer.company_name
+        if (m.buyer_requirement and m.buyer_requirement.buyer)
+        else None
+    )
 
     return MatchResponse(
         id=str(m.id),
@@ -235,7 +238,9 @@ def summary(
 ):
     """Statewide or FPO-scoped supply & demand balance summary across all commodities."""
     # Scope to user FPO if restricted
-    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    user_role = (
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    )
     if user_role in ("fpo_admin", "fpo_staff") and current_user.fpo_id:
         fpo_id = current_user.fpo_id
 
@@ -262,20 +267,19 @@ def list_matches(
     current_user: User = Depends(get_current_user),
 ):
     """List supply matches with pagination and filtering."""
-    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    user_role = (
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    )
     if user_role in ("fpo_admin", "fpo_staff") and current_user.fpo_id:
         fpo_id = current_user.fpo_id
 
-    query = (
-        db.query(SupplyMatch)
-        .options(
-            joinedload(SupplyMatch.buyer_requirement).joinedload(BuyerRequirement.buyer),
-            joinedload(SupplyMatch.farm).joinedload(Farm.farmer).joinedload(Farmer.user),
-            joinedload(SupplyMatch.farm).joinedload(Farm.crop),
-            joinedload(SupplyMatch.harvest).joinedload(Harvest.farmer).joinedload(Farmer.user),
-            joinedload(SupplyMatch.harvest).joinedload(Harvest.crop),
-            joinedload(SupplyMatch.confirmed_by),
-        )
+    query = db.query(SupplyMatch).options(
+        joinedload(SupplyMatch.buyer_requirement).joinedload(BuyerRequirement.buyer),
+        joinedload(SupplyMatch.farm).joinedload(Farm.farmer).joinedload(Farmer.user),
+        joinedload(SupplyMatch.farm).joinedload(Farm.crop),
+        joinedload(SupplyMatch.harvest).joinedload(Harvest.farmer).joinedload(Farmer.user),
+        joinedload(SupplyMatch.harvest).joinedload(Harvest.crop),
+        joinedload(SupplyMatch.confirmed_by),
     )
     if fpo_id:
         query = query.filter(SupplyMatch.fpo_id == fpo_id)
@@ -283,7 +287,12 @@ def list_matches(
         query = query.filter(SupplyMatch.status == status_filter)
 
     total = query.count()
-    matches = query.order_by(SupplyMatch.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    matches = (
+        query.order_by(SupplyMatch.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
 
     return MatchListResponse(
         matches=[_match_to_response(m) for m in matches],

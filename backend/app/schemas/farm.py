@@ -12,10 +12,16 @@ class FarmBase(BaseModel):
     plot_name: Optional[str] = Field(None, max_length=100, description="Plot identifier/name")
     area_acres: float = Field(..., gt=0.0, description="Plot area in acres")
     village: Optional[str] = Field(None, max_length=100, description="Revenue village name")
-    soil_type: Optional[str] = Field(None, max_length=50, description="e.g. Red Loam, Clay Loam, Black Cotton")
-    irrigation_type: Optional[str] = Field(None, max_length=50, description="e.g. Drip, Canal, Borewell, Rainfed")
+    soil_type: Optional[str] = Field(
+        None, max_length=50, description="e.g. Red Loam, Clay Loam, Black Cotton"
+    )
+    irrigation_type: Optional[str] = Field(
+        None, max_length=50, description="e.g. Drip, Canal, Borewell, Rainfed"
+    )
     sowing_date: Optional[date] = Field(None, description="Planting date")
-    expected_harvest_date: Optional[date] = Field(None, description="Expected harvest completion date")
+    expected_harvest_date: Optional[date] = Field(
+        None, description="Expected harvest completion date"
+    )
     status: str = Field(default="active", description="active, harvested, fallow, abandoned")
     district_id: Optional[UUID] = None
     taluk_id: Optional[UUID] = None

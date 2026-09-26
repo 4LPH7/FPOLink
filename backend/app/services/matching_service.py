@@ -12,7 +12,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.buyer import Buyer, BuyerRequirement
+from app.models.buyer import BuyerRequirement
 from app.models.crop import Crop
 from app.models.farm import Farm
 from app.models.farmer import Farmer
@@ -107,13 +107,7 @@ def compute_candidate_score(
 
     # Composite weighted average:
     # Crop (30%), Proximity (25%), Quantity (25%), Timing (15%), Grade (5%)
-    composite = (
-        0.30 * s_crop
-        + 0.25 * s_prox
-        + 0.25 * s_qty
-        + 0.15 * s_time
-        + 0.05 * s_grade
-    )
+    composite = 0.30 * s_crop + 0.25 * s_prox + 0.25 * s_qty + 0.15 * s_time + 0.05 * s_grade
     composite = round(composite, 1)
 
     breakdown = {
@@ -204,25 +198,27 @@ def find_candidate_matches_for_requirement(
             min_grade=req.min_grade,
         )
 
-        candidates.append({
-            "candidate_type": "farm_plot",
-            "source_id": str(farm.id),
-            "farmer_id": str(farm.farmer_id),
-            "farmer_name": farm.farmer.user.name if farm.farmer.user else "Farmer",
-            "farmer_phone": farm.farmer.user.phone if farm.farmer.user else "",
-            "farmer_alerts_opt_in": bool(farm.farmer.alerts_opt_in),
-            "village": farm.village or farm.farmer.village,
-            "district": farm.farmer.district,
-            "crop_id": str(farm.crop_id),
-            "crop_name": farm.crop.name,
-            "crop_tamil_name": farm.crop.tamil_name,
-            "available_quantity_kg": avail_qty,
-            "grade": "A",
-            "available_date": farm.expected_harvest_date,
-            "distance_km": dist_km,
-            "match_score": score,
-            "match_breakdown": breakdown,
-        })
+        candidates.append(
+            {
+                "candidate_type": "farm_plot",
+                "source_id": str(farm.id),
+                "farmer_id": str(farm.farmer_id),
+                "farmer_name": farm.farmer.user.name if farm.farmer.user else "Farmer",
+                "farmer_phone": farm.farmer.user.phone if farm.farmer.user else "",
+                "farmer_alerts_opt_in": bool(farm.farmer.alerts_opt_in),
+                "village": farm.village or farm.farmer.village,
+                "district": farm.farmer.district,
+                "crop_id": str(farm.crop_id),
+                "crop_name": farm.crop.name,
+                "crop_tamil_name": farm.crop.tamil_name,
+                "available_quantity_kg": avail_qty,
+                "grade": "A",
+                "available_date": farm.expected_harvest_date,
+                "distance_km": dist_km,
+                "match_score": score,
+                "match_breakdown": breakdown,
+            }
+        )
 
     # -------------------------------------------------------------
     # 2. Search Verified Harvest Stock
@@ -237,7 +233,9 @@ def find_candidate_matches_for_requirement(
         )
         .filter(
             Harvest.crop_id == req.crop_id,
-            Harvest.status.in_([HarvestStatus.SUBMITTED, HarvestStatus.VERIFIED, HarvestStatus.AGGREGATED]),
+            Harvest.status.in_(
+                [HarvestStatus.SUBMITTED, HarvestStatus.VERIFIED, HarvestStatus.AGGREGATED]
+            ),
             (Farmer.fpo_id == req.fpo_id) if req.fpo_id else True,
         )
         .all()
@@ -264,25 +262,27 @@ def find_candidate_matches_for_requirement(
             min_grade=req.min_grade,
         )
 
-        candidates.append({
-            "candidate_type": "harvest",
-            "source_id": str(h.id),
-            "farmer_id": str(h.farmer_id),
-            "farmer_name": h.farmer.user.name if h.farmer.user else "Farmer",
-            "farmer_phone": h.farmer.user.phone if h.farmer.user else "",
-            "farmer_alerts_opt_in": bool(h.farmer.alerts_opt_in),
-            "village": h.farmer.village,
-            "district": h.farmer.district,
-            "crop_id": str(h.crop_id),
-            "crop_name": h.crop.name,
-            "crop_tamil_name": h.crop.tamil_name,
-            "available_quantity_kg": h.quantity_kg,
-            "grade": h.grade.value if hasattr(h.grade, "value") else str(h.grade),
-            "available_date": h.harvest_date,
-            "distance_km": dist_km,
-            "match_score": score,
-            "match_breakdown": breakdown,
-        })
+        candidates.append(
+            {
+                "candidate_type": "harvest",
+                "source_id": str(h.id),
+                "farmer_id": str(h.farmer_id),
+                "farmer_name": h.farmer.user.name if h.farmer.user else "Farmer",
+                "farmer_phone": h.farmer.user.phone if h.farmer.user else "",
+                "farmer_alerts_opt_in": bool(h.farmer.alerts_opt_in),
+                "village": h.farmer.village,
+                "district": h.farmer.district,
+                "crop_id": str(h.crop_id),
+                "crop_name": h.crop.name,
+                "crop_tamil_name": h.crop.tamil_name,
+                "available_quantity_kg": h.quantity_kg,
+                "grade": h.grade.value if hasattr(h.grade, "value") else str(h.grade),
+                "available_date": h.harvest_date,
+                "distance_km": dist_km,
+                "match_score": score,
+                "match_breakdown": breakdown,
+            }
+        )
 
     # Sort descending by composite match score
     candidates.sort(key=lambda c: c["match_score"], reverse=True)
@@ -420,7 +420,7 @@ def get_supply_demand_summary(
     district: Optional[str] = None,
 ) -> Dict:
     """Aggregate total standing acreage, estimated yield, harvest stock, and commercial demand by crop."""
-    crops = db.query(Crop).filter(Crop.is_active == True).order_by(Crop.name.asc()).all()
+    crops = db.query(Crop).filter(Crop.is_active.is_(True)).order_by(Crop.name.asc()).all()
 
     commodities_summary = []
     total_standing_acres = 0.0
@@ -455,7 +455,9 @@ def get_supply_demand_summary(
             .join(Farmer, Harvest.farmer_id == Farmer.id)
             .filter(
                 Harvest.crop_id == crop.id,
-                Harvest.status.in_([HarvestStatus.SUBMITTED, HarvestStatus.VERIFIED, HarvestStatus.AGGREGATED]),
+                Harvest.status.in_(
+                    [HarvestStatus.SUBMITTED, HarvestStatus.VERIFIED, HarvestStatus.AGGREGATED]
+                ),
                 (Farmer.fpo_id == fpo_id) if fpo_id else True,
                 (Farmer.district.ilike(f"%{district}%")) if district else True,
             )
@@ -463,16 +465,15 @@ def get_supply_demand_summary(
         verified_harvest = float(harvest_query.scalar() or 0.0)
 
         # 3. Buyer Requirements
-        req_query = (
-            db.query(
-                func.coalesce(func.sum(BuyerRequirement.quantity_kg), 0.0),
-                func.count(BuyerRequirement.id),
-            )
-            .filter(
-                BuyerRequirement.crop_id == crop.id,
-                BuyerRequirement.status.in_(["open", "partially_fulfilled"]),
-                ((BuyerRequirement.fpo_id == fpo_id) | (BuyerRequirement.fpo_id.is_(None))) if fpo_id else True,
-            )
+        req_query = db.query(
+            func.coalesce(func.sum(BuyerRequirement.quantity_kg), 0.0),
+            func.count(BuyerRequirement.id),
+        ).filter(
+            BuyerRequirement.crop_id == crop.id,
+            BuyerRequirement.status.in_(["open", "partially_fulfilled"]),
+            ((BuyerRequirement.fpo_id == fpo_id) | (BuyerRequirement.fpo_id.is_(None)))
+            if fpo_id
+            else True,
         )
         demand_qty, req_count = req_query.first() or (0.0, 0)
         demand_qty = float(demand_qty)
@@ -487,19 +488,21 @@ def get_supply_demand_summary(
         total_reqs += req_count
 
         if standing_acres > 0 or verified_harvest > 0 or demand_qty > 0:
-            commodities_summary.append({
-                "crop_id": str(crop.id),
-                "crop_name": crop.name,
-                "crop_tamil_name": crop.tamil_name,
-                "standing_acres": round(standing_acres, 1),
-                "estimated_standing_yield_kg": round(standing_yield, 1),
-                "verified_harvest_kg": round(verified_harvest, 1),
-                "total_supply_kg": round(crop_supply, 1),
-                "total_demand_kg": round(demand_qty, 1),
-                "net_balance_kg": round(net_balance, 1),
-                "active_plots_count": plot_count,
-                "open_requirements_count": req_count,
-            })
+            commodities_summary.append(
+                {
+                    "crop_id": str(crop.id),
+                    "crop_name": crop.name,
+                    "crop_tamil_name": crop.tamil_name,
+                    "standing_acres": round(standing_acres, 1),
+                    "estimated_standing_yield_kg": round(standing_yield, 1),
+                    "verified_harvest_kg": round(verified_harvest, 1),
+                    "total_supply_kg": round(crop_supply, 1),
+                    "total_demand_kg": round(demand_qty, 1),
+                    "net_balance_kg": round(net_balance, 1),
+                    "active_plots_count": plot_count,
+                    "open_requirements_count": req_count,
+                }
+            )
 
     return {
         "fpo_id": str(fpo_id) if fpo_id else None,
