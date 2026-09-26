@@ -108,9 +108,9 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [x] T13.1 Model Expansion: Discrete `Farm/Plot`, staff-mediated `Buyer`, `BuyerRequirement`, and `SupplyMatch` models
 - [x] T13.2 Database Migration: Alembic `0011_supply_demand_network`
 - [x] T13.3 Schemas: `schemas/farm.py`, `schemas/buyer.py`, `schemas/matching.py`
-- [ ] T13.4 Rule-Based Yield Estimator: Agro-climatic benchmarks + soil/irrigation factors (`backend/app/services/yield_estimator.py`)
-- [ ] T13.5 Farm & Buyer Management Services with CSV Import Harness (`backend/app/services/farm_service.py`, `backend/app/services/buyer_service.py`, `backend/app/services/csv_import.py`)
-- [ ] T13.6 Semi-Automatic Demand-Supply Matching Engine (`backend/app/services/matching_service.py`)
+- [x] T13.4 Rule-Based Yield Estimator: Agro-climatic benchmarks + soil/irrigation factors (`backend/app/services/yield_estimator.py`)
+- [x] T13.5 Farm & Buyer Management Services with CSV Import Harness (`backend/app/services/farm_service.py`, `backend/app/services/buyer_service.py`, `backend/app/services/csv_import.py`)
+- [x] T13.6 Semi-Automatic Demand-Supply Matching Engine (`backend/app/services/matching_service.py`)
 - [ ] T13.7 REST API v1 Routing: `/api/v1/farms`, `/api/v1/buyers`, `/api/v1/matching`
 - [ ] T13.8 WhatsApp Zero-Cost Inbound Match Queries & Staff-Confirmed Utility Nudges (`backend/app/services/bot.py`)
 - [ ] T13.9 Synthetic Erode Pilot Dataset: Multi-plot farms, commercial buyers, and requirements (`backend/scripts/seed_supply_demand.py`)
