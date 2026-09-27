@@ -34,7 +34,7 @@ pandas==2.2.3
 numpy==2.2.1
 
 # Features
-holidays==0.63
+holidays==0.105
 
 # WhatsApp & Testing
 respx==0.23.1
