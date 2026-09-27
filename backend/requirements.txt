@@ -31,7 +31,7 @@ statsforecast==2.0.1
 mapie==0.9.1
 joblib==1.4.2
 pandas==2.2.3
-numpy==2.2.1
+numpy==2.5.3
 
 # Features
 holidays==0.63
