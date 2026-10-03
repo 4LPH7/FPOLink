@@ -25,19 +25,19 @@ export default function StatCard({
   badge,
 }: StatCardProps) {
   return (
-    <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs hover:shadow-md transition-all hover:border-gray-300 group">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-500 tracking-wider uppercase">
+    <div className="group rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </span>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconColor} transition-transform group-hover:scale-105`}>
-          <Icon className="w-5 h-5" />
+        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
+          <Icon className="size-5" />
         </div>
       </div>
 
       <div className="mt-3">
         <div className="flex items-baseline space-x-2">
-          <span className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+          <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums sm:text-3xl">
             {value}
           </span>
           {badge && (
@@ -65,7 +65,7 @@ export default function StatCard({
             </span>
           )}
           {subtitle && (
-            <span className="text-gray-500 font-medium truncate ml-1">{subtitle}</span>
+          <span className="ml-1 truncate text-muted-foreground">{subtitle}</span>
           )}
         </div>
       </div>

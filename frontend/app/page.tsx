@@ -14,7 +14,6 @@ import {
   Smartphone,
 } from "lucide-react";
 import {
-  getFPOs,
   getLatestPrices,
   getFPODashboard,
   getWhatsAppActivity,
@@ -29,7 +28,10 @@ export default function DashboardHome() {
 
   const [stats, setStats] = useState<FPODashboardStats | null>(null);
   const [turmericRate, setTurmericRate] = useState<string | null>(null);
+  const [turmericPriceDate, setTurmericPriceDate] = useState<string | null>(null);
+  const [marketCheckedAt, setMarketCheckedAt] = useState<Date | null>(null);
   const [botEnabled, setBotEnabled] = useState<boolean | null>(null);
+  const [botAvailable, setBotAvailable] = useState(false);
 
   useEffect(() => {
     async function loadKPIs() {
@@ -42,15 +44,18 @@ export default function DashboardHome() {
 
         // WhatsApp bot status
         setBotEnabled(wa.enabled);
+        setBotAvailable(wa.available);
 
         // Turmeric modal price from latest prices
         const turmericPrice = prices.find(
           (p) => p.crop_name?.toLowerCase().includes("turmeric") || p.crop_name?.toLowerCase().includes("மஞ்சள்")
         );
+        setMarketCheckedAt(new Date());
         if (turmericPrice) {
           setTurmericRate(
             `₹${Number(turmericPrice.modal_price).toLocaleString("en-IN")}`
           );
+          setTurmericPriceDate(turmericPrice.price_date);
         }
 
         // Dashboard stats (requires auth)
@@ -63,6 +68,44 @@ export default function DashboardHome() {
       }
     }
     loadKPIs();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let inFlight = false;
+
+    const refreshMarketPrice = async () => {
+      if (!active || inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      try {
+        const prices = await getLatestPrices("Erode");
+        if (!active) return;
+        const turmericPrice = prices.find(
+          (price) => price.crop_name?.toLowerCase().includes("turmeric") || price.crop_name?.toLowerCase().includes("மஞ்சள்")
+        );
+        if (turmericPrice) {
+          setTurmericRate(`₹${Number(turmericPrice.modal_price).toLocaleString("en-IN")}`);
+          setTurmericPriceDate(turmericPrice.price_date);
+        }
+        setMarketCheckedAt(new Date());
+      } catch (err) {
+        console.warn("Dashboard market price refresh failed:", err);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const interval = window.setInterval(() => void refreshMarketPrice(), 60_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshMarketPrice();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   const memberCount = stats
@@ -85,22 +128,22 @@ export default function DashboardHome() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="rounded-xl bg-gradient-to-r from-emerald-800 via-emerald-700 to-green-800 p-6 text-white shadow-xs relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-950 p-5 text-white shadow-xs sm:p-7">
         <div className="relative z-10 max-w-3xl space-y-2">
           <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-white/15 text-emerald-100 text-xs font-semibold backdrop-blur-xs">
             <span>🌾 {t.app.district}</span>
             <span>•</span>
-            <span>{t.app.sync_status}</span>
+            <span>{lang === "ta" ? "கொடுமுடி FPO" : "Kodumudi FPO"}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             {lang === "ta"
               ? "கொடுமுடி உழவர் உற்பத்தியாளர் நிறுவனம்"
               : "Kodumudi Farmer Producer Organization"}
           </h1>
-          <p className="text-xs sm:text-sm text-emerald-100/90 leading-tamil-relaxed">
+          <p className="max-w-2xl text-sm leading-relaxed text-emerald-50/85 sm:text-base">
             {lang === "ta"
-              ? "ஈரோடு மாவட்ட உழவர் உற்பத்தியாளர் நிறுவனங்களுக்கான நேரலை மண்டி விலை நுண்ணறிவு, தானியங்கி முரண்பாடு எச்சரிக்கைகள், மற்றும் அறுவடை ஒருங்கிணைப்பு தளம்."
-              : "Real-time mandi price intelligence, MAD anomaly telemetry, and grade-sorted harvest aggregation for Erode District FPOs."}
+              ? "ஈரோடு மாவட்ட FPO செயல்பாடுகளுக்கான சந்தை விலைத் தகவல், அறுவடை மதிப்பீடு மற்றும் கொள்முதல் ஒருங்கிணைப்பு."
+              : "Market prices, harvest estimates and buyer coordination for Erode District FPO operations."}
           </p>
         </div>
       </div>
@@ -117,13 +160,15 @@ export default function DashboardHome() {
         <StatCard
           title={t.dashboard.turmeric_rate}
           value={turmericRate ?? "—"}
-          subtitle={lang === "ta" ? "பெருந்துறை மண்டி (Agmarknet)" : "Perundurai mandi (Agmarknet)"}
+          subtitle={[
+            turmericPriceDate ? `${lang === "ta" ? "விலை தேதி" : "Price date"}: ${turmericPriceDate}` : (lang === "ta" ? "சந்தைத் தரவு இல்லை" : "No market record"),
+            marketCheckedAt ? `${lang === "ta" ? "சரிபார்த்தது" : "Checked"} ${marketCheckedAt.toLocaleTimeString(lang === "ta" ? "ta-IN" : "en-IN", { hour: "2-digit", minute: "2-digit" })}` : null,
+          ].filter(Boolean).join(" · ")}
           icon={TrendingUp}
           iconColor="text-amber-700 bg-amber-50 dark:bg-amber-950"
-          badge={turmericRate ? t.dashboard.hold_signal : undefined}
         />
         <StatCard
-          title={t.dashboard.todays_produce}
+          title={lang === "ta" ? "செயலில் உள்ள அறுவடை மதிப்பீடு" : "Active harvest estimates"}
           value={activeHarvestTonnes}
           subtitle={cropBreakdown}
           icon={Store}
@@ -132,18 +177,17 @@ export default function DashboardHome() {
         <StatCard
           title={t.dashboard.bot_active}
           value={
-            botEnabled === null
+            !botAvailable
               ? "—"
               : botEnabled
-              ? t.dashboard.bot_status_live
+              ? (lang === "ta" ? "அமைப்பில் இயக்கப்பட்டுள்ளது" : "Enabled by configuration")
               : lang === "ta"
               ? "இயக்கம் நிறுத்தப்பட்டது"
               : "Kill-Switch ON"
           }
-          subtitle={lang === "ta" ? "WhatsApp Cloud API நிலை" : "WhatsApp Cloud API status"}
+          subtitle={lang === "ta" ? "செய்தி சேவை இயக்க நிலை" : "Messaging service setting"}
           icon={Smartphone}
           iconColor="text-emerald-700 bg-emerald-50 dark:bg-emerald-950"
-          badge={botEnabled ? "Live" : undefined}
         />
       </section>
 

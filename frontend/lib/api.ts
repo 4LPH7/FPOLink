@@ -5,7 +5,14 @@
  * and live external telemetry (Agmarknet, OGD, Open-Meteo).
  */
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Browser requests stay same-origin; Next rewrites route /api to the backend.
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+
+function authHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = window.localStorage.getItem("fpolink_access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export interface Crop {
   id: string;
@@ -125,6 +132,7 @@ export interface InboundMessageActivity {
 }
 
 export interface WhatsAppActivitySummary {
+  available: boolean;
   enabled: boolean;
   total_inbound: number;
   total_outbound: number;
@@ -226,6 +234,7 @@ export async function getPriceHistory(
 export async function getFPOs(): Promise<FPO[]> {
   try {
     const res = await fetch(`${API_BASE}/api/fpos/`, {
+      headers: authHeaders(),
       cache: "no-store",
     });
     if (res.ok) {
@@ -247,10 +256,8 @@ export async function getFarmers(
   search?: string
 ): Promise<{ farmers: Farmer[]; total: number }> {
   try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...authHeaders() };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
     const query = search ? `?search=${encodeURIComponent(search)}` : "";
     const res = await fetch(`${API_BASE}/api/farmers/${fpoId}${query}`, {
@@ -336,17 +343,19 @@ export async function login(
 export async function getWhatsAppActivity(limit = 20): Promise<WhatsAppActivitySummary> {
   try {
     const res = await fetch(`${API_BASE}/api/whatsapp/activity?limit=${limit}`, {
+      headers: authHeaders(),
       cache: "no-store",
     });
     if (res.ok) {
-      return await res.json();
+      return { ...(await res.json()), available: true };
     }
   } catch (err) {
     console.warn("Failed to fetch WhatsApp activity:", err);
   }
 
   return {
-    enabled: true,
+    available: false,
+    enabled: false,
     total_inbound: 0,
     total_outbound: 0,
     inbound_messages: [],
@@ -358,7 +367,7 @@ export async function getWhatsAppUsage(
   token?: string
 ): Promise<WhatsAppUsageSummary | null> {
   try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...authHeaders() };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -432,6 +441,7 @@ export interface HarvestAggregation {
 export async function getHarvestAggregation(): Promise<HarvestAggregation> {
   try {
     const res = await fetch(`${API_BASE}/api/harvest/aggregation`, {
+      headers: authHeaders(),
       cache: "no-store",
     });
     if (res.ok) return await res.json();
@@ -511,7 +521,7 @@ export async function getIngestionRuns(
   try {
     const res = await fetch(
       `${API_BASE}/api/v1/ingestion/runs?page=${page}&page_size=${pageSize}`,
-      { cache: "no-store" }
+      { cache: "no-store", headers: authHeaders() }
     );
     if (res.ok) return await res.json();
   } catch (err) {
@@ -523,6 +533,7 @@ export async function getIngestionRuns(
 export async function getStatewideFreshness(): Promise<StatewideFreshness | null> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/ingestion/freshness`, {
+      headers: authHeaders(),
       cache: "no-store",
     });
     if (res.ok) return await res.json();
@@ -536,7 +547,7 @@ export async function triggerIngestionRun(source?: string): Promise<any> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/ingestion/trigger`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ source }),
     });
     if (res.ok) return await res.json();
@@ -1277,6 +1288,3 @@ export async function listSupplyMatches(
   }
   return { matches: [], total: 0 };
 }
-
-
-

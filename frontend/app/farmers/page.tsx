@@ -73,7 +73,7 @@ interface AddFarmerForm {
 const EMPTY_FORM: AddFarmerForm = {
   name: "",
   phone: "",
-  password: "farmer123",
+  password: "",
   village: "",
   taluk: "",
   farm_area_acres: "",
@@ -183,7 +183,7 @@ export default function FarmersPage() {
       const payload: FarmerCreatePayload = {
         name: form.name.trim(),
         phone: form.phone.trim(),
-        password: form.password || "farmer123",
+        password: form.password,
         village: form.village.trim(),
         taluk: form.taluk.trim(),
         district: DEFAULT_DISTRICT,
@@ -1017,6 +1017,22 @@ export default function FarmersPage() {
                       value={form.phone}
                       onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-foreground block mb-1">
+                      {lang === "ta" ? "கணக்கு கடவுச்சொல் *" : "Account password *"}
+                    </label>
+                    <Input
+                      required
+                      type="password"
+                      minLength={8}
+                      autoComplete="new-password"
+                      value={form.password}
+                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {lang === "ta" ? "ஒவ்வொரு கணக்கிற்கும் தனித்த கடவுச்சொல்லை அமைத்து, தனிப்பட்ட முறையில் பகிரவும்." : "Set a unique password and share it with the farmer privately."}
+                    </p>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-foreground block mb-1">

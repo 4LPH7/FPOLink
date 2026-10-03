@@ -16,17 +16,35 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    let active = true;
+    let inFlight = false;
+
+    async function load(initial = false) {
+      if (!active || inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
       try {
         const data = await getLatestPrices("Erode");
-        setPrices(data);
+        if (active) setPrices(data);
       } catch (err) {
         console.warn("Failed to load prices:", err);
       } finally {
-        setLoading(false);
+        inFlight = false;
+        if (active && initial) setLoading(false);
       }
     }
-    load();
+
+    void load(true);
+    const interval = window.setInterval(() => void load(), 60_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   const filteredRows = prices.filter((row) => {
@@ -50,13 +68,13 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
               {lang === "ta" ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் தினசரி விலை நிலவரம்" : "Erode Mandi Daily Auction Rates"}
             </h3>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              {lang === "ta" ? "நேரலை மண்டி தரவு" : "Live Mandi Data"}
+              {lang === "ta" ? "தினசரி மண்டி தரவு" : "Daily Mandi Data"}
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {lang === "ta"
-              ? "Agmarknet (OGD) மற்றும் ஒழுங்குமுறை சந்தைகளின் நேரலை மேற்கோள்கள்"
-              : "Live price feeds verified from official Agmarknet and regulated mandi sources"}
+              ? "Agmarknet (OGD) மற்றும் ஒழுங்குமுறை சந்தைகளின் சமீபத்திய தினசரி விலைகள்"
+              : "Latest daily prices from official Agmarknet and regulated mandi sources; checked automatically every minute"}
           </p>
         </div>
 
@@ -107,7 +125,7 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
         {loading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
             <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-            <span>Loading live prices...</span>
+            <span>Loading latest market prices...</span>
           </div>
         ) : filteredRows.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm">

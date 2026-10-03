@@ -63,7 +63,7 @@ export default function FarmerInviteCard({
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/farmers/detail/${farmerId}/whatsapp-invite`,
+        `/api/farmers/detail/${farmerId}/whatsapp-invite`,
         { headers }
       );
       if (res.ok) {
