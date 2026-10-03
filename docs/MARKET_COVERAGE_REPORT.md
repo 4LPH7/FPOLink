@@ -2,7 +2,7 @@
 
 This is a historical coverage snapshot recorded in September 2026. It has not been re-run against a staging deployment and does not prove current ingestion freshness or live-data coverage.
 
-**Current verification status (2026-10-03): pending.** The development seed uses synthetic examples marked `demo_seed`. Confirm source lineage and run the staging ingestion checks before using any dashboard price as a verified market observation. The tables below preserve the previously recorded snapshot for comparison only.
+**Current verification status (2026-10-03): blocked.** A read-only six-month Erode price query to CEDA returned HTTP 401 with the configured key. `OGD_API_KEY` is not set, and the configured frontend API host is `localhost`; no staging endpoint was available. The development seed uses synthetic examples marked `demo_seed`. The tables below preserve the previously recorded snapshot for comparison only.
 
 ---
 
