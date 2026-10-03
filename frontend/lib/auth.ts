@@ -9,13 +9,15 @@ import { API_BASE } from "./api";
 
 const TOKEN_KEY = "fpolink_access_token";
 const REFRESH_KEY = "fpolink_refresh_token";
+const PASSWORD_CHANGE_KEY = "fpolink_password_change_required";
 
 // ─── Storage helpers ─────────────────────────────────────────
 
-export function saveTokens(accessToken: string, refreshToken?: string): void {
+export function saveTokens(accessToken: string, refreshToken?: string | null): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, accessToken);
   if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
+  else localStorage.removeItem(REFRESH_KEY);
 }
 
 export function getToken(): string | null {
@@ -27,13 +29,20 @@ export function clearTokens(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(PASSWORD_CHANGE_KEY);
+}
+
+export function passwordChangeRequired(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(PASSWORD_CHANGE_KEY) === "true";
 }
 
 // ─── Login ───────────────────────────────────────────────────
 
 export interface LoginResult {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string | null;
+  password_change_required?: boolean;
 }
 
 /**
@@ -56,6 +65,11 @@ export async function login(
 
     const data: LoginResult = await res.json();
     saveTokens(data.access_token, data.refresh_token);
+    if (data.password_change_required) {
+      localStorage.setItem(PASSWORD_CHANGE_KEY, "true");
+    } else {
+      localStorage.removeItem(PASSWORD_CHANGE_KEY);
+    }
     return data;
   } catch (err) {
     console.warn("Login failed:", err);
@@ -63,24 +77,46 @@ export async function login(
   }
 }
 
+export async function changeRequiredPassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ ok: boolean; message?: string }> {
+  const token = getToken();
+  if (!token) return { ok: false };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        message: typeof data.detail === "string" ? data.detail : undefined,
+      };
+    }
+
+    saveTokens(data.access_token, data.refresh_token);
+    localStorage.removeItem(PASSWORD_CHANGE_KEY);
+    return { ok: true };
+  } catch (err) {
+    console.warn("Password change failed:", err);
+    return { ok: false };
+  }
+}
+
 /**
- * Ensure a valid token is available. Attempts a fresh login with staff
- * credentials if none is stored. Returns the token or null.
- *
- * For the pilot, we use the admin credentials since all dashboard users
- * are FPO staff with the same access level. Replace with a proper login
- * form before any public rollout.
+ * Return the signed-in user's token, or null when the user is signed out.
  */
 export async function ensureToken(): Promise<string | null> {
-  const existing = getToken();
-  if (existing) return existing;
-
-  // Auto-login with the pilot staff credential
-  const STAFF_PHONE =
-    process.env.NEXT_PUBLIC_STAFF_PHONE || "9999900000";
-  const STAFF_PASS =
-    process.env.NEXT_PUBLIC_STAFF_PASS || "admin123";
-
-  const result = await login(STAFF_PHONE, STAFF_PASS);
-  return result?.access_token ?? null;
+  return getToken();
 }

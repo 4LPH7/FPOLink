@@ -22,7 +22,13 @@ SOURCE_PRIORITY: Dict[str, int] = {
 }
 
 # Synthetic or unverified sources that MUST NEVER be served to farmers
-SYNTHETIC_SOURCES: Tuple[str, ...] = ("ceda_synthetic", "seed", "seed_demo", "test")
+SYNTHETIC_SOURCES: Tuple[str, ...] = (
+    "ceda_synthetic",
+    "seed",
+    "seed_demo",
+    "demo_seed",
+    "test",
+)
 
 
 def is_real_source(source: str) -> bool:

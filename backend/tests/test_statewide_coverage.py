@@ -304,10 +304,10 @@ def test_commodity_registry_api_and_categories(db):
         assert "source_mappings" in detail
 
 
-def test_statewide_freshness_and_erode_backward_compatibility(db):
+def test_statewide_freshness_and_erode_backward_compatibility(db, admin_headers):
     """Verify statewide freshness telemetry and guarantee zero regression on Erode pilot."""
     # Freshness
-    resp = client.get("/api/v1/ingestion/freshness")
+    resp = client.get("/api/v1/ingestion/freshness", headers=admin_headers)
     assert resp.status_code == 200
     freshness = resp.json()
     assert freshness["total_districts"] == 38

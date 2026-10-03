@@ -48,8 +48,9 @@ def test_fpos_compatibility(db):
         db.commit()
         db.refresh(fpo)
 
-    res_legacy = client.get("/api/fpos/")
-    res_v1 = client.get("/api/v1/fpos/")
+    headers = _get_admin_headers(db)
+    res_legacy = client.get("/api/fpos/", headers=headers)
+    res_v1 = client.get("/api/v1/fpos/", headers=headers)
 
     assert res_legacy.status_code == 200
     assert res_v1.status_code == 200

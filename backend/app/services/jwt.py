@@ -34,6 +34,17 @@ def create_refresh_token(user_id: UUID) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
+def create_password_change_token(user_id: UUID) -> str:
+    """Create a short-lived token that can only complete a required password change."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "type": "password_change",
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+
 def decode_token(token: str) -> Optional[dict]:
     """Decode and verify a JWT token. Returns None if invalid."""
     try:

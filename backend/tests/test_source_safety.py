@@ -213,7 +213,7 @@ async def test_seed_script_prices_never_served_to_bot(test_db_factory):
 
         today = date.today()
 
-        # Insert prices tagged with seed and seed_demo
+        # Insert prices tagged with each development seed label.
         demo_price_1 = MarketPrice(
             crop_id=crop.id,
             market_id=market.id,
@@ -234,7 +234,17 @@ async def test_seed_script_prices_never_served_to_bot(test_db_factory):
             price_date=today - timedelta(days=1),
             source="seed",
         )
-        db.add_all([demo_price_1, demo_price_2])
+        demo_price_3 = MarketPrice(
+            crop_id=crop.id,
+            market_id=market.id,
+            district="Erode",
+            min_price=Decimal("140.00"),
+            max_price=Decimal("160.00"),
+            modal_price=Decimal("150.00"),
+            price_date=today - timedelta(days=2),
+            source="demo_seed",
+        )
+        db.add_all([demo_price_1, demo_price_2, demo_price_3])
         db.commit()
 
         services = DbBotServices(db_factory=test_db_factory)

@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_role, verify_fpo_access
 from app.database import get_db
 from app.models.farmer import Farmer
 from app.models.harvest import Harvest
@@ -21,6 +21,29 @@ from app.schemas.harvest import (
 from app.services import harvest_service
 
 router = APIRouter(prefix="/api/harvest", tags=["harvest"])
+
+
+def _enforce_harvest_scope(harvest: Harvest, user: User) -> None:
+    role = user.role.value if hasattr(user.role, "value") else str(user.role)
+    if role in ("admin", "state_admin"):
+        return
+    if role == "farmer":
+        if harvest.farmer is None or harvest.farmer.user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this harvest",
+            )
+        return
+    if role in ("fpo_staff", "fpo_admin"):
+        if harvest.farmer is None or user.fpo_id is None or harvest.farmer.fpo_id != user.fpo_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this FPO harvest",
+            )
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access harvest data"
+    )
 
 
 def _to_response(h: Harvest) -> HarvestResponse:
@@ -82,6 +105,17 @@ def create_harvest(
                 detail="farmer_id is required when staff creates a harvest",
             )
         resolved_farmer_id = payload.farmer_id
+        if user_role not in ("admin", "state_admin", "fpo_staff", "fpo_admin"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to submit harvests"
+            )
+        target_farmer = db.query(Farmer).filter(Farmer.id == resolved_farmer_id).first()
+        if not target_farmer:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farmer not found")
+        if user_role in ("fpo_staff", "fpo_admin") and target_farmer.fpo_id != current_user.fpo_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this FPO"
+            )
 
     try:
         harvest = harvest_service.create_harvest(db, payload, resolved_farmer_id=resolved_farmer_id)
@@ -99,12 +133,14 @@ def list_harvests(
     farmer_id: Optional[UUID] = None,
     fpo_id: Optional[UUID] = None,
     crop_id: Optional[UUID] = None,
-    status: Optional[str] = None,
+    status_filter: Optional[str] = Query(default=None, alias="status"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "fpo_staff", "fpo_admin", "farmer"])
+    ),
     db: Session = Depends(get_db),
 ):
     """List harvests. Farmers see only their own harvests."""
@@ -114,8 +150,21 @@ def list_harvests(
 
     if user_role == "farmer":
         farmer = db.query(Farmer).filter(Farmer.user_id == current_user.id).first()
-        if farmer:
-            farmer_id = farmer.id
+        if not farmer:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Farmer profile not found"
+            )
+        farmer_id = farmer.id
+    elif user_role in ("fpo_staff", "fpo_admin"):
+        if not current_user.fpo_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="FPO assignment required"
+            )
+        if fpo_id and fpo_id != current_user.fpo_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this FPO"
+            )
+        fpo_id = current_user.fpo_id
 
     try:
         items, total = harvest_service.list_harvests(
@@ -123,7 +172,7 @@ def list_harvests(
             fpo_id=fpo_id,
             farmer_id=farmer_id,
             crop_id=crop_id,
-            status=status,
+            status=status_filter,
             start_date=start_date,
             end_date=end_date,
             page=page,
@@ -145,10 +194,21 @@ def list_harvests(
 )
 def get_harvest_aggregation(
     fpo_id: Optional[UUID] = None,
+    current_user: User = Depends(require_role(["admin", "fpo_staff", "fpo_admin"])),
     db: Session = Depends(get_db),
 ):
     """Get aggregated harvest batches grouped by crop with grade distribution."""
+    if fpo_id and not verify_fpo_access(fpo_id, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this FPO"
+        )
     query = db.query(Harvest).options(joinedload(Harvest.crop), joinedload(Harvest.farmer))
+    if current_user.role.value not in ("admin", "state_admin") and fpo_id is None:
+        fpo_id = current_user.fpo_id
+        if fpo_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="FPO assignment required"
+            )
     if fpo_id:
         query = query.join(Farmer, Harvest.farmer_id == Farmer.id).filter(Farmer.fpo_id == fpo_id)
 
@@ -226,16 +286,7 @@ def get_harvest(
             detail=f"Harvest with ID {harvest_id} not found",
         )
 
-    user_role = (
-        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
-    )
-    if user_role == "farmer":
-        farmer = db.query(Farmer).filter(Farmer.user_id == current_user.id).first()
-        if not farmer or harvest.farmer_id != farmer.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to access this harvest",
-            )
+    _enforce_harvest_scope(harvest, current_user)
 
     return _to_response(harvest)
 
@@ -252,6 +303,10 @@ def update_harvest_status(
     db: Session = Depends(get_db),
 ):
     """Update harvest status following lifecycle rules (SUBMITTED -> VERIFIED -> AGGREGATED -> SOLD)."""
+    harvest = harvest_service.get_harvest_by_id(db, harvest_id)
+    if not harvest:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Harvest not found")
+    _enforce_harvest_scope(harvest, current_user)
     try:
         updated = harvest_service.update_harvest_status(
             db, harvest_id, payload.status, notes=payload.notes

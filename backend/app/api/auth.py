@@ -5,10 +5,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_password_change_user
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import (
+    ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -16,7 +17,12 @@ from app.schemas.auth import (
     UserResponse,
 )
 from app.services.auth import hash_password, verify_password
-from app.services.jwt import create_access_token, create_refresh_token, decode_token
+from app.services.jwt import (
+    create_access_token,
+    create_password_change_token,
+    create_refresh_token,
+    decode_token,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -32,21 +38,12 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
             detail="Phone number already registered",
         )
 
-    # Validate role
-    try:
-        role = UserRole(request.role)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role: {request.role}. Must be one of: {[r.value for r in UserRole]}",
-        )
-
     # Create user
     user = User(
         name=request.name,
         phone=request.phone,
         email=request.email,
-        role=role,
+        role=UserRole.FARMER,
         hashed_password=hash_password(request.password),
         is_active=True,
         language_preference=request.language_preference,
@@ -84,12 +81,49 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Account is deactivated",
         )
 
+    if user.password_change_required:
+        return TokenResponse(
+            access_token=create_password_change_token(user.id),
+            password_change_required=True,
+        )
+
     access_token = create_access_token(user.id, user.role.value)
     refresh_token = create_refresh_token(user.id)
 
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
+    )
+
+
+@router.post("/change-password", response_model=TokenResponse)
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_password_change_user),
+    db: Session = Depends(get_db),
+):
+    """Require the current password, then replace it before granting a normal session."""
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+    if request.current_password == request.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must differ from the current password",
+        )
+
+    current_user.hashed_password = hash_password(request.new_password)
+    current_user.password_change_required = False
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return TokenResponse(
+        access_token=create_access_token(current_user.id, current_user.role.value),
+        refresh_token=create_refresh_token(current_user.id),
+        password_change_required=False,
     )
 
 
@@ -113,6 +147,12 @@ def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
             detail="User not found or inactive",
         )
 
+    if user.password_change_required:
+        return TokenResponse(
+            access_token=create_password_change_token(user.id),
+            password_change_required=True,
+        )
+
     access_token = create_access_token(user.id, user.role.value)
     refresh_token = create_refresh_token(user.id)
 
@@ -133,4 +173,5 @@ def get_me(current_user: User = Depends(get_current_user)):
         role=current_user.role.value,
         language_preference=current_user.language_preference,
         is_active=current_user.is_active,
+        password_change_required=current_user.password_change_required,
     )

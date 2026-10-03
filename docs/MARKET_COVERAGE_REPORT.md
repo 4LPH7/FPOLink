@@ -1,6 +1,8 @@
 # Market Price Data Coverage & Readiness Audit (T0.5)
 
-This document records the data density, market coverage, and operational readiness of market price observations for FPOLink TN in Erode District, fulfilling task **T0.5**.
+This is a historical coverage snapshot recorded in September 2026. It has not been re-run against a staging deployment and does not prove current ingestion freshness or live-data coverage.
+
+**Current verification status (2026-10-03): pending.** The development seed uses synthetic examples marked `demo_seed`. Confirm source lineage and run the staging ingestion checks before using any dashboard price as a verified market observation. The tables below preserve the previously recorded snapshot for comparison only.
 
 ---
 
@@ -12,7 +14,7 @@ This document records the data density, market coverage, and operational readine
   - **Erode Mandi** (Semmampalayam Regulated Market): Primary hub for finger and bulb turmeric trading.
   - **Gobichettipalayam Mandi**: Primary trading center for banana cultivars (Poovan, Rasthali, Robusta).
   - **Perundurai Regulated Market**: Secondary auction center.
-- **Data Integrity Status**: **100% Real Data Verified**. All synthetic fixtures purged from `market_prices`. Current active source is official verified `agmarknet` daily quotes.
+- **Data Integrity Status**: Not verified in the current environment. The original report claimed Agmarknet coverage, but this snapshot has not been independently revalidated against the source API or staging database.
 
 ---
 

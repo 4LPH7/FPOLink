@@ -18,7 +18,7 @@ def trigger_ingestion(
 ):
     """Manually trigger price data ingestion (admin only)."""
     service = IngestionService(db)
-    result = service.run_ingestion(source="manual_trigger")
+    result = service.run_ingestion()
     return {"message": "Ingestion completed", "result": result}
 
 
@@ -27,7 +27,7 @@ def trigger_weather_ingest(
     district: str = "Erode",
     days: int = 7,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
+    current_user: User = Depends(require_role(["admin", "state_admin", "data_operator"])),
 ):
     """Trigger live weather forecast ingestion from Open-Meteo."""
     from app.services.weather_service import WeatherService

@@ -1,20 +1,19 @@
 """Tests for FPO CRUD and Dashboard endpoints."""
 
 
-def test_fpo_lifecycle_and_dashboard(client):
-    # 1. Register admin user to get auth token
-    admin_res = client.post(
-        "/api/auth/register",
-        json={
-            "name": "FPO Admin Test",
-            "phone": "9111111111",
-            "password": "adminpassword",
-            "role": "admin",
-            "consent_given": True,
-        },
+def test_fpo_lifecycle_and_dashboard(client, db):
+    from app.models.user import User, UserRole
+    from app.services.jwt import create_access_token
+
+    admin = User(
+        name="FPO Admin Test",
+        phone="9111111111",
+        hashed_password="test-hash",
+        role=UserRole.ADMIN,
     )
-    assert admin_res.status_code == 201
-    admin_token = admin_res.json()["access_token"]
+    db.add(admin)
+    db.commit()
+    admin_token = create_access_token(admin.id, "admin")
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
     # 2. Create FPO (admin only)
@@ -38,13 +37,15 @@ def test_fpo_lifecycle_and_dashboard(client):
     assert anon_res.status_code == 401
 
     # 4. List FPOs
-    list_res = client.get("/api/fpos/")
+    assert client.get("/api/fpos/").status_code == 401
+    list_res = client.get("/api/fpos/", headers=admin_headers)
     assert list_res.status_code == 200
     fpos = list_res.json()["fpos"]
     assert any(f["id"] == fpo_id for f in fpos)
 
     # 5. Get FPO by ID
-    get_res = client.get(f"/api/fpos/{fpo_id}")
+    assert client.get(f"/api/fpos/{fpo_id}").status_code == 401
+    get_res = client.get(f"/api/fpos/{fpo_id}", headers=admin_headers)
     assert get_res.status_code == 200
     assert get_res.json()["name"] == "Erode Organic Spices FPO"
 

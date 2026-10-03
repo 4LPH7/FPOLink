@@ -2,8 +2,19 @@
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fpolink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a unique production secret}
+      POSTGRES_DB: ${POSTGRES_DB:-fpolink}
+
   backend:
+    ports: !reset []
     volumes: []
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fpolink}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a unique production secret}@postgres:5432/${POSTGRES_DB:-fpolink}
     entrypoint: ["/bin/bash", "/app/entrypoint.prod.sh"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; resp = urllib.request.urlopen('http://localhost:8000/api/health'); assert resp.status == 200\" || exit 1"]
@@ -15,11 +26,18 @@ services:
 
   worker:
     volumes: []
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fpolink}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a unique production secret}@postgres:5432/${POSTGRES_DB:-fpolink}
     command: ["python", "-m", "app.worker"]
     restart: always
 
   frontend:
+    ports: !reset []
     volumes: []
+    build:
+      args:
+        API_INTERNAL_URL: http://backend:8000
     restart: always
 
   tunnel:

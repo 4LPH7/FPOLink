@@ -20,6 +20,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_role
 from app.config import settings
 from app.database import get_db
 from app.messaging.whatsapp_cloud import (
@@ -28,6 +29,7 @@ from app.messaging.whatsapp_cloud import (
     parse_webhook,
     verify_signature,
 )
+from app.models.user import User
 from app.services.bot import BotEngine
 from app.services.whatsapp_status import WhatsAppStatusService
 
@@ -144,6 +146,7 @@ async def receive(
 def get_whatsapp_activity(
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "fpo_staff", "fpo_admin"])),
 ):
     """Staff dashboard monitor feed — returns real inbound messages and telemetry."""
     from app.models.whatsapp import OutboundMessage, WhatsAppInbound
