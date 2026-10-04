@@ -4,20 +4,15 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from fastapi.testclient import TestClient
-
 from app.data_sources.base import PriceRecord
-from app.main import app
 from app.models.crop import Crop
 from app.models.data_quality import IngestionRun
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.services.ingestion import IngestionService
 
-client = TestClient(app)
 
-
-def test_price_data_lineage_chain(db):
+def test_price_data_lineage_chain(db, client):
     """Verify that every MarketPrice is tied back to its IngestionRun and RawIngest packet."""
     service = IngestionService(db)
 
@@ -103,7 +98,7 @@ def test_price_data_lineage_chain(db):
     assert data["raw_ingest"]["payload"]["source_record_id"] == raw_payload["source_record_id"]
 
 
-def test_lineage_non_existent_price():
+def test_lineage_non_existent_price(client):
     """Verify 404 behavior for unknown price ID."""
     fake_id = uuid.uuid4()
     response = client.get(f"/api/v1/prices/{fake_id}/lineage")
