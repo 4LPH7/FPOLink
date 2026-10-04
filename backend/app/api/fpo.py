@@ -5,8 +5,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role
+from app.api.deps import require_role, verify_fpo_access
 from app.database import get_db
+from app.models.fpo import FPO
 from app.models.user import User
 from app.schemas.fpo import FPOCreate, FPODashboardStats, FPOResponse, FPOUpdate
 from app.services.fpo_service import (
@@ -47,9 +48,17 @@ def list_all(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
 ):
     """List all FPOs."""
-    fpos = list_fpos(db, skip, limit)
+    if current_user.role.value in ("admin", "state_admin"):
+        fpos = list_fpos(db, skip, limit)
+    else:
+        fpos = (
+            db.query(FPO).filter(FPO.id == current_user.fpo_id).offset(skip).limit(limit).all()
+            if current_user.fpo_id
+            else []
+        )
     return {
         "fpos": [
             FPOResponse(
@@ -70,11 +79,17 @@ def list_all(
 
 
 @router.get("/{fpo_id}")
-def get_one(fpo_id: str, db: Session = Depends(get_db)):
+def get_one(
+    fpo_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+):
     """Get FPO by ID."""
     fpo = get_fpo(db, UUID(fpo_id))
     if not fpo:
         raise HTTPException(status_code=404, detail="FPO not found")
+    if not verify_fpo_access(fpo.id, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to access this FPO")
     return FPOResponse(
         id=str(fpo.id),
         name=fpo.name,
@@ -97,7 +112,10 @@ def update(
     current_user: User = Depends(require_role(["admin", "fpo_staff"])),
 ):
     """Update FPO details."""
-    fpo = update_fpo(db, UUID(fpo_id), data)
+    fpo_id_uuid = UUID(fpo_id)
+    if not verify_fpo_access(fpo_id_uuid, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to modify this FPO")
+    fpo = update_fpo(db, fpo_id_uuid, data)
     if not fpo:
         raise HTTPException(status_code=404, detail="FPO not found")
     return FPOResponse(
@@ -124,5 +142,7 @@ def dashboard(
     fpo = get_fpo(db, UUID(fpo_id))
     if not fpo:
         raise HTTPException(status_code=404, detail="FPO not found")
+    if not verify_fpo_access(fpo.id, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to access this FPO")
     stats = get_dashboard_stats(db, UUID(fpo_id))
     return FPODashboardStats(**stats)

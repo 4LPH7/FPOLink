@@ -4,7 +4,8 @@
     "tagline": "FPO Digital Operating System",
     "district": "Erode District",
     "sync_status": "Live Data Feed",
-    "bot_status": "WhatsApp Bot Standby"
+    "bot_status": "WhatsApp Bot Standby",
+    "api_degraded": "The API or database is unavailable. Data on this screen may be incomplete."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -90,7 +91,7 @@
     "verified_source": "Verified Source"
   },
   "alerts_panel": {
-    "title": "Real-time Alerts & Operational Notices",
+    "title": "Service checks & operational notices",
     "anomaly_title": "Market Price Anomaly Detected",
     "weather_title": "Weather Advisory",
     "security_title": "DPDP Data Protection",

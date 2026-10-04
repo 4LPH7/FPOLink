@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 150 16% 97%;
+    --foreground: 156 23% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 156 23% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 156 23% 12%;
 
     /* FPOLink Emerald Primary */
     --primary: 142.1 76.2% 36.3%;
     --primary-foreground: 355.7 100% 97.3%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 150 14% 93%;
+    --secondary-foreground: 156 23% 17%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 150 14% 94%;
+    --muted-foreground: 154 9% 42%;
 
     --accent: 142 60% 94%;
     --accent-foreground: 142 80% 20%;
@@ -29,11 +29,11 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 150 12% 88%;
+    --input: 150 12% 82%;
     --ring: 142.1 76.2% 36.3%;
 
-    --radius: 0.625rem;
+    --radius: 0.875rem;
   }
 
   .dark {
@@ -74,6 +74,15 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 
   /* Tamil script line-height accommodation to prevent diacritical mark clipping */
@@ -81,6 +90,69 @@
     line-height: 1.7;
     letter-spacing: 0.01em;
   }
+}
+
+@layer components {
+.data-card {
+    @apply rounded-2xl border border-border bg-card shadow-sm;
+  }
+}
+
+@keyframes route-enter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes sheet-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-left-enter {
+  from { opacity: 0.8; transform: translate3d(-16px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.route-content { animation: route-enter 320ms cubic-bezier(.2,.75,.25,1) both; }
+.sheet-backdrop { animation: sheet-backdrop-enter 180ms ease-out both; }
+.sheet-panel { animation: sheet-left-enter 240ms cubic-bezier(.2,.75,.25,1) both; }
+
+.command-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: max(12vh, 5rem) 1rem 1rem;
+  background: hsl(156 30% 7% / 0.48);
+  backdrop-filter: blur(8px);
+  animation: sheet-backdrop-enter 160ms ease-out both;
+}
+
+.command-panel {
+  width: min(100%, 36rem);
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 1.25rem;
+  background: hsl(var(--card));
+  box-shadow: 0 24px 80px hsl(156 30% 5% / 0.28);
+  animation: route-enter 220ms cubic-bezier(.2,.75,.25,1) both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .data-card:hover { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .data-card:hover { transform: none; }
 }
 
 /* Custom minimal scrollbar for tables and sidebars */

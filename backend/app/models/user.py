@@ -30,6 +30,7 @@ class User(Base, TimestampMixin):
     email = Column(String, nullable=True)
     role = Column(Enum(UserRole), nullable=False)
     hashed_password = Column(String, nullable=False)
+    password_change_required = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, default=True)
     language_preference = Column(String(2), default="en")
     telegram_chat_id = Column(String, nullable=True)

@@ -100,6 +100,7 @@ def test_require_role_insufficient_permission_returns_403():
     mock_user = MagicMock(spec=User)
     mock_user.id = user_id
     mock_user.is_active = True
+    mock_user.password_change_required = False
     mock_user.role = UserRole.FARMER
     mock_user.phone = "9876543210"
 
@@ -122,6 +123,7 @@ def test_require_role_authorized_returns_200():
     mock_user = MagicMock(spec=User)
     mock_user.id = user_id
     mock_user.is_active = True
+    mock_user.password_change_required = False
     mock_user.role = UserRole.ADMIN
     mock_user.phone = "9876543210"
 

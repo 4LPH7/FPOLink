@@ -31,7 +31,7 @@ Review the key settings in `.env`:
 - `DEFAULT_CROPS=turmeric,banana,coconut` — Comma-separated list of target commodities.
 - `POSTGRES_PORT=5432` — If your host already runs PostgreSQL locally, set `POSTGRES_PORT=5433` to prevent port collisions.
 - `DATABASE_URL=postgresql+psycopg://fpolink:fpolink@postgres:5432/fpolink` — Internal connection string for backend container.
-- `SEED_ADMIN_PASSWORD=admin123` — Initial administrative password for seed data.
+- `SEED_ADMIN_PASSWORD` — Set a unique password for the local development seed account. Production deployment requires a unique secret key and database password.
 
 ### Step 3: Launch the Stack
 Start all 4 services (PostgreSQL 16, FastAPI backend, APScheduler worker, and Next.js frontend):
@@ -51,7 +51,7 @@ You should see:
 - `fpolink-frontend-1` (running on port `3000`)
 
 ### Step 4: Seed the Database
-Populate initial reference data (admin user, crops, varieties, mandis, and demo farmers):
+Populate initial reference data (admin user, crops, varieties, mandis, and demo farmers). Before running the seed, set unique `SEED_ADMIN_PASSWORD` and `SEED_FARMER_PASSWORD` values of at least 12 characters in `.env`. Seeded users must change their password at first sign-in, and sample prices are synthetic records tagged `demo_seed`, not live market quotes.
 ```bash
 # 1. Baseline pilot data
 docker compose exec backend python scripts/seed.py

@@ -30,7 +30,7 @@ def test_health_check_db_failure():
         data = response.json()
         assert data["status"] == "degraded"
         assert data["db"] == "error"
-        assert "Connection refused" in data["detail"]
+        assert "detail" not in data
 
 
 @pytest.mark.anyio

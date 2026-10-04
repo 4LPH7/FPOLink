@@ -76,3 +76,23 @@ def db():
 def client(db):
     """Provide a test client using the shared test database session."""
     return TestClient(app)
+
+
+@pytest.fixture()
+def admin_headers(db):
+    """Provision a trusted admin identity for tests of protected operations."""
+    import uuid
+
+    from app.models.user import User, UserRole
+    from app.services.jwt import create_access_token
+
+    admin = User(
+        name="Test Admin",
+        phone=f"9{uuid.uuid4().int % 1_000_000_000:09d}",
+        hashed_password="test-only-hash",
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    db.add(admin)
+    db.commit()
+    return {"Authorization": f"Bearer {create_access_token(admin.id, 'admin')}"}

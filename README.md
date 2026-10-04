@@ -2,7 +2,7 @@
 
 **Tamil Nadu Agricultural Intelligence Platform & FPO Operating System**
 
-A self-hostable, production-ready, open-source platform that empowers Farmer Producer Organizations (FPOs), district administrators, and state agricultural departments with real-time price intelligence, harvest aggregation, demand forecasting, multi-tenant governance, and automated farmer communication via WhatsApp — spanning all 38 districts of Tamil Nadu.
+A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), district administrators, and state agricultural departments, with up-to-date mandi price intelligence, harvest aggregation, demand forecasting, multi-tenant governance, and automated farmer communication via WhatsApp — designed for all 38 districts of Tamil Nadu.
 
 [![CI](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml/badge.svg)](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
@@ -59,7 +59,7 @@ A self-hostable, production-ready, open-source platform that empowers Farmer Pro
 | **Ingestion Center Console** | Telemetry dashboard (/admin) tracking 38-district reporting freshness & runs | **Active** |
 | **Multi-Tenant RBAC & Audit** | 9 discrete roles (`STATE_ADMIN`, `DISTRICT_ADMIN`, `FPO_ADMIN`, etc.) with audit logging | **Active** |
 | **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Active** |
-| **Mandi Price Ingestion** | Real-time adapters for data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes | **Active** |
+| **Mandi Price Ingestion** | Daily price feeds from data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes; automated refreshes during market hours when API credentials are configured | **Active** |
 | **Agricultural Feature Store** | 26 leak-free tabular features (lags, rolling stats, arrival momentum, Tamil festival flags) | **Active** |
 | **Dual Forecasting Engine (v0.7)** | LightGBM quantile regression (p10/p50/p90) + rolling baseline + actionable signals | **Active** |
 | **Geospatial Arbitrage Engine** | Haversine distance matrix across mandis with freight deduction (₹50 + ₹1.20/km/qtl) | **Active** |
@@ -112,7 +112,7 @@ Review key configuration variables in `.env`:
 - `DEFAULT_CROPS=turmeric,banana,coconut`
 - `DEFAULT_DISTRICT=Erode`
 - `POSTGRES_PORT=5432` *(use 5433 if port 5432 is occupied on the host)*
-- `SEED_ADMIN_PASSWORD=admin123`
+- `SEED_ADMIN_PASSWORD` — Choose a unique password for the development seed account; never reuse it in production.
 
 ### 2. Launch Stack with Docker Compose
 ```bash
@@ -192,6 +192,9 @@ The platform database schema is managed via Alembic:
 | `0007_crop_market_ontology` | Crop ontology fields, `crop_aliases`, `varieties`, `variety_aliases`, `market_aliases` |
 | `0008_multitenant_rbac_audit` | 9 user roles, multi-tenant `fpo_id`/`district_id` scoping, and `audit_logs` |
 | `0009_statewide_ingestion_quality` | Data quality telemetry (`data_sources`, `ingestion_runs`, `data_quality_events`), quality scores |
+| `0010_source_mappings_markets` | Source-to-canonical mappings and market expansion |
+| `0011_supply_demand_network` | Farm plots, buyer requirements, and supply matches |
+| `0012_required_password_rotation` | Required password rotation for existing privileged accounts |
 
 To check migration status:
 ```bash
@@ -210,20 +213,17 @@ Execute the full regression test suite inside the container:
 docker compose exec backend pytest -v --tb=short
 ```
 
-**Results:**
-- **162 passing tests**
-- 1 skipped test (production webhook verification requiring live Meta token)
-- 0 failures
+The CI workflow applies migrations, seeds the required reference data, runs the PostgreSQL-backed suite, checks Ruff lint and formatting, builds the frontend, and exercises Docker health and authentication.
 
 ---
 
-## Data Provenance & Real Data Guarantee
+## Data Provenance & Live Data Verification
 
 > [!IMPORTANT]
-> FPOLink strictly distinguishes between verified agricultural observations and test fixtures:
-> - **Real Ingestion Feeds**: Tagged as `ogd`, `agmarknet`, or `ceda`. These are verified, scored, and served to farmers.
-> - **Synthetic / Test Data**: Tagged as `ceda_synthetic`, `seed_demo`, or `test`. They are blocked from reaching farmer notifications, WhatsApp digests, or production forecasting models.
-> - See [docs/data-provenance.md](docs/data-provenance.md) for complete dataset isolation guarantees.
+> A source label alone does not verify that a price came from a live provider. The development seed creates synthetic examples marked `demo_seed`; staging ingestion freshness, coverage, and farmer-facing isolation still need a live deployment check.
+> - **Provider records** may be tagged `ogd`, `agmarknet`, or `ceda`; verify their ingestion run and raw lineage before treating them as current market observations.
+> - **Development examples** are tagged `demo_seed` and must not be presented as verified market prices.
+> - See [docs/data-provenance.md](docs/data-provenance.md) for the intended source and fixture handling.
 
 ---
 

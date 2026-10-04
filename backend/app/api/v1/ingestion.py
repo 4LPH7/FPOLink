@@ -9,11 +9,13 @@ from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_role
 from app.database import get_db
 from app.models.data_quality import DataSource, IngestionRun
 from app.models.geography import District
 from app.models.market import Market
 from app.models.market_price import MarketPrice
+from app.models.user import User
 from app.services.ingestion import IngestionService
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion-v1"])
@@ -32,6 +34,9 @@ def list_ingestion_runs(
     source: Optional[str] = None,
     status_filter: Optional[str] = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "data_operator", "fpo_staff"])
+    ),
 ):
     """Get paginated history of ingestion runs with telemetry metrics."""
     query = db.query(IngestionRun)
@@ -78,7 +83,11 @@ def list_ingestion_runs(
 
 
 @router.get("/runs/{run_id}")
-def get_ingestion_run(run_id: UUID, db: Session = Depends(get_db)):
+def get_ingestion_run(
+    run_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "state_admin", "data_operator"])),
+):
     """Get detailed telemetry breakdown for a specific ingestion run."""
     run = db.query(IngestionRun).filter(IngestionRun.id == run_id).first()
     if not run:
@@ -117,7 +126,12 @@ def get_ingestion_run(run_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/freshness")
-def get_statewide_freshness(db: Session = Depends(get_db)):
+def get_statewide_freshness(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "data_operator", "fpo_staff"])
+    ),
+):
     """Get statewide coverage and freshness telemetry across all 38 districts."""
     total_districts = db.query(District).count()
     total_markets = db.query(Market).filter(Market.is_active.is_(True)).count()
@@ -183,7 +197,11 @@ def get_statewide_freshness(db: Session = Depends(get_db)):
 
 
 @router.post("/trigger")
-def trigger_ingestion(payload: TriggerIngestionRequest, db: Session = Depends(get_db)):
+def trigger_ingestion(
+    payload: TriggerIngestionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "state_admin", "data_operator"])),
+):
     """Trigger a statewide or targeted price ingestion run."""
     service = IngestionService(db)
     summary = service.run_ingestion(

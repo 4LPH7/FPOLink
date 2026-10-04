@@ -1,19 +1,20 @@
 """Tests for Farmer management API endpoints."""
 
 
-def test_farmer_crud_and_search(client):
-    # 1. Register admin to create an FPO first
-    admin_res = client.post(
-        "/api/auth/register",
-        json={
-            "name": "Farmer Admin Test",
-            "phone": "9222222222",
-            "password": "adminpassword",
-            "role": "admin",
-            "consent_given": True,
-        },
+def test_farmer_crud_and_search(client, db):
+    from app.models.user import User, UserRole
+    from app.services.jwt import create_access_token
+
+    # Privileged users are provisioned by trusted admins, never public registration.
+    admin = User(
+        name="Farmer Admin Test",
+        phone="9222222222",
+        hashed_password="test-hash",
+        role=UserRole.ADMIN,
     )
-    admin_token = admin_res.json()["access_token"]
+    db.add(admin)
+    db.commit()
+    admin_token = create_access_token(admin.id, "admin")
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
     fpo_res = client.post(
@@ -109,18 +110,15 @@ def test_farmer_crud_and_search(client):
     assert "text=" in invite_data["invite_url"]
 
     # 9. Test cross-FPO authorization: fpo_staff from a different FPO gets 403
-    other_staff_res = client.post(
-        "/api/auth/register",
-        json={
-            "name": "Other FPO Staff",
-            "phone": "9444444444",
-            "password": "staffpassword",
-            "role": "fpo_staff",
-            "consent_given": True,
-        },
+    other_staff = User(
+        name="Other FPO Staff",
+        phone="9444444444",
+        hashed_password="test-hash",
+        role=UserRole.FPO_STAFF,
     )
-    assert other_staff_res.status_code == 201
-    other_staff_token = other_staff_res.json()["access_token"]
+    db.add(other_staff)
+    db.commit()
+    other_staff_token = create_access_token(other_staff.id, "fpo_staff")
     other_staff_headers = {"Authorization": f"Bearer {other_staff_token}"}
 
     # Accessing farmer from another FPO should return 403

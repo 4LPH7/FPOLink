@@ -3,16 +3,13 @@
 import React, { useState, useEffect } from "react";
 import {
   AlertTriangle,
-  CloudRain,
-  ShieldCheck,
   CheckCircle2,
   Bell,
   X,
   Smartphone,
   Loader2,
-  TrendingUp,
 } from "lucide-react";
-import { getLatestPrices, getWhatsAppActivity, getHealth } from "@/lib/api";
+import { getWhatsAppActivity, getHealth } from "@/lib/api";
 
 interface AlertPanelProps {
   lang: "ta" | "en";
@@ -21,7 +18,7 @@ interface AlertPanelProps {
 
 interface LiveAlert {
   id: string;
-  type: "anomaly" | "weather" | "dpdp" | "bot" | "info";
+  type: "bot" | "info";
   titleTa: string;
   titleEn: string;
   descTa: string;
@@ -34,6 +31,7 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [botEnabled, setBotEnabled] = useState<boolean | null>(null);
+  const [botAvailable, setBotAvailable] = useState(false);
 
   useEffect(() => {
     async function buildAlerts() {
@@ -43,8 +41,21 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
         // 1. WhatsApp bot status
         const wa = await getWhatsAppActivity(1);
         setBotEnabled(wa.enabled);
+        setBotAvailable(wa.available);
 
-        if (!wa.enabled) {
+        if (!wa.available) {
+          built.push({
+            id: "whatsapp-unavailable",
+            type: "info",
+            level: "info",
+            titleTa: "வாட்ஸ்அப் நிலையைப் பெற முடியவில்லை",
+            titleEn: "WhatsApp status unavailable",
+            descTa: "செய்தி சேவை நிலையை உறுதிப்படுத்த API-ஐச் சரிபார்க்கவும்.",
+            descEn: "Check the API connection to verify messaging service status.",
+          });
+        }
+
+        if (wa.available && !wa.enabled) {
           built.push({
             id: "bot-killswitch",
             type: "bot",
@@ -58,30 +69,8 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
           });
         }
 
-        // 2. Price anomaly detection — flag if any price is unusually high
-        const prices = await getLatestPrices("Erode");
-        for (const price of prices) {
-          // Simple spike check: modal > 1.5× min is suspicious
-          if (
-            price.modal_price &&
-            price.min_price &&
-            Number(price.modal_price) > Number(price.min_price) * 1.5
-          ) {
-            built.push({
-              id: `anomaly-${price.id}`,
-              type: "anomaly",
-              level: "warning",
-              titleTa: `${price.crop_tamil_name || price.crop_name} விலை முரண்பாடு — ${price.market_name}`,
-              titleEn: `${price.crop_name} price spike — ${price.market_name}`,
-              descTa: `மோடல் விலை ₹${Number(price.modal_price).toLocaleString("en-IN")}/கி — குறைந்தபட்சத்தை விட கணிசமாக அதிகம். மனித சரிபார்ப்பு பரிந்துரைக்கப்படுகிறது.`,
-              descEn: `Modal ₹${Number(price.modal_price).toLocaleString("en-IN")}/q is significantly above min ₹${Number(price.min_price).toLocaleString("en-IN")}/q — verify with market.`,
-            });
-          }
-        }
-
-        // 3. DB health check
         const health = await getHealth();
-        if (health.db !== "ok" && health.db !== "connected") {
+        if (health.status === "degraded" || (health.db !== "ok" && health.db !== "connected" && health.db !== "healthy")) {
           built.push({
             id: "db-health",
             type: "info",
@@ -93,18 +82,6 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
           });
         }
 
-        // 4. DPDP compliance note (static, always shown as info)
-        built.push({
-          id: "dpdp-compliance",
-          type: "dpdp",
-          level: "success",
-          titleTa: "DPDP சட்டம்: தொலைபேசி மறைக்கல் செயல்படுத்தப்பட்டுள்ளது",
-          titleEn: "DPDP Act: Phone masking enforced",
-          descTa:
-            "அனைத்து விவசாயி தொலைபேசி எண்களும் மறைக்கப்பட்டுள்ளன. ஒப்புதல் பதிவு (opt-in) செயல்படுத்தப்பட்டுள்ளது.",
-          descEn:
-            "All farmer phone numbers are masked in the UI. WhatsApp consent opt-in tracking is active.",
-        });
       } catch (err) {
         console.warn("AlertPanel load error:", err);
       } finally {
@@ -135,8 +112,8 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
             </h3>
             <p className="text-xs text-gray-500">
               {lang === "ta"
-                ? "நேரடி செயல்பாட்டு எச்சரிக்கைகள் — விலை முரண்பாடு & வாட்ஸ்அப் நிலை"
-                : "Live operational alerts — price anomalies & WhatsApp status"}
+              ? "வாட்ஸ்அப் சேவை மற்றும் தரவுத்தள நிலை"
+              : "WhatsApp service and database status checks"}
             </p>
           </div>
         </div>
@@ -177,15 +154,6 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
             >
               <div className="flex items-start space-x-3">
                 <div className="mt-0.5">
-                  {alert.type === "anomaly" && (
-                    <TrendingUp className="w-5 h-5 text-amber-600" />
-                  )}
-                  {alert.type === "weather" && (
-                    <CloudRain className="w-5 h-5 text-blue-600" />
-                  )}
-                  {alert.type === "dpdp" && (
-                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  )}
                   {alert.type === "bot" && (
                     <Smartphone className="w-5 h-5 text-red-600" />
                   )}
@@ -208,6 +176,7 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
                 onClick={() => dismissAlert(alert.id)}
                 className="text-gray-400 hover:text-gray-700 p-1 rounded-lg transition-colors ml-2"
                 title={t.alerts_panel.dismiss}
+                aria-label={t.alerts_panel.dismiss}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -223,12 +192,12 @@ export default function AlertPanel({ lang, t }: AlertPanelProps) {
           <span className="font-semibold text-gray-800">
             {lang === "ta" ? "வாட்ஸ்அப் பாட் நிலை:" : "WhatsApp Cloud API Status:"}
           </span>
-          {botEnabled === null ? (
-            <span className="text-gray-400">…</span>
+          {!botAvailable ? (
+            <span className="font-medium text-amber-700">{lang === "ta" ? "தரவு கிடைக்கவில்லை" : "Unavailable"}</span>
           ) : botEnabled ? (
             <span className="text-emerald-700 font-bold flex items-center">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1 animate-pulse" />
-              {lang === "ta" ? "இணைக்கப்பட்டுள்ளது" : "Connected"}
+              <span className="size-2 rounded-full bg-emerald-500 mr-1" />
+              {lang === "ta" ? "இயக்கப்பட்டுள்ளது" : "Enabled"}
             </span>
           ) : (
             <span className="text-red-600 font-bold">

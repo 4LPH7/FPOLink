@@ -32,6 +32,12 @@ from app.services.yield_estimator import estimate_crop_yield
 
 
 def seed_supply_demand():
+    if os.environ.get("ENVIRONMENT", "development").lower() != "development":
+        raise RuntimeError(
+            "seed_supply_demand.py creates development-only demo farmers; "
+            "run it only with ENVIRONMENT=development"
+        )
+
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
@@ -124,11 +130,18 @@ def seed_supply_demand():
         for fd in farmers_data:
             farmer_user = db.query(User).filter(User.phone == fd["phone"]).first()
             if not farmer_user:
+                farmer_password = os.environ.get("SEED_FARMER_PASSWORD", "").strip()
+                if len(farmer_password) < 12:
+                    raise RuntimeError(
+                        "Set SEED_FARMER_PASSWORD to a unique password of at least 12 "
+                        "characters before creating development seed farmers."
+                    )
                 farmer_user = User(
                     name=fd["name"],
                     phone=fd["phone"],
                     role=UserRole.FARMER,
-                    hashed_password=hash_password("farmer123"),
+                    hashed_password=hash_password(farmer_password),
+                    password_change_required=True,
                     is_active=True,
                     language_preference="ta",
                     consent_given=True,

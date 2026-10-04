@@ -14,11 +14,10 @@ from app.services.jwt import decode_token
 security = HTTPBearer(auto_error=False)
 
 
-def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db),
+def _get_user_from_token(
+    credentials: Optional[HTTPAuthorizationCredentials], db: Session, expected_type: str
 ) -> User:
-    """Extract and validate the current user from the JWT token."""
+    """Resolve an active user from a bearer token with the required token type."""
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -36,7 +35,7 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if payload.get("type") != "access":
+    if payload.get("type") != expected_type:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
@@ -68,6 +67,35 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    return user
+
+
+def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """Extract a normal authenticated user, blocking accounts that must reset a password."""
+    user = _get_user_from_token(credentials, db, "access")
+    if user.password_change_required:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password change required",
+        )
+    return user
+
+
+def get_password_change_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """Accept only the restricted, short-lived token used for a required password change."""
+    user = _get_user_from_token(credentials, db, "password_change")
+    if not user.password_change_required:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password change is not required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 

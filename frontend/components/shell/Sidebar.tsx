@@ -10,14 +10,11 @@ import {
   Activity,
   MessageSquare,
   Sprout,
-  ShieldCheck,
-  Radio,
   Building2,
   GitCompare,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
   href: string;
@@ -49,14 +46,14 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "flex flex-col h-full bg-card border-r border-border select-none",
+        "flex h-full select-none flex-col border-r border-border bg-card",
         className
       )}
     >
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 border-b border-border space-x-3 shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-600 to-emerald-700 flex items-center justify-center text-white shadow-xs">
-          <Sprout className="w-5 h-5 text-white" />
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-5">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <Sprout className="size-5" />
         </div>
         <div>
           <div className="flex items-center space-x-1.5">
@@ -75,8 +72,8 @@ export function Sidebar({
       </div>
 
       {/* Navigation List */}
-      <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+      <nav aria-label={lang === "ta" ? "முக்கிய வழிசெலுத்தல்" : "Main navigation"} className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {lang === "ta" ? "முக்கிய பக்கங்கள்" : "Main Navigation"}
         </div>
         {navItems.map((item) => {
@@ -92,7 +89,7 @@ export function Sidebar({
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+                "group flex min-h-11 items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive
                   ? "bg-primary/10 text-primary font-semibold shadow-2xs"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -101,7 +98,7 @@ export function Sidebar({
               <div className="flex items-center space-x-3 min-w-0">
                 <Icon
                   className={cn(
-                    "w-4 h-4 shrink-0 transition-transform group-hover:scale-110",
+                    "size-[18px] shrink-0",
                     isActive ? "text-primary" : "text-muted-foreground"
                   )}
                 />
@@ -113,31 +110,17 @@ export function Sidebar({
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       {/* Bottom Status Card */}
-      <div className="p-4 border-t border-border bg-muted/20 shrink-0">
-        <div className="rounded-lg p-3 bg-card border border-border/80 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-              {lang === "ta" ? "நிலை" : "Operations"}
-            </span>
-            <Badge variant="success" className="text-[10px] px-1.5 py-0">
-              <Radio className="w-2.5 h-2.5 mr-1 text-emerald-600 animate-pulse" />
-              {lang === "ta" ? "நேரலை" : "Live"}
-            </Badge>
-          </div>
-          <div className="text-xs font-semibold text-foreground truncate">
-            {lang === "ta"
-              ? "கொடுமுடி FPO"
-              : "Kodumudi FPO"}
-          </div>
-          <div className="flex items-center space-x-1.5 text-[11px] text-muted-foreground">
-            <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="truncate">
-              {lang === "ta" ? "DPDP தரவுப் பாதுகாப்பு" : "DPDP Protected"}
-            </span>
-          </div>
+      <div className="shrink-0 border-t border-border p-4">
+        <div className="rounded-xl bg-muted/60 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {lang === "ta" ? "உங்கள் பணியிடம்" : "Your workspace"}
+          </p>
+          <p className="mt-1 truncate text-sm font-semibold text-foreground">
+            {lang === "ta" ? "கொடுமுடி FPO" : "Kodumudi FPO"}
+          </p>
         </div>
       </div>
     </aside>

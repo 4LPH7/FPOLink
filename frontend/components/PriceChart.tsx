@@ -12,7 +12,6 @@ import {
 } from "recharts";
 import {
   TrendingUp,
-  ShieldCheck,
   Calendar,
   RefreshCw,
   BarChart2,
@@ -30,40 +29,48 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
   const [history, setHistory] = useState<PriceHistoryPoint[]>([]);
   const [currentPrice, setCurrentPrice] = useState<MarketPrice | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const fetchChartHistory = async (cropName: "turmeric" | "banana", days: number) => {
-    setLoading(true);
-    try {
-      const prices = await getLatestPrices("Erode");
-      const price = prices.find((p) =>
-        p.crop_name.toLowerCase().includes(cropName)
-      );
-
-      // Use crop_id and market_id returned by the API (added to response)
-      if (price && price.crop_id && price.market_id) {
-        const hist = await getPriceHistory(price.crop_id, price.market_id, days);
-        setCurrentPrice(price);
-        setHistory(hist);
-      } else if (price) {
-        // Fallback: show current price card even if no history
-        setCurrentPrice(price);
-        setHistory([]);
-      } else {
-        setCurrentPrice(null);
-        setHistory([]);
-      }
-    } catch (err) {
-      console.warn("Failed to load price history:", err);
-      setCurrentPrice(null);
-      setHistory([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const days = timeframe === "7d" ? 7 : timeframe === "90d" ? 90 : 30;
-    fetchChartHistory(selectedCrop, days);
+    let active = true;
+    let inFlight = false;
+
+    const refresh = async (showLoading: boolean) => {
+      if (!active || inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      if (showLoading) setLoading(true);
+      try {
+        const prices = await getLatestPrices("Erode");
+        const price = prices.find((item) => item.crop_name.toLowerCase().includes(selectedCrop));
+        const hist = price?.crop_id && price.market_id
+          ? await getPriceHistory(price.crop_id, price.market_id, days)
+          : [];
+        if (active) {
+          setCurrentPrice(price ?? null);
+          setHistory(hist);
+          setLastCheckedAt(new Date());
+        }
+      } catch (err) {
+        console.warn("Failed to refresh price history:", err);
+      } finally {
+        inFlight = false;
+        if (active && showLoading) setLoading(false);
+      }
+    };
+
+    void refresh(true);
+    const interval = window.setInterval(() => void refresh(false), 60_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh(false);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [selectedCrop, timeframe]);
 
   // Prices in DB are ₹/kg — multiply by 100 to show ₹/quintal
@@ -78,9 +85,9 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
   const previousPoint = chartData[chartData.length - 2] || chartData[0];
   const priceDiff = latestPoint && previousPoint ? latestPoint.modal - previousPoint.modal : 0;
   const pctChange =
-    previousPoint && previousPoint.modal > 0
+    chartData.length > 1 && previousPoint && previousPoint.modal > 0
       ? ((priceDiff / previousPoint.modal) * 100).toFixed(1)
-      : "0.0";
+      : null;
 
   // Use currentPrice as fallback KPI when history is empty
   const displayModal = latestPoint
@@ -116,15 +123,23 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
                 ? "Erode Turmeric"
                 : "Erode Banana"}
             </h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-              <ShieldCheck className="w-3 h-3 mr-1 text-emerald-700 dark:text-emerald-400" />
-              {lang === "ta" ? "நேரலை Agmarknet" : "Live Agmarknet"}
+            <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+              {loading
+                ? (lang === "ta" ? "தரவு பெறப்படுகிறது" : "Loading market data")
+                : currentPrice
+                  ? `${currentPrice.source} · ${currentPrice.price_date}`
+                  : (lang === "ta" ? "சந்தைத் தரவு இல்லை" : "No market data")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "ta"
               ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடத்தின் மாதிரி விலை நிலவரம் (ரூ./குவிண்டால்)"
               : "Daily modal auction rates from official Erode regulated mandis (₹/quintal)"}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">
+            {lastCheckedAt
+              ? `${lang === "ta" ? "API சரிபார்த்தது" : "API checked"} ${lastCheckedAt.toLocaleTimeString(lang === "ta" ? "ta-IN" : "en-IN", { hour: "2-digit", minute: "2-digit" })} · ${lang === "ta" ? "நிமிடத்திற்கு ஒருமுறை" : "every minute"}`
+              : (lang === "ta" ? "சந்தைத் தரவு தானாகப் புதுப்பிக்கப்படும்" : "Market data auto-refreshes every minute")}
           </p>
         </div>
 
@@ -200,11 +215,11 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
                 Number(pctChange) >= 0 ? "text-emerald-600" : "text-destructive"
               }`}
             >
-              {Number(pctChange) >= 0 ? `+${pctChange}%` : `${pctChange}%`}
+            {pctChange === null ? "—" : Number(pctChange) >= 0 ? `+${pctChange}%` : `${pctChange}%`}
             </span>
           </div>
           <span className="text-[10px] text-muted-foreground block">
-            {priceDiff >= 0 ? `+₹${priceDiff}` : `-₹${Math.abs(priceDiff)}`}
+            {pctChange === null ? "—" : priceDiff >= 0 ? `+₹${priceDiff}` : `-₹${Math.abs(priceDiff)}`}
           </span>
         </div>
 
@@ -243,7 +258,7 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
               {lang === "ta" ? "விலை வரலாற்றுத் தகவல்கள் இல்லை" : "No price history available"}
             </p>
             <p className="text-xs mt-1 text-muted-foreground">
-              {lang === "ta" ? "தினசரி மண்டி தகவல் பெறப்பட்டதும் வரைபடம் தோன்றும்." : "Live series will render once observations are ingested."}
+              {lang === "ta" ? "இந்த பயிருக்கு வரலாற்று விலைப் பதிவுகள் இல்லை." : "No historical price records are available for this crop."}
             </p>
           </div>
         ) : (

@@ -54,7 +54,19 @@ class TestRegister:
                 "role": "superadmin",
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
+
+    def test_public_registration_cannot_assign_privileged_role(self, client: TestClient):
+        response = client.post(
+            "/api/auth/register",
+            json={
+                "name": "Escalation",
+                "phone": "9000000004",
+                "password": "testpass123",
+                "role": "admin",
+            },
+        )
+        assert response.status_code == 422
 
 
 class TestLogin:
@@ -66,7 +78,7 @@ class TestLogin:
                 "name": "Login Test",
                 "phone": "9000000010",
                 "password": "mypassword",
-                "role": "admin",
+                "role": "farmer",
             },
         )
         # Login
@@ -120,7 +132,7 @@ class TestProtectedRoutes:
                 "name": "Auth Me",
                 "phone": "9000000020",
                 "password": "testpass123",
-                "role": "fpo_staff",
+                "role": "farmer",
             },
         )
         token = reg.json()["access_token"]
@@ -130,7 +142,7 @@ class TestProtectedRoutes:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Auth Me"
-        assert data["role"] == "fpo_staff"
+        assert data["role"] == "farmer"
 
     def test_me_unauthenticated(self, client: TestClient):
         response = client.get("/api/auth/me")
@@ -167,3 +179,120 @@ class TestRefresh:
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
+
+
+class TestRequiredPasswordChange:
+    def test_staff_must_change_password_before_access(self, client: TestClient, db):
+        import uuid
+
+        from app.models.user import User, UserRole
+        from app.services.auth import hash_password
+
+        phone = f"8{uuid.uuid4().int % 1_000_000_000:09d}"
+        user = User(
+            name="Temporary Admin",
+            phone=phone,
+            role=UserRole.ADMIN,
+            hashed_password=hash_password("temporary-admin-password"),
+            password_change_required=True,
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+
+        login = client.post(
+            "/api/auth/login",
+            json={"phone": phone, "password": "temporary-admin-password"},
+        )
+        assert login.status_code == 200
+        challenge = login.json()
+        assert challenge["password_change_required"] is True
+        assert challenge.get("refresh_token") is None
+        challenge_headers = {"Authorization": f"Bearer {challenge['access_token']}"}
+
+        # The restricted token cannot be used as a normal access token.
+        assert client.get("/api/auth/me", headers=challenge_headers).status_code == 401
+
+        wrong_password = client.post(
+            "/api/auth/change-password",
+            headers=challenge_headers,
+            json={
+                "current_password": "incorrect-password",
+                "new_password": "a-new-secure-password",
+            },
+        )
+        assert wrong_password.status_code == 401
+
+        changed = client.post(
+            "/api/auth/change-password",
+            headers=challenge_headers,
+            json={
+                "current_password": "temporary-admin-password",
+                "new_password": "a-new-secure-password",
+            },
+        )
+        assert changed.status_code == 200
+        session = changed.json()
+        assert session["password_change_required"] is False
+        assert session["refresh_token"]
+        user_headers = {"Authorization": f"Bearer {session['access_token']}"}
+        profile = client.get("/api/auth/me", headers=user_headers)
+        assert profile.status_code == 200
+        assert profile.json()["password_change_required"] is False
+
+        old_password_login = client.post(
+            "/api/auth/login",
+            json={"phone": phone, "password": "temporary-admin-password"},
+        )
+        assert old_password_login.status_code == 401
+
+        new_password_login = client.post(
+            "/api/auth/login",
+            json={"phone": phone, "password": "a-new-secure-password"},
+        )
+        assert new_password_login.status_code == 200
+        assert new_password_login.json()["password_change_required"] is False
+
+    def test_change_password_rejects_normal_access_token(self, client: TestClient):
+        registration = client.post(
+            "/api/auth/register",
+            json={
+                "name": "Farmer Password Test",
+                "phone": "9000000040",
+                "password": "testpass123",
+            },
+        )
+        response = client.post(
+            "/api/auth/change-password",
+            headers={"Authorization": f"Bearer {registration.json()['access_token']}"},
+            json={
+                "current_password": "testpass123",
+                "new_password": "a-new-secure-password",
+            },
+        )
+        assert response.status_code == 401
+
+    def test_change_password_rejects_short_new_password(self, client: TestClient, db):
+        import uuid
+
+        from app.models.user import User, UserRole
+        from app.services.auth import hash_password
+        from app.services.jwt import create_password_change_token
+
+        user = User(
+            name="Short Password Admin",
+            phone=f"7{uuid.uuid4().int % 1_000_000_000:09d}",
+            role=UserRole.ADMIN,
+            hashed_password=hash_password("temporary-admin-password"),
+            password_change_required=True,
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        token = create_password_change_token(user.id)
+        response = client.post(
+            "/api/auth/change-password",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"current_password": "temporary-admin-password", "new_password": "short"},
+        )
+        assert response.status_code == 422

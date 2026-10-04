@@ -8,7 +8,7 @@ from app.models.data_quality import IngestionRun
 client = TestClient(app)
 
 
-def test_list_ingestion_runs(db):
+def test_list_ingestion_runs(db, admin_headers):
     """Verify paginated listing of ingestion runs."""
     run = IngestionRun(
         source_code="ogd",
@@ -20,7 +20,7 @@ def test_list_ingestion_runs(db):
     db.add(run)
     db.commit()
 
-    response = client.get("/api/v1/ingestion/runs")
+    response = client.get("/api/v1/ingestion/runs", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
@@ -29,7 +29,7 @@ def test_list_ingestion_runs(db):
     assert str(run.id) in run_ids
 
 
-def test_get_ingestion_run_detail(db):
+def test_get_ingestion_run_detail(db, admin_headers):
     """Verify retrieving detailed telemetry for a single run."""
     run = IngestionRun(
         source_code="agmarknet",
@@ -42,7 +42,7 @@ def test_get_ingestion_run_detail(db):
     db.add(run)
     db.commit()
 
-    response = client.get(f"/api/v1/ingestion/runs/{run.id}")
+    response = client.get(f"/api/v1/ingestion/runs/{run.id}", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == str(run.id)
@@ -51,9 +51,9 @@ def test_get_ingestion_run_detail(db):
     assert len(data["errors"]) == 1
 
 
-def test_statewide_freshness_endpoint(db):
+def test_statewide_freshness_endpoint(db, admin_headers):
     """Verify statewide coverage and freshness telemetry."""
-    response = client.get("/api/v1/ingestion/freshness")
+    response = client.get("/api/v1/ingestion/freshness", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["total_districts"] == 38

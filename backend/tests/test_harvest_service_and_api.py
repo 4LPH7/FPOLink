@@ -76,6 +76,7 @@ def seed_data(db_session):
         phone="9876543212",
         role=UserRole.FPO_STAFF,
         hashed_password="hash",
+        fpo_id=fpo.id,
     )
     db_session.add_all([farmer_user, staff_user])
     db_session.flush()

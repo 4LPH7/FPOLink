@@ -14,16 +14,33 @@ logger = logging.getLogger(__name__)
 
 def run_price_ingestion():
     """Fetch daily prices from configured data sources."""
+    from app.database import SessionLocal
+    from app.services.ingestion import IngestionService
+
     logger.info("Running price ingestion...")
-    # TODO: Import and call ingestion service
-    logger.info("Price ingestion complete.")
+    db = SessionLocal()
+    try:
+        summary = IngestionService(db).run_ingestion()
+        logger.info("Price ingestion complete: %s", summary)
+        if summary["errors"] and not summary["records_stored"]:
+            raise RuntimeError("Price ingestion failed for all configured sources")
+    finally:
+        db.close()
 
 
 def run_weather_ingestion():
     """Fetch weather data from Open-Meteo / NASA POWER."""
+    from app.config import settings
+    from app.database import SessionLocal
+    from app.services.weather_service import WeatherService
+
     logger.info("Running weather ingestion...")
-    # TODO: Import and call weather service
-    logger.info("Weather ingestion complete.")
+    db = SessionLocal()
+    try:
+        stored = WeatherService(db).ingest_forecast(settings.DEFAULT_DISTRICT, days=7)
+        logger.info("Weather ingestion complete: stored %s forecast entries", stored)
+    finally:
+        db.close()
 
 
 def run_predictions():
@@ -131,6 +148,24 @@ def main():
 
     # Daily at 6 AM IST — prices
     scheduler.add_job(run_price_ingestion, "cron", hour=6, minute=0, id="price_ingestion")
+
+    # OGD/CEDA publish daily mandi observations rather than exchange ticks. Recheck
+    # during market hours so the dashboard picks up new observations after publication.
+    if settings.OGD_API_KEY or settings.CEDA_API_KEY:
+        scheduler.add_job(
+            run_price_ingestion,
+            "cron",
+            hour="10,13,16",
+            minute=0,
+            day_of_week="mon-fri",
+            id="price_ingestion_market_hours",
+            max_instances=1,
+            coalesce=True,
+        )
+    else:
+        logger.warning(
+            "No live mandi API credentials configured; market-hour price refresh is disabled"
+        )
 
     # Daily at 7 AM IST — predictions (after fresh prices)
     scheduler.add_job(run_predictions, "cron", hour=7, minute=0, id="predictions")

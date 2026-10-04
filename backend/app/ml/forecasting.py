@@ -6,6 +6,7 @@ Fallback Engine: Robust Empirical Rolling Median Baseline for sparse series (< 3
 
 import logging
 import os
+import tempfile
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
@@ -29,7 +30,7 @@ from app.models.prediction import Prediction
 
 logger = logging.getLogger(__name__)
 
-MODELS_DIR = "/tmp/fpolink_models"
+MODELS_DIR = os.environ.get("MODELS_DIR", os.path.join(tempfile.gettempdir(), "fpolink_models"))
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 

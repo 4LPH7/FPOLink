@@ -13,6 +13,7 @@ To ensure complete transparency and prevent unverified mock or assumed data from
 | `backend/tests/fixtures/ogd_turmeric_response_synthetic.json` | **Synthetic** | [data.gov.in](https://data.gov.in/) Resource `9ef84268-d588-465a-a308-a864a43d0070` | 2026-09-20 | Modeled on the documented Agmarknet daily mandi JSON schema (Tamil Nadu, Erode: Turmeric & Banana). Used strictly for unit testing parser field extraction, variety extraction, and price unit conversions. **Not real market quotes.** |
 | `backend/tests/fixtures/ceda_sample_tamilnadu_synthetic.csv` | **Synthetic** | [CEDA Agri Market Data](https://agrimarket.ceda.ashoka.edu.in/) | 2026-09-20 | Modeled on CEDA historical CSV export schema (columns: State, District, Market, Commodity, Variety, Grade, Min/Max/Modal, Date, Arrival). Hand-crafted multi-month sample for testing CEDA parser and deduplication logic. **Not real market quotes.** |
 | `ml/datasets/ceda_sample_tamilnadu_synthetic.csv` | **Synthetic (Sample)** | Internal test suite | 2026-09-20 | Sample file for developer onboarding and dry-run backfills. Tagged automatically with `source='ceda_synthetic'`. |
+| Development seed market prices (`backend/scripts/seed.py`) | **Synthetic** | Local development seed | 2026-10-03 | Short illustrative Erode series tagged `demo_seed`; it is not an Agmarknet observation or proof of live coverage. |
 
 ---
 
@@ -35,8 +36,8 @@ To protect ML forecasting pipelines and analytics from contamination by syntheti
      (crop_id, market_id, variety_id, price_date, source)
      ```
    - Because `source` is part of the unique identity, `ceda_synthetic` rows are stored separately and will never overwrite, merge with, or mask verified `ceda` or `ogd` observations.
-4. **ML Training Filter**:
-   - ML training queries strictly filter on `WHERE source IN ('ceda', 'ogd')` and exclude `source LIKE '%synthetic%'`.
+4. **ML and Farmer-Facing Filter**:
+   - Provider queries use the `ceda`, `ogd`, and `agmarknet` allowlist. Unknown and development sources such as `demo_seed` are excluded.
 
 ---
 

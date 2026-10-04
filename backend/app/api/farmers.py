@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.farmer import Farmer
 from app.models.fpo import FPO
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.farmer import (
     FarmerCreate,
     FarmerListResponse,
@@ -32,7 +32,10 @@ router = APIRouter(prefix="/api/farmers", tags=["farmers"])
 
 def _enforce_farmer_fpo_scope(db: Session, current_user: User, fpo_id: UUID) -> None:
     """Ensure fpo_staff can only access farmers within their permitted FPOs. Admin has global access."""
-    if current_user.role == UserRole.ADMIN or current_user.role.value == "admin":
+    role = (
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    )
+    if role in ("admin", "state_admin"):
         return
 
     permitted_fpos = {
@@ -54,9 +57,15 @@ def create(
     fpo_id: str,
     data: FarmerCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
+    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
 ):
     """Register a new farmer under an FPO with normalised phone."""
+    try:
+        target_fpo_id = UUID(fpo_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid FPO UUID")
+    _enforce_farmer_fpo_scope(db, current_user, target_fpo_id)
+
     try:
         norm_phone = normalise_phone(data.phone)
     except ValueError as e:
@@ -74,7 +83,7 @@ def create(
             detail="Phone number already registered",
         )
 
-    user, farmer = create_farmer(db, UUID(fpo_id), data)
+    user, farmer = create_farmer(db, target_fpo_id, data)
     return FarmerResponse(
         id=str(farmer.id),
         user_id=str(user.id),
@@ -102,10 +111,15 @@ def list_all(
     page_size: int = Query(default=20, ge=1, le=100),
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
+    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
 ):
     """List farmers for an FPO with pagination and search."""
-    farmers, total = list_farmers(db, UUID(fpo_id), page, page_size, search)
+    try:
+        target_fpo_id = UUID(fpo_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid FPO UUID")
+    _enforce_farmer_fpo_scope(db, current_user, target_fpo_id)
+    farmers, total = list_farmers(db, target_fpo_id, page, page_size, search)
 
     return FarmerListResponse(
         farmers=[
@@ -139,7 +153,7 @@ def list_all(
 def get_one(
     farmer_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
+    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
 ):
     """Get farmer details."""
     farmer = get_farmer(db, UUID(farmer_id))
@@ -171,7 +185,7 @@ def update(
     farmer_id: str,
     data: FarmerUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "fpo_staff"])),
+    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
 ):
     """Update farmer details."""
     target_farmer = get_farmer(db, UUID(farmer_id))

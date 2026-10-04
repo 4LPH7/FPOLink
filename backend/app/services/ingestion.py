@@ -54,6 +54,18 @@ class IngestionService:
         total_errors = 0
         error_details = []
 
+        if source:
+            selected_provider = self.registry.get_provider(source)
+            providers_available = bool(selected_provider and selected_provider.is_available())
+        else:
+            providers_available = any(
+                provider.is_available() for provider in self.registry.providers
+            )
+        if not providers_available:
+            total_errors += 1
+            error_details.append("No configured price data provider is currently available")
+            logger.error(error_details[-1])
+
         # Create IngestionRun telemetry record
         ingestion_run = IngestionRun(
             source_code=source or "auto",
@@ -95,6 +107,11 @@ class IngestionService:
                         err_msg = f"Error ingesting {crop_name}/{district} from {provider.source_name}: {e}"
                         error_details.append(err_msg)
                         logger.error(err_msg)
+
+        if total_fetched == 0 and total_errors == 0:
+            total_errors = 1
+            error_details.append("Configured providers returned no price records")
+            logger.warning(error_details[-1])
 
         duration = (datetime.now(timezone.utc) - start_time).total_seconds()
 

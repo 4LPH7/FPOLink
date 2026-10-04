@@ -71,14 +71,14 @@ export default function WhatsAppPage() {
     refreshData();
   }, []);
 
-  const totalInbound = activity?.total_inbound ?? 0;
-  const totalOutbound = usage?.total_messages ?? (activity?.total_outbound ?? 0);
-  const monthlyCap = usage?.monthly_cap ?? 5000;
-  const deliveryRate = usage ? `${usage.delivery_rate_pct.toFixed(1)}%` : "100.0%";
-  const estCost = usage ? `₹${usage.estimated_cost_inr.toFixed(2)}` : "₹0.00";
+  const totalInbound = activity?.available ? activity.total_inbound : "—";
+  const totalOutbound = usage?.total_messages ?? (activity?.available ? activity.total_outbound : "—");
+  const monthlyCap = usage?.monthly_cap.toLocaleString() ?? "—";
+  const deliveryRate = usage ? `${usage.delivery_rate_pct.toFixed(1)}%` : "—";
+  const estCost = usage ? `₹${usage.estimated_cost_inr.toFixed(2)}` : "—";
   const circuitTripped = usage?.circuit_breaker_tripped ?? false;
 
-  const messages = activity?.inbound_messages || [];
+  const messages = activity?.available ? activity.inbound_messages : [];
 
   return (
     <div className="space-y-6">
@@ -86,20 +86,24 @@ export default function WhatsAppPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-            {lang === "ta" ? "வாட்ஸ்அப் போட் நேரலை கண்காணிப்பு" : "WhatsApp Bot Live Activity Monitor"}
+            {lang === "ta" ? "வாட்ஸ்அப் செயல்பாடு" : "WhatsApp activity"}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {lang === "ta"
-              ? "உள்வரும் செய்திகள், உரையாடல் நிலைகள் மற்றும் தானியங்கி எச்சரிக்கைகளின் நேரலை பார்வை."
-              : "Read-only staff visibility into inbound webhooks, conversation state, and delivery telemetry."}
+              ? "உள்வரும் செய்திகள், சேவை அமைப்பு மற்றும் வழங்கல் அளவீடுகள்."
+              : "Inbound message records, service configuration and reported delivery metrics."}
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant={circuitTripped ? "destructive" : "success"}>
-            <Radio className={`w-2.5 h-2.5 mr-1 ${circuitTripped ? "text-destructive" : "text-emerald-600 animate-pulse"}`} />
-            {circuitTripped
-              ? (lang === "ta" ? "சுற்று முறிப்பான் இயக்கப்பட்டது" : "CIRCUIT BREAKER TRIPPED")
-              : (lang === "ta" ? "போட் இயங்குகிறது" : "WHATSAPP_ENABLED=true")}
+          <Badge variant={!activity?.available ? "outline" : circuitTripped ? "destructive" : activity.enabled ? "success" : "secondary"}>
+            <Radio className={`size-3 mr-1 ${!activity?.available ? "text-muted-foreground" : circuitTripped ? "text-destructive" : "text-emerald-600"}`} />
+            {!activity?.available
+              ? (lang === "ta" ? "நிலை கிடைக்கவில்லை" : "STATUS UNAVAILABLE")
+              : circuitTripped
+                ? (lang === "ta" ? "சுற்று முறிப்பான் இயக்கப்பட்டது" : "CIRCUIT BREAKER TRIPPED")
+                : activity.enabled
+                  ? (lang === "ta" ? "செய்தி சேவை இயக்கப்பட்டுள்ளது" : "MESSAGING ENABLED")
+                  : (lang === "ta" ? "செய்தி சேவை நிறுத்தப்பட்டது" : "MESSAGING DISABLED")}
           </Badge>
 
           {/* Kill Switch Runbook Drawer */}
@@ -187,8 +191,8 @@ export default function WhatsAppPage() {
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
             {lang === "ta"
-              ? "PostgreSQL-இல் பதிவுசெய்யப்பட்ட நேரலை செய்திகள்"
-              : "Live messages persisted in database"}
+              ? "WhatsApp செயல்பாட்டு API வழங்கிய உள்வரும் பதிவுகள்"
+              : "Inbound records returned by the WhatsApp activity API"}
           </CardContent>
         </Card>
 
@@ -196,7 +200,7 @@ export default function WhatsAppPage() {
           <CardHeader className="pb-2">
             <CardDescription>{lang === "ta" ? "வெளிச்செல்லும் செய்திகள் / வரம்பு" : "Outbound Messages / Cap"}</CardDescription>
             <CardTitle className="text-2xl font-extrabold text-foreground">
-              {totalOutbound} <span className="text-sm font-normal text-muted-foreground">/ {monthlyCap.toLocaleString()}</span>
+              {totalOutbound} <span className="text-sm font-normal text-muted-foreground">/ {monthlyCap}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
@@ -219,12 +223,12 @@ export default function WhatsAppPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>{lang === "ta" ? "தானியங்கி துடைப்பான் சுழற்சி" : "At-Least-Once Sweep"}</CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-emerald-700">
-              {circuitTripped ? "HALTED" : "ACTIVE"}
+            <CardTitle className="text-2xl font-extrabold text-foreground">
+              {usage ? (circuitTripped ? "HALTED" : (lang === "ta" ? "தெரிவிக்கப்படவில்லை" : "Not reported")) : "—"}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            {lang === "ta" ? "10 நிமிட பின்னணி பணி" : "Periodic 10-minute worker cron job"}
+            {lang === "ta" ? "தொழிலாளர் பணி நிலை API-ல் இல்லை" : "Worker health is not exposed by the API"}
           </CardContent>
         </Card>
       </div>
@@ -237,8 +241,8 @@ export default function WhatsAppPage() {
           </CardTitle>
           <CardDescription>
             {lang === "ta"
-              ? "DPDP விதிகளின்படி உழவர் தொலைபேசி எண்கள் முகமூடி செய்யப்பட்டுள்ளன (PII Masking)."
-              : "Direct live stream from PostgreSQL whatsapp_inbound table."}
+              ? "செய்தி ID மற்றும் செயலாக்க விவரங்கள் மட்டுமே இங்கே காட்டப்படும்."
+              : "Message IDs and processing details returned by the WhatsApp activity API."}
           </CardDescription>
         </CardHeader>
         <CardContent>

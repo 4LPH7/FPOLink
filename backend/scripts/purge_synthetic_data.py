@@ -26,11 +26,11 @@ def purge_and_hydrate():
         print("FPOLink TN — Purging Synthetic & Demo Test Data")
         print("=" * 60)
 
-        # 1. Purge synthetic / seed_demo market prices
+        # 1. Purge synthetic / demo market prices
         deleted_prices = (
             db.query(MarketPrice)
             .filter(
-                (MarketPrice.source == "seed_demo")
+                (MarketPrice.source.in_(("seed_demo", "demo_seed")))
                 | (MarketPrice.source.like("%synthetic%"))
                 | (MarketPrice.source.like("%sample%"))
             )

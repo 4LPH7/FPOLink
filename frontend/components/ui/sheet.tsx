@@ -86,18 +86,21 @@ export function SheetContent({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex" onKeyDown={(event) => event.key === "Escape" && context.onOpenChange(false)}>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-in fade-in-0"
+        className="sheet-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => context.onOpenChange(false)}
         aria-hidden="true"
       />
 
       {/* Drawer surface */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
         className={cn(
-          "fixed z-50 bg-background p-6 shadow-xl transition ease-in-out duration-300 animate-in slide-in-from-left",
+          "sheet-panel fixed z-50 overflow-y-auto bg-background p-6 shadow-2xl",
           sideVariants[side],
           className
         )}
@@ -105,6 +108,7 @@ export function SheetContent({
         <button
           type="button"
           onClick={() => context.onOpenChange(false)}
+          aria-label="Close navigation menu"
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <X className="h-5 w-5" />

@@ -24,9 +24,28 @@ from app.models.variety import Variety
 from app.services.auth import hash_password
 from app.services.weather_service import WeatherService
 
+DEMO_PRICE_SOURCE = "demo_seed"
+
+
+def _development_password(environment_variable: str) -> str:
+    password = os.environ.get(environment_variable, "").strip()
+    if len(password) < 12:
+        raise RuntimeError(
+            f"Set {environment_variable} to a unique password of at least 12 characters "
+            "before creating development seed users."
+        )
+    return password
+
 
 def seed_data():
     """Seed the database with initial reference data."""
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    if env != "development":
+        raise RuntimeError(
+            "seed.py loads synthetic demo users and prices; "
+            "run it only with ENVIRONMENT=development"
+        )
+
     # Ensure all tables exist
     Base.metadata.create_all(bind=engine)
 
@@ -40,32 +59,14 @@ def seed_data():
         admin_phone = "9999900000"
         admin = db.query(User).filter(User.phone == admin_phone).first()
         if not admin:
-            env = os.environ.get("ENVIRONMENT", "development").lower()
-            admin_password = os.environ.get("SEED_ADMIN_PASSWORD")
-            if not admin_password:
-                if env != "development":
-                    import secrets
-
-                    admin_password = secrets.token_urlsafe(16)
-                    print("=" * 60)
-                    print(
-                        "! [PRODUCTION SECURITY] No SEED_ADMIN_PASSWORD provided outside development."
-                    )
-                    print(f"! Generated one-time Admin Password: {admin_password}")
-                    print("! Store this password securely now; it will not be displayed again.")
-                    print("=" * 60)
-                else:
-                    admin_password = "admin123"
-                    print(
-                        "! [DEVELOPMENT NOTICE] Using default password 'admin123'. "
-                        "Outside development, set SEED_ADMIN_PASSWORD or a random one will be generated."
-                    )
+            admin_password = _development_password("SEED_ADMIN_PASSWORD")
             admin = User(
                 name="Admin",
                 phone=admin_phone,
                 email="admin@fpolink.local",
                 role=UserRole.ADMIN,
                 hashed_password=hash_password(admin_password),
+                password_change_required=True,
                 is_active=True,
                 language_preference="en",
                 consent_given=True,
@@ -74,12 +75,10 @@ def seed_data():
             db.add(admin)
             db.commit()
             db.refresh(admin)
-            display_pwd = (
-                "admin123"
-                if (env == "development" and admin_password == "admin123")
-                else "[SECURE/GENERATED]"
+            print(
+                "✓ Admin user created. Sign in with the configured seed password "
+                "and change it before using the dashboard."
             )
-            print(f"✓ Admin user created (phone: {admin_phone}, password: {display_pwd})")
         else:
             print("· Admin user already exists")
 
@@ -212,11 +211,13 @@ def seed_data():
         for fd in farmers_data:
             farmer_user = db.query(User).filter(User.phone == fd["phone"]).first()
             if not farmer_user:
+                farmer_password = _development_password("SEED_FARMER_PASSWORD")
                 farmer_user = User(
                     name=fd["name"],
                     phone=fd["phone"],
                     role=UserRole.FARMER,
-                    hashed_password=hash_password("farmer123"),
+                    hashed_password=hash_password(farmer_password),
+                    password_change_required=True,
                     is_active=True,
                     language_preference="ta",
                     consent_given=True,
@@ -236,13 +237,11 @@ def seed_data():
                 )
                 db.add(farmer)
                 db.commit()
-                print(
-                    f"✓ Farmer '{fd['name']}' created (phone: {fd['phone']}, password: farmer123)"
-                )
+                print(f"✓ Farmer '{fd['name']}' created; sign-in requires a password change")
             else:
                 print(f"· Farmer '{fd['name']}' already exists")
 
-        # ─── 7. Market Prices (Verified Agmarknet Erode baseline) ──
+        # ─── 7. Synthetic development-only market price examples ──
         turmeric = crop_objects.get("turmeric")
         banana = crop_objects.get("banana")
         coconut = crop_objects.get("coconut")
@@ -308,11 +307,11 @@ def seed_data():
                         raw_unit="quintal",
                         arrival_quantity=1450.0 - (pd_item["days_ago"] * 40),
                         price_date=price_date,
-                        source="agmarknet",
+                        source=DEMO_PRICE_SOURCE,
                     )
                     db.add(mp)
                     db.commit()
-                    print(f"✓ Turmeric price for {price_date}: ₹{modal}/kg (Agmarknet)")
+                    print(f"✓ Demo turmeric price for {price_date}: ₹{modal}/kg (synthetic)")
                 else:
                     print(f"· Turmeric price for {price_date} already exists")
 
@@ -338,11 +337,11 @@ def seed_data():
                     raw_unit="quintal",
                     arrival_quantity=850.0,
                     price_date=today,
-                    source="agmarknet",
+                    source=DEMO_PRICE_SOURCE,
                 )
                 db.add(mp)
                 db.commit()
-                print(f"✓ Banana price for {today}: ₹29.50/kg (Agmarknet)")
+                print(f"✓ Demo banana price for {today}: ₹29.50/kg (synthetic)")
 
         if coconut and erode_mandi:
             existing = (
@@ -366,11 +365,11 @@ def seed_data():
                     raw_unit="unit",
                     arrival_quantity=3200.0,
                     price_date=today,
-                    source="agmarknet",
+                    source=DEMO_PRICE_SOURCE,
                 )
                 db.add(mp)
                 db.commit()
-                print(f"✓ Coconut price for {today}: ₹28.00/unit (Agmarknet)")
+                print(f"✓ Demo coconut price for {today}: ₹28.00/unit (synthetic)")
 
         # ─── 8. Weather Data (Live Open-Meteo 7-day forecast) ────
         try:

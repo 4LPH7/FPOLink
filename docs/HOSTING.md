@@ -124,11 +124,11 @@ Set the following production values:
 ```dotenv
 # Environment & Security
 ENVIRONMENT=production
-SECRET_KEY=<generate_random_32_char_secret_key>
+SECRET_KEY=<generate_at_least_32_random_characters>
 
 # Database Credentials
 POSTGRES_USER=fpolink_prod
-POSTGRES_PASSWORD=<generate_strong_db_password>
+POSTGRES_PASSWORD=<at_least_16_random_URL_safe_characters>
 POSTGRES_DB=fpolink_prod
 POSTGRES_PORT=5432
 DATABASE_URL=postgresql+psycopg://fpolink_prod:<generate_strong_db_password>@postgres:5432/fpolink_prod
@@ -144,12 +144,27 @@ WHATSAPP_BOT_PHONE=919876543210
 # Cloudflare Tunnel Token
 CLOUDFLARE_TUNNEL_TOKEN=<token_copied_from_cloudflare_dashboard>
 
-# Frontend Public API URL
-NEXT_PUBLIC_API_URL=https://api.yourfpo.org
+# Browser API calls use the same-origin Next.js proxy. The tunnel routes the app to frontend:3000.
 
 # Optional Sentry Error Monitoring
 SENTRY_DSN=https://<key>@sentry.io/<project>
 ```
+
+## Netlify frontend deployment
+
+Netlify can host the Next.js staff dashboard, but the FastAPI service and PostgreSQL database must remain on a separate host. The repository-root `netlify.toml` selects `frontend/`, builds with `npm run build`, and publishes the Next.js output through Netlify's Next.js runtime.
+
+Set the following site build variable in Netlify:
+
+```text
+API_INTERNAL_URL=https://api.yourfpo.org
+```
+
+Use the HTTPS origin only; the Next.js rewrite appends `/api/...` and proxies browser requests through the same Netlify origin. This avoids browser CORS configuration for the Netlify hostname. Do not set `NEXT_PUBLIC_API_URL` on Netlify, and do not put Kite API secrets or access tokens in any `NEXT_PUBLIC_*` variable. Netlify builds do not load the repository's `.env` file. The build intentionally fails if the API proxy origin is missing or is not HTTPS.
+
+Netlify's automatically maintained Next.js adapter supports App Router pages and rewrites. The Docker image uses Next.js standalone output separately; Netlify builds use the adapter-managed output.
+
+When OGD or CEDA credentials are configured on the backend, its worker also checks the daily mandi feeds at 10:00, 13:00, and 16:00 IST on weekdays, in addition to the existing 06:00 run. The dashboard checks the API every minute and shows the observation date from the source. These are refreshed daily mandi observations, not intraday exchange ticks. Kite Connect's WebSocket is for exchange instruments and requires server-side authentication; it is not interchangeable with Agmarknet mandi spot prices.
 
 ---
 
@@ -171,11 +186,14 @@ All containers should be `Up` and healthy:
 - `fpolink-frontend-1`
 - `fpolink-tunnel-1`
 
-### Run Database Migrations & Initial Seed:
+### Run Migrations, Reference Data, and Admin Provisioning:
 ```bash
 docker compose exec backend alembic upgrade head
-docker compose exec backend python scripts/seed.py
+docker compose exec backend python scripts/seed_statewide_foundation.py
+docker compose exec -it backend python scripts/provision_admin.py
 ```
+
+The `seed.py` and `seed_supply_demand.py` scripts contain demo farmer accounts and synthetic prices; they refuse to run when `ENVIRONMENT=production`.
 
 ---
 

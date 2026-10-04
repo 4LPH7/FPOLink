@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role, verify_fpo_access
+from app.api.deps import require_role, verify_fpo_access
 from app.database import get_db
 from app.models.farmer import Farmer
 from app.models.user import User
@@ -58,6 +58,15 @@ def _farm_to_response(farm) -> FarmResponse:
     )
 
 
+def _enforce_farm_scope(farm, user: User) -> None:
+    role = user.role.value if hasattr(user.role, "value") else str(user.role)
+    if role == "farmer":
+        if not farm.farmer or farm.farmer.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this farm")
+    elif not verify_fpo_access(farm.farmer.fpo_id, user):
+        raise HTTPException(status_code=403, detail="Not authorized to access this FPO farm")
+
+
 @router.post("/", response_model=FarmResponse, status_code=status.HTTP_201_CREATED)
 def create(
     data: FarmCreate,
@@ -93,14 +102,27 @@ def list_all(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent", "farmer"])
+    ),
 ):
     """List farm plots with filtering and total acreage."""
     # Scope to FPO if current user is FPO-restricted
     user_role = (
         current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     )
-    if user_role in ("fpo_admin", "fpo_staff") and current_user.fpo_id:
+    if user_role == "farmer":
+        farmer = db.query(Farmer).filter(Farmer.user_id == current_user.id).first()
+        if not farmer:
+            raise HTTPException(status_code=403, detail="Farmer profile not found")
+        if farmer_id and farmer_id != farmer.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this farmer")
+        farmer_id = farmer.id
+    elif user_role in ("fpo_admin", "fpo_staff"):
+        if not current_user.fpo_id:
+            raise HTTPException(status_code=403, detail="FPO assignment required")
+        if fpo_id and fpo_id != current_user.fpo_id:
+            raise HTTPException(status_code=403, detail="Not authorized for this FPO")
         fpo_id = current_user.fpo_id
 
     skip = (page - 1) * page_size
@@ -126,12 +148,15 @@ def list_all(
 def get_one(
     farm_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent", "farmer"])
+    ),
 ):
     """Retrieve details of a single farm plot."""
     farm = get_farm(db, farm_id)
     if not farm:
         raise HTTPException(status_code=404, detail="Farm plot not found")
+    _enforce_farm_scope(farm, current_user)
     return _farm_to_response(farm)
 
 
@@ -179,9 +204,15 @@ def remove(
 def get_yield_estimate(
     farm_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "fpo_admin", "fpo_staff", "field_agent", "farmer"])
+    ),
 ):
     """Compute on-demand rule-based agro-climatic yield estimate for a plot."""
+    farm = get_farm(db, farm_id)
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm plot not found")
+    _enforce_farm_scope(farm, current_user)
     est = estimate_farm_yield(db, farm_id)
     if not est:
         raise HTTPException(status_code=404, detail="Farm plot not found or crop undefined")

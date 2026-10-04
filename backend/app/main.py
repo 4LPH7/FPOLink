@@ -82,7 +82,8 @@ def health_check():
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"status": "ok", "service": "fpolink-api", "version": "0.1.0", "db": "ok"}
-    except Exception as exc:
+    except Exception:
+        logger.exception("Health check database connection failed")
         return JSONResponse(
             status_code=503,
             content={
@@ -90,6 +91,5 @@ def health_check():
                 "service": "fpolink-api",
                 "version": "0.1.0",
                 "db": "error",
-                "detail": str(exc),
             },
         )

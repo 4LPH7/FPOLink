@@ -72,6 +72,7 @@ export default function PricesPage() {
   const [activeTab, setActiveTab] = useState<"rates" | "forecast" | "arbitrage">("rates");
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [lastPricesCheck, setLastPricesCheck] = useState<Date | null>(null);
 
   const loadData = async (district = selectedDistrict) => {
     setIsRefreshing(true);
@@ -84,6 +85,7 @@ export default function PricesPage() {
       setDistricts(districtsData);
       setPrices(pricesData);
       setCrops(cropsData);
+      setLastPricesCheck(new Date());
 
       // Load initial history, forecast, and arbitrage
       await loadIntelligenceData(activeChartCrop, cropsData, pricesData, district);
@@ -131,6 +133,37 @@ export default function PricesPage() {
 
   useEffect(() => {
     loadData(selectedDistrict);
+  }, [selectedDistrict]);
+
+  useEffect(() => {
+    let active = true;
+    let inFlight = false;
+
+    const refreshPrices = async () => {
+      if (!active || inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      try {
+        const latest = await getLatestPrices(selectedDistrict);
+        if (active) {
+          setPrices(latest);
+          setLastPricesCheck(new Date());
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const interval = window.setInterval(() => void refreshPrices(), 60_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshPrices();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [selectedDistrict]);
 
   const handleChartCropChange = async (cropName: string) => {
@@ -198,9 +231,16 @@ export default function PricesPage() {
             </select>
           </div>
 
-          <Badge variant="success" className="text-xs">
-            {lang === "ta" ? "Agmarknet நேரலை" : "Agmarknet Live"}
+          <Badge variant="outline" className="max-w-[220px] truncate text-xs">
+            {prices[0]
+              ? `${prices[0].source} · ${prices[0].price_date}`
+              : (lang === "ta" ? "சந்தைத் தரவு இல்லை" : "No market records")}
           </Badge>
+          <span className="text-[11px] text-muted-foreground" aria-live="polite">
+            {lastPricesCheck
+              ? `${lang === "ta" ? "சரிபார்த்த நேரம்" : "Checked"} ${lastPricesCheck.toLocaleTimeString(lang === "ta" ? "ta-IN" : "en-IN", { hour: "2-digit", minute: "2-digit" })} · 1 min`
+              : (lang === "ta" ? "ஒவ்வொரு நிமிடமும் புதுப்பிக்கிறது" : "Auto-checks every minute")}
+          </span>
           <Button
             variant="outline"
             size="sm"
@@ -310,7 +350,7 @@ export default function PricesPage() {
       </div>
 
       {/* Mode Navigation Tabs */}
-      <div className="flex border-b border-border space-x-6 text-sm font-medium">
+      <div className="flex flex-wrap gap-x-6 border-b border-border text-sm font-medium">
         <button
           onClick={() => setActiveTab("rates")}
           className={`pb-3 flex items-center space-x-2 border-b-2 transition-colors ${
@@ -320,7 +360,7 @@ export default function PricesPage() {
           }`}
         >
           <BarChart2 className="w-4 h-4" />
-          <span>{lang === "ta" ? "நேரலை மண்டி விலைகள்" : "Live Mandi Rates"}</span>
+          <span>{lang === "ta" ? "சமீபத்திய மண்டி விலைகள்" : "Latest mandi records"}</span>
         </button>
 
         <button
@@ -351,7 +391,7 @@ export default function PricesPage() {
         </button>
       </div>
 
-      {/* TAB 1: Live Rates & Historical Chart */}
+      {/* TAB 1: Latest rates & historical chart */}
       {activeTab === "rates" && (
         <>
           <Card>
@@ -388,7 +428,7 @@ export default function PricesPage() {
             <CardContent>
               {chartData.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-                  {lang === "ta" ? "வரலாற்று தரவுகள் ஏற்றப்படுகின்றன..." : "Loading historical price trend..."}
+                  {lang === "ta" ? "இந்த சந்தைக்கு வரலாற்று விலைத் தரவு இல்லை." : "No historical prices available for this crop and market."}
                 </div>
               ) : (
                 <div className="h-64 w-full">
@@ -426,8 +466,8 @@ export default function PricesPage() {
                 </CardTitle>
                 <CardDescription>
                   {lang === "ta"
-                    ? "நேரலை மண்டி விலைகள் மற்றும் மாதிரி விலை விவரங்கள்."
-                    : "Live verified price records from official agricultural market committees."}
+                    ? "சமீபத்திய விலைப் பதிவுகள் மற்றும் விலை விவரங்கள்."
+                    : "Latest available market records and price details."}
                 </CardDescription>
               </div>
               {/* Crop Filter Buttons */}

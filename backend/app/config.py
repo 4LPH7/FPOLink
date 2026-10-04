@@ -1,4 +1,5 @@
 from typing import List, Optional
+from urllib.parse import unquote, urlsplit
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,10 +29,25 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
         if self.ENVIRONMENT.lower() == "production":
-            if self.SECRET_KEY == "change-me-in-production":
+            placeholder_markers = ("change-me", "placeholder", "example", "replace-me", "default")
+            if len(self.SECRET_KEY) < 32 or any(
+                marker in self.SECRET_KEY.lower() for marker in placeholder_markers
+            ):
                 raise ValueError(
-                    "FATAL SECURITY ERROR: SECRET_KEY is set to default 'change-me-in-production' "
-                    "while ENVIRONMENT is 'production'. The application refuses to start."
+                    "FATAL SECURITY ERROR: production SECRET_KEY must be at least 32 characters "
+                    "and must not contain a placeholder value."
+                )
+            db_password = unquote(urlsplit(self.DATABASE_URL).password or "")
+            if len(db_password) < 16 or db_password.lower() in {
+                "fpolink",
+                "password",
+                "postgres",
+                "admin",
+                "changeme",
+            }:
+                raise ValueError(
+                    "FATAL SECURITY ERROR: production database password must be at least "
+                    "16 characters and must not be a common default."
                 )
             if self.WHATSAPP_ENABLED:
                 missing_wa = []

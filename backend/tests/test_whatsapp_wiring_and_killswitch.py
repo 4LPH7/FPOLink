@@ -15,6 +15,7 @@ def test_production_refuses_missing_whatsapp_secrets():
         Settings(
             ENVIRONMENT="production",
             SECRET_KEY="a" * 64,
+            DATABASE_URL="postgresql+psycopg://fpolink:ci-database-password-123@localhost/fpolink",
             WHATSAPP_ENABLED=True,
             WHATSAPP_VERIFY_TOKEN="",
             WHATSAPP_APP_SECRET="",
@@ -28,6 +29,7 @@ def test_production_allows_disabled_whatsapp_without_secrets():
     cfg = Settings(
         ENVIRONMENT="production",
         SECRET_KEY="a" * 64,
+        DATABASE_URL="postgresql+psycopg://fpolink:ci-database-password-123@localhost/fpolink",
         WHATSAPP_ENABLED=False,
     )
     assert cfg.WHATSAPP_ENABLED is False
@@ -38,6 +40,7 @@ def test_production_accepts_valid_whatsapp_secrets():
     cfg = Settings(
         ENVIRONMENT="production",
         SECRET_KEY="a" * 64,
+        DATABASE_URL="postgresql+psycopg://fpolink:ci-database-password-123@localhost/fpolink",
         WHATSAPP_ENABLED=True,
         WHATSAPP_VERIFY_TOKEN="super_secure_verify_token_12345",
         WHATSAPP_APP_SECRET="super_secure_app_secret_12345",
