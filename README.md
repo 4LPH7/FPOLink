@@ -230,3 +230,22 @@ The CI workflow applies migrations, seeds the required reference data, runs the 
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+## Free deployment (Render + Vercel)
+
+**Backend (Render):** New → Blueprint → select this repo. `render.yaml` creates the
+`fpolink-api` web service and a free PostgreSQL database. In the dashboard set:
+- `TELEGRAM_BOT_TOKEN` – token from @BotFather (secret, never commit)
+- `CORS_ORIGINS` – your Vercel URL (any `*.vercel.app` origin is also allowed by regex)
+
+Migrations run on every start (`alembic upgrade head`). Demo data: open the Render shell and run
+`python scripts/seed_statewide_foundation.py` (prices tagged `demo_seed` are only served while `DEMO_MODE=true`).
+
+**Frontend (Vercel):** Import repo, Root Directory `frontend`, env var
+`API_INTERNAL_URL=https://<your-render-service>.onrender.com`. `/api/*` is proxied to the backend.
+
+**Telegram:** see `docs/TELEGRAM_SETUP.md`. **WhatsApp:** disabled (`WHATSAPP_ENABLED=false`).
+
+**Local dev:** `DATABASE_URL=sqlite:///./fpolink.db` works for quick runs; PostgreSQL in production.
+
+**To-do module:** `/api/tasks` (list/summary/create/update/delete, FPO-scoped).
