@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin
 
 TASK_STATUSES = ("todo", "in_progress", "done")
-TASK_PRIORITIES = ("low", "medium", "high")
+TASK_PRIORITIES = ("low", "medium", "high", "urgent")
 
 
 class Task(Base, TimestampMixin):

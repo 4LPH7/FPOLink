@@ -110,6 +110,14 @@ def update_task(
 ):
     task = _get(db, task_id, user)
     changes = payload.model_dump(exclude_unset=True)
+    if "farmer_id" in changes and changes["farmer_id"] is not None:
+        farmer = db.query(Farmer).filter(Farmer.id == changes["farmer_id"]).first()
+        if farmer is None:
+            raise HTTPException(status_code=404, detail="Farmer not found")
+        if task.fpo_id and farmer.fpo_id != task.fpo_id:
+            raise HTTPException(status_code=403, detail="Farmer belongs to another FPO")
+        if not verify_fpo_access(farmer.fpo_id, user):
+            raise HTTPException(status_code=403, detail="Farmer belongs to another FPO")
     for key, value in changes.items():
         setattr(task, key, value)
     if "status" in changes:

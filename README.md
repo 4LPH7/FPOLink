@@ -140,6 +140,37 @@ docker compose exec backend python scripts/seed_statewide_foundation.py
 
 Both seed scripts are **100% idempotent** and safe to execute repeatedly without duplicating records.
 
+### 4. Create the First Admin
+To bootstrap an administrator account in any environment (`development`, `staging`, or `production`):
+
+```bash
+# Set credentials in environment variables (never commit secrets to version control)
+export ADMIN_PHONE="8072845239"
+export ADMIN_PASSWORD="ChooseAStrongPassword@123"
+export ADMIN_NAME="Chief Administrator"         # optional, defaults to "Admin"
+export ADMIN_FPO_NAME="Erode Farmers Collective" # optional, defaults to "Erode Farmers Collective"
+
+# Execute the admin creation script:
+python backend/scripts/create_admin.py
+```
+
+On Windows PowerShell:
+```powershell
+$env:ADMIN_PHONE = "8072845239"
+$env:ADMIN_PASSWORD = "ChooseAStrongPassword@123"
+python backend\scripts\create_admin.py
+```
+
+Or via Docker Compose:
+```bash
+docker compose exec -e ADMIN_PHONE="8072845239" -e ADMIN_PASSWORD="StrongPassword@123" backend python scripts/create_admin.py
+```
+
+- **Idempotent**: If the admin phone already exists, it securely updates credentials and links.
+- **Argon2id Hashing**: Uses the application's built-in OWASP-compliant password hashing; plain-text passwords are never logged or stored.
+- **Auto-FPO Provisioning**: Creates and links an initial FPO if none exists.
+- **Login Identifier**: Authentication at `/api/auth/login` uses the administrator's `phone` and `password`.
+
 ---
 
 ## Service Endpoints

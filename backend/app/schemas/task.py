@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 TaskStatus = Literal["todo", "in_progress", "done"]
-TaskPriority = Literal["low", "medium", "high"]
+TaskPriority = Literal["low", "medium", "high", "urgent"]
 TaskCategory = Literal["general", "harvest", "procurement", "farmer_visit", "buyer", "data"]
 
 

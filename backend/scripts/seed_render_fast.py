@@ -4,12 +4,14 @@ Imports data from seed_statewide_foundation.py but does bulk inserts
 with single transactions rather than per-row commits.
 Run with: python backend/scripts/seed_render_fast.py
 """
+
+# ruff: noqa: E402
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -21,22 +23,21 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
 # Import all data constants from the foundation script
-from scripts.seed_statewide_foundation import (
-    TN_DISTRICTS,
-    TALUKS_BY_DISTRICT,
-    TIER_A_CROPS,
-    STATEWIDE_MARKETS,
-    DATA_SOURCES,
-)
-
-from app.models.geography import State, District, Taluk
 from app.models.crop import Crop
 from app.models.crop_alias import CropAlias
-from app.models.variety import Variety
-from app.models.variety_alias import VarietyAlias
+from app.models.data_quality import DataSource
+from app.models.geography import District, State, Taluk
 from app.models.market import Market
 from app.models.market_alias import MarketAlias
-from app.models.data_quality import DataSource
+from app.models.variety import Variety
+from app.models.variety_alias import VarietyAlias
+from scripts.seed_statewide_foundation import (
+    DATA_SOURCES,
+    STATEWIDE_MARKETS,
+    TALUKS_BY_DISTRICT,
+    TIER_A_CROPS,
+    TN_DISTRICTS,
+)
 
 
 def run():
@@ -77,9 +78,7 @@ def run():
         print(f"✓ Districts: {len(TN_DISTRICTS)} total ({len(new_districts)} new)")
 
         # ── 3. Taluks (batch) ──────────────────────────────────────
-        existing_taluks = set(
-            (t.name, str(t.district_id)) for t in db.query(Taluk).all()
-        )
+        existing_taluks = set((t.name, str(t.district_id)) for t in db.query(Taluk).all())
         taluks_created = 0
         for dist_name, taluks in TALUKS_BY_DISTRICT.items():
             dist_obj = district_map.get(dist_name)
@@ -96,12 +95,7 @@ def run():
 
         # ── 4. Crops & varieties (batch) ───────────────────────────
         existing_crops = {c.name: c for c in db.query(Crop).all()}
-        existing_aliases = set(
-            (str(a.crop_id), a.alias) for a in db.query(CropAlias).all()
-        )
-        existing_varieties = set(
-            (str(v.crop_id), v.name) for v in db.query(Variety).all()
-        )
+        existing_aliases = set((str(a.crop_id), a.alias) for a in db.query(CropAlias).all())
         crops_created = 0
         for cdata in TIER_A_CROPS:
             if cdata["name"] in existing_crops:
@@ -142,9 +136,7 @@ def run():
 
         # Varieties
         variety_map = {}
-        existing_varieties_objs = {
-            (str(v.crop_id), v.name): v for v in db.query(Variety).all()
-        }
+        existing_varieties_objs = {(str(v.crop_id), v.name): v for v in db.query(Variety).all()}
         varieties_created = 0
         for cdata in TIER_A_CROPS:
             crop = existing_crops[cdata["name"]]
@@ -224,9 +216,7 @@ def run():
             db.refresh(m)
 
         # Market aliases (batch)
-        existing_maliases = set(
-            (str(ma.market_id), ma.alias) for ma in db.query(MarketAlias).all()
-        )
+        existing_maliases = set((str(ma.market_id), ma.alias) for ma in db.query(MarketAlias).all())
         maliases_created = 0
         for mdata in STATEWIDE_MARKETS:
             m = existing_markets.get(mdata["name"])
@@ -250,7 +240,11 @@ def run():
         ds_created = 0
         for ds in DATA_SOURCES:
             if ds["code"] not in existing_ds:
-                db.add(DataSource(name=ds["name"], code=ds["code"], priority=ds["priority"], is_active=True))
+                db.add(
+                    DataSource(
+                        name=ds["name"], code=ds["code"], priority=ds["priority"], is_active=True
+                    )
+                )
                 ds_created += 1
         db.flush()
         print(f"✓ Data Sources: {len(DATA_SOURCES)} ({ds_created} new)")
@@ -263,6 +257,7 @@ def run():
         db.rollback()
         print(f"\n❌ SEED FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
     finally:
