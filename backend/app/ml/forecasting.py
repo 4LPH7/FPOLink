@@ -40,15 +40,22 @@ def load_price_series(
     market_id: UUID,
     limit: int = 365,
 ) -> pd.DataFrame:
-    """Fetch chronological price history for a given crop and market."""
+    """Fetch the most recent `limit` days of price history (chronological, one row per day).
+
+    Only whitelisted sources are used (synthetic rows never train models). Multiple
+    varieties / sources reported on the same day are averaged into one daily observation.
+    """
+    from app.core.sources import REAL_PRICE_SOURCES
+
     records = (
         db.query(MarketPrice)
         .filter(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
+            MarketPrice.source.in_(REAL_PRICE_SOURCES),
         )
-        .order_by(MarketPrice.price_date.asc())
-        .limit(limit)
+        .order_by(MarketPrice.price_date.desc())
+        .limit(limit * 4)
         .all()
     )
 
@@ -68,7 +75,15 @@ def load_price_series(
         }
         for r in records
     ]
-    return pd.DataFrame(data)
+    df = (
+        pd.DataFrame(data)
+        .groupby("price_date", as_index=False)
+        .mean(numeric_only=True)
+        .sort_values("price_date")
+        .tail(limit)
+        .reset_index(drop=True)
+    )
+    return df
 
 
 def compute_forecast_signal(current_price: float, predicted_price: float) -> str:

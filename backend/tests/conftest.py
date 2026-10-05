@@ -47,6 +47,18 @@ def create_tables():
             pass
 
 
+@pytest.fixture(autouse=True)
+def _enable_whatsapp_for_legacy_bot_tests(request, monkeypatch):
+    """WhatsApp ships disabled (Telegram is the farmer channel), but the dormant WhatsApp
+    adapter keeps its regression suite: enable the kill switch for those modules only."""
+    if request.module.__name__.split(".")[-1] in (
+        "test_whatsapp_bot",
+        "test_whatsapp_harvest_flow",
+        "test_whatsapp_onboarding",
+    ):
+        monkeypatch.setattr(settings, "WHATSAPP_ENABLED", True)
+
+
 @pytest.fixture()
 def db():
     """Provide a clean database session for each test."""

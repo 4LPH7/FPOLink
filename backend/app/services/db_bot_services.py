@@ -223,22 +223,88 @@ class DbBotServices:
         return days_old > self.stale_days_threshold
 
     async def forecast_text(self, crop: str, lang: str = "ta") -> Optional[str]:
-        """Return latest ML price forecast for crop."""
+        """Return the 7-day price outlook for a crop (stored prediction, else computed live)."""
+        from app.core.sources import REAL_PRICE_SOURCES
+
         with self.db_factory() as db:
-            pred = (
-                db.query(Prediction)
-                .join(Crop, Prediction.crop_id == Crop.id)
-                .filter(Crop.name.ilike(f"{crop}%"))
-                .order_by(Prediction.created_at.desc())
-                .first()
-            )
-            if not pred:
+            crop_obj = db.query(Crop).filter(Crop.name.ilike(f"{crop}%")).first()
+            if not crop_obj:
                 return None
 
-            quintal_price = pred.predicted_price * Decimal("100")
-            if lang == "ta":
-                return f"{crop.capitalize()} அடுத்த மாத கணிப்பு: ₹{quintal_price:.0f}/குவிண்டால் (நம்பகத்தன்மை: {pred.confidence_lower * Decimal('100'):.0f} - {pred.confidence_upper * Decimal('100'):.0f})"
-            return f"{crop.capitalize()} next month forecast: ₹{quintal_price:.0f}/quintal (range: ₹{pred.confidence_lower * Decimal('100'):.0f} - ₹{pred.confidence_upper * Decimal('100'):.0f})"
+            pred = (
+                db.query(Prediction)
+                .filter(Prediction.crop_id == crop_obj.id)
+                .order_by(Prediction.prediction_date.desc(), Prediction.target_date.desc())
+                .first()
+            )
+            if pred is not None and (date.today() - pred.prediction_date).days <= 7:
+                market = db.query(Market).filter(Market.id == pred.market_id).first()
+                point = {
+                    "predicted_price": float(pred.predicted_price),
+                    "lower_bound": float(pred.lower_bound),
+                    "upper_bound": float(pred.upper_bound),
+                    "target_date": pred.target_date.isoformat(),
+                    "signal": pred.signal or "neutral",
+                }
+                market_name = market.name if market else ""
+            else:
+                # No fresh stored prediction: forecast on demand for the busiest market.
+                from sqlalchemy import func as sa_func
+
+                from app.ml.forecasting import ForecastingService
+
+                row = (
+                    db.query(MarketPrice.market_id, sa_func.count(MarketPrice.id).label("n"))
+                    .filter(
+                        MarketPrice.crop_id == crop_obj.id,
+                        MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                    )
+                    .group_by(MarketPrice.market_id)
+                    .order_by(sa_func.count(MarketPrice.id).desc())
+                    .first()
+                )
+                if not row:
+                    return None
+                points = ForecastingService(db).generate_forecast(
+                    crop_obj.id, row.market_id, horizon_days=7, persist=False
+                )
+                if not points:
+                    return None
+                point = points[-1]
+                market = db.query(Market).filter(Market.id == row.market_id).first()
+                market_name = market.name if market else ""
+
+        q = lambda v: f"{float(v) * 100:,.0f}"  # noqa: E731  (Rs/kg -> Rs/quintal)
+        signal_text = {
+            "en": {
+                "hold": "prices may rise - consider holding",
+                "sell": "prices may fall - consider selling",
+                "neutral": "prices likely stable",
+            },
+            "ta": {
+                "hold": "விலை உயரலாம் - இருப்பு வைக்கலாம்",
+                "sell": "விலை குறையலாம் - விற்கலாம்",
+                "neutral": "விலை நிலையாக இருக்கும்",
+            },
+        }
+        lang_key = "ta" if lang == "ta" else "en"
+        signal = signal_text[lang_key].get(point["signal"], signal_text[lang_key]["neutral"])
+        from app.services.bot import crop_name
+
+        name = crop_name(crop, lang_key)
+        if lang_key == "ta":
+            return (
+                f"📈 {name} 7-நாள் கணிப்பு ({market_name}, {point['target_date']}): "
+                f"₹{q(point['predicted_price'])}/குவிண்டால் "
+                f"(வரம்பு ₹{q(point['lower_bound'])} - ₹{q(point['upper_bound'])}). {signal}.\n"
+                "இது மதிப்பீடு மட்டுமே, ஆலோசனை அல்ல."
+            )
+        return (
+            f"📈 {name} 7-day forecast ({market_name}, {point['target_date']}): "
+            f"₹{q(point['predicted_price'])}/quintal "
+            f"(range ₹{q(point['lower_bound'])} - ₹{q(point['upper_bound'])}). {signal.capitalize()}.\n"
+            "Estimate only, not advice."
+        )
 
     async def weather_text(self, district: str = "Erode", lang: str = "ta") -> Optional[str]:
         """Return latest weather advisory for district."""

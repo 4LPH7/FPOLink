@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sources import REAL_PRICE_SOURCES
 from app.database import get_db
 from app.ml.forecasting import ForecastingService
 from app.models.crop import Crop
@@ -44,14 +45,21 @@ def get_crop_forecast(
     # Fetch latest known price
     latest_price = (
         db.query(MarketPrice)
-        .filter(MarketPrice.crop_id == crop_id, MarketPrice.market_id == market_id)
+        .filter(
+            MarketPrice.crop_id == crop_id,
+            MarketPrice.market_id == market_id,
+            MarketPrice.source.in_(REAL_PRICE_SOURCES),
+        )
         .order_by(MarketPrice.price_date.desc())
         .first()
     )
     current_modal = float(latest_price.modal_price) if latest_price else None
 
     service = ForecastingService(db)
-    points = service.generate_forecast(crop_id=crop_id, market_id=market_id, horizon_days=days)
+    # Read-only endpoint: do not persist a new Prediction row on every page view.
+    points = service.generate_forecast(
+        crop_id=crop_id, market_id=market_id, horizon_days=days, persist=False
+    )
 
     return ForecastResponse(
         crop_id=str(crop.id),

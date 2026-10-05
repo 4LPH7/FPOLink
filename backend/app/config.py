@@ -73,8 +73,8 @@ class Settings(BaseSettings):
             )
         return self
 
-    # WhatsApp Cloud API
-    WHATSAPP_ENABLED: bool = True  # Kill switch
+    # WhatsApp Cloud API (disabled by default: the MVP ships with Telegram as the farmer channel)
+    WHATSAPP_ENABLED: bool = False  # Kill switch
     WHATSAPP_VERIFY_TOKEN: str = ""
     WHATSAPP_APP_SECRET: str = ""
     WHATSAPP_ACCESS_TOKEN: str = ""
@@ -92,8 +92,31 @@ class Settings(BaseSettings):
     WHATSAPP_MAX_CONSECUTIVE_FAILURES: int = 3
     WHATSAPP_PRICE_MOVE_THRESHOLD_PCT: float = 5.0
 
-    # External Services
+    # Database pool (Render free Postgres allows few connections)
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 5
+
+    # Demo mode: serve clearly-labelled demo_seed prices so a fresh test deployment is populated.
+    # Never enable for a real pilot; real sources (ogd/ceda/agmarknet) always take precedence.
+    DEMO_MODE: bool = False
+
+    # Run the APScheduler jobs inside the API process (free hosts without background workers).
+    RUN_SCHEDULER: bool = False
+
+    # Telegram bot (farmer channel)
+    TELEGRAM_ENABLED: bool = True
     TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = "Fpo_Link_Bot"
+    # Secret echoed by Telegram in X-Telegram-Bot-Api-Secret-Token; derived from token if empty.
+    TELEGRAM_WEBHOOK_SECRET: str = ""
+    # Public HTTPS base URL of this API. On Render, RENDER_EXTERNAL_URL is used automatically.
+    PUBLIC_API_URL: str = ""
+    # Register the webhook with Telegram on startup when a public URL is known.
+    TELEGRAM_AUTO_SET_WEBHOOK: bool = True
+    # Auto-create a farmer profile when an unknown Telegram user shares their phone contact.
+    TELEGRAM_AUTO_REGISTER: bool = True
+
+    # External Services
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
     OGD_API_KEY: str = ""  # data.gov.in Open Government Data API key
     CEDA_API_KEY: str = ""  # Centre for Economic Data & Analysis API key
@@ -105,6 +128,8 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
+    # Regex for additional allowed origins (e.g. Vercel preview deployments).
+    CORS_ORIGIN_REGEX: str = r"https://.*\.vercel\.app"
 
     @property
     def default_crops_list(self) -> List[str]:

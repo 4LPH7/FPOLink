@@ -18,6 +18,8 @@ from app.api import (
     harvest,
     predictions,
     prices,
+    tasks,
+    telegram,
     whatsapp,
 )
 from app.api.v1 import router as v1_router
@@ -42,7 +44,35 @@ async def lifespan(app: FastAPI):
         except ImportError:
             logger.warning("sentry-sdk not installed; skipping Sentry initialization")
     logger.info("FPOLink TN API starting...")
+
+    scheduler = None
+    if settings.RUN_SCHEDULER:
+        # Free hosts (Render free tier) have no background workers: run jobs in-process.
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        from app.worker import register_jobs
+
+        scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+        register_jobs(scheduler)
+        scheduler.start()
+        logger.info("In-process scheduler started with %d jobs", len(scheduler.get_jobs()))
+
+    if (
+        settings.TELEGRAM_ENABLED
+        and settings.TELEGRAM_BOT_TOKEN
+        and settings.TELEGRAM_AUTO_SET_WEBHOOK
+        and telegram.public_base_url()
+    ):
+        try:
+            result = await telegram.register_webhook(telegram.get_client())
+            logger.info("Telegram webhook registration: %s", result.get("ok"))
+        except Exception:
+            logger.exception("Telegram webhook registration failed")
+
     yield
+
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -55,6 +85,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,7 +102,9 @@ app.include_router(buyers.router)
 app.include_router(predictions.router)
 app.include_router(admin.router)
 app.include_router(admin_whatsapp.router)
-app.include_router(whatsapp.router)
+app.include_router(whatsapp.router)  # disabled unless WHATSAPP_ENABLED=true
+app.include_router(telegram.router)
+app.include_router(tasks.router)
 app.include_router(v1_router)
 
 

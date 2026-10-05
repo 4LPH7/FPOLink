@@ -139,6 +139,21 @@ def main():
             logger.warning("sentry-sdk not installed; skipping worker Sentry initialization")
 
     scheduler = BlockingScheduler(timezone="Asia/Kolkata")
+    register_jobs(scheduler)
+
+    logger.info("FPOLink Worker started. Scheduled jobs:")
+    for job in scheduler.get_jobs():
+        logger.info(f"  {job.id}: {job.trigger}")
+
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Worker shutting down.")
+
+
+def register_jobs(scheduler) -> None:
+    """Register all scheduled jobs (shared by the worker and the in-API scheduler)."""
+    from app.config import settings
 
     # Daily at 3 AM IST — DPDP data retention purge (T5.3)
     scheduler.add_job(run_data_retention, "cron", hour=3, minute=0, id="data_retention")
@@ -170,23 +185,15 @@ def main():
     # Daily at 7 AM IST — predictions (after fresh prices)
     scheduler.add_job(run_predictions, "cron", hour=7, minute=0, id="predictions")
 
-    # Daily at 7:30 AM IST — WhatsApp price digest (T4.2)
-    scheduler.add_job(run_daily_digest, "cron", hour=7, minute=30, id="whatsapp_daily_digest")
+    if settings.WHATSAPP_ENABLED:
+        # Daily at 7:30 AM IST — WhatsApp price digest (T4.2)
+        scheduler.add_job(run_daily_digest, "cron", hour=7, minute=30, id="whatsapp_daily_digest")
 
-    # Daily at 7:45 AM IST — WhatsApp price-move alerts (T4.3)
-    scheduler.add_job(run_price_alerts, "cron", hour=7, minute=45, id="whatsapp_price_alerts")
+        # Daily at 7:45 AM IST — WhatsApp price-move alerts (T4.3)
+        scheduler.add_job(run_price_alerts, "cron", hour=7, minute=45, id="whatsapp_price_alerts")
 
     # Every 10 minutes — at-least-once inbound sweep (T5.4)
     scheduler.add_job(run_inbound_sweep, "interval", minutes=10, id="inbound_sweep")
-
-    logger.info("FPOLink Worker started. Scheduled jobs:")
-    for job in scheduler.get_jobs():
-        logger.info(f"  {job.id}: {job.trigger}")
-
-    try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Worker shutting down.")
 
 
 if __name__ == "__main__":
