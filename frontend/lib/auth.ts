@@ -54,14 +54,25 @@ export async function login(
   password: string
 ): Promise<LoginResult | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    let res = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, password }),
       cache: "no-store",
-    });
+    }).catch(() => null);
 
-    if (!res.ok) return null;
+    // If proxy failed or returned an error status other than 401/422,
+    // fallback to direct live Render API endpoint (supported by CORS)
+    if (!res || (res.status !== 200 && res.status !== 401 && res.status !== 422)) {
+      res = await fetch("https://fpolink-api.onrender.com/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, password }),
+        cache: "no-store",
+      }).catch(() => null);
+    }
+
+    if (!res || !res.ok) return null;
 
     const data: LoginResult = await res.json();
     saveTokens(data.access_token, data.refresh_token);
@@ -85,7 +96,7 @@ export async function changeRequiredPassword(
   if (!token) return { ok: false };
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+    let res = await fetch(`${API_BASE}/api/auth/change-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -96,7 +107,25 @@ export async function changeRequiredPassword(
         new_password: newPassword,
       }),
       cache: "no-store",
-    });
+    }).catch(() => null);
+
+    if (!res || res.status >= 500) {
+      res = await fetch("https://fpolink-api.onrender.com/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+        cache: "no-store",
+      }).catch(() => null);
+    }
+
+    if (!res) return { ok: false, message: "Network error: unable to reach server" };
+
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return {
