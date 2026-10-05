@@ -21,9 +21,9 @@ def test_statewide_market_coverage_all_38_districts(db):
         .filter(Market.is_active.is_(True))
         .scalar()
     )
-    assert distinct_districts == 38, (
-        f"Expected 38 districts with active markets, found {distinct_districts}"
-    )
+    assert (
+        distinct_districts == 38
+    ), f"Expected 38 districts with active markets, found {distinct_districts}"
 
 
 def test_crop_source_mapping_resolution(db):
