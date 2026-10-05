@@ -13,7 +13,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && (python scripts/create_admin.py || true) && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
@@ -39,4 +39,8 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_PHONE
+        value: "8072845239"
+      - key: ADMIN_PASSWORD
         sync: false

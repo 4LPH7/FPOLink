@@ -25,10 +25,17 @@ const nextConfig = {
       }
     }
 
+    const defaultBackend =
+      process.env.NODE_ENV === "production" || process.env.VERCEL === "1"
+        ? "https://fpolink-api.onrender.com"
+        : "http://localhost:8000";
+
+    const targetUrl = (apiInternalUrl || defaultBackend).replace(/\/+$/, "");
+
     return [
       {
         source: "/api/:path*",
-        destination: `${(apiInternalUrl || "http://localhost:8000").replace(/\/+$/, "")}/api/:path*`,
+        destination: `${targetUrl}/api/:path*`,
       },
     ];
   },
