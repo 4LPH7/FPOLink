@@ -24,7 +24,6 @@ def get_latest_prices(
     min_quality: Optional[float] = None,
 ) -> List[dict]:
     """Get the most recent verified price for each crop in each market."""
-    from app.config import settings
 
     # Subquery for max date per crop/market — whitelisting real sources only
     subq_filters = [MarketPrice.source.in_(REAL_PRICE_SOURCES)]
