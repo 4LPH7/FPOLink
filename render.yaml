@@ -1,0 +1,42 @@
+# Render Blueprint: FastAPI backend + free PostgreSQL.
+# Secrets marked sync:false are entered in the Render dashboard (never committed).
+databases:
+  - name: fpolink-db
+    plan: free
+    databaseName: fpolink
+    user: fpolink
+
+services:
+  - type: web
+    name: fpolink-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fpolink-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: staging
+      - key: DEMO_MODE
+        value: "true"
+      - key: RUN_SCHEDULER
+        value: "true"
+      - key: WHATSAPP_ENABLED
+        value: "false"
+      - key: TELEGRAM_ENABLED
+        value: "true"
+      - key: TELEGRAM_BOT_USERNAME
+        value: Fpo_Link_Bot
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

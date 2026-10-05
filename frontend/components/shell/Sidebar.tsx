@@ -12,13 +12,15 @@ import {
   Sprout,
   Building2,
   GitCompare,
+  ListTodo,
+  Send,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
   href: string;
-  labelKey: "dashboard" | "prices" | "farmers" | "buyers" | "matching" | "admin" | "whatsapp";
+  labelKey: "dashboard" | "prices" | "farmers" | "buyers" | "matching" | "admin" | "whatsapp" | "tasks" | "telegram";
   icon: React.ComponentType<{ className?: string }>;
   badgeKey?: string;
 }
@@ -30,6 +32,8 @@ const navItems: NavItem[] = [
   { href: "/buyers", labelKey: "buyers", icon: Building2 },
   { href: "/matching", labelKey: "matching", icon: GitCompare },
   { href: "/admin", labelKey: "admin", icon: Activity },
+  { href: "/tasks", labelKey: "tasks", icon: ListTodo },
+  { href: "/telegram", labelKey: "telegram", icon: Send },
   { href: "/whatsapp", labelKey: "whatsapp", icon: MessageSquare },
 ];
 

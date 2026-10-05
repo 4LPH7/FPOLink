@@ -6,8 +6,19 @@ farmer-facing responses, dashboard statistics, or ML training pipelines.
 
 from typing import Dict, Set, Tuple
 
+from app.config import settings
+
 # Whitelist of real, verified market price sources
-REAL_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet", "mandiprices_agmarknet")
+VERIFIED_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet", "mandiprices_agmarknet")
+
+# Clearly-labelled demonstration prices (scripts/seed_demo.py). Served ONLY when DEMO_MODE=true
+# so a fresh test deployment has something to show; every response carries source="demo_seed".
+DEMO_PRICE_SOURCE = "demo_seed"
+
+# Sources served by price APIs, the bot and forecasting.
+REAL_PRICE_SOURCES: Tuple[str, ...] = VERIFIED_PRICE_SOURCES + (
+    (DEMO_PRICE_SOURCE,) if settings.DEMO_MODE else ()
+)
 REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
 
 # Deterministic source arbitration priority (lower number = higher priority)
@@ -21,6 +32,8 @@ SOURCE_PRIORITY: Dict[str, int] = {
     "mandiprices_agmarknet": 2,
     "ceda": 3,
 }
+if settings.DEMO_MODE:
+    SOURCE_PRIORITY[DEMO_PRICE_SOURCE] = 50
 
 # Synthetic or unverified sources that MUST NEVER be served to farmers
 SYNTHETIC_SOURCES: Tuple[str, ...] = (
