@@ -706,7 +706,7 @@ export default function MatchingPage() {
                           <p className="text-xs text-muted-foreground flex items-center space-x-3">
                             <span>
                               <MapPin className="w-3 h-3 inline mr-1 text-muted-foreground" />
-                              {cand.village || "Erode"}
+                              {cand.village || (lang === "ta" ? "தமிழ்நாடு" : "Tamil Nadu")}
                             </span>
                             <span>•</span>
                             <span className="font-mono text-xs">

@@ -42,7 +42,7 @@ export default function Navbar({
                   FPOLink <span className="text-green-600">TN</span>
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  {lang === "ta" ? "ஈரோடு மாவட்டம்" : "Erode District"}
+                  {lang === "ta" ? "தமிழ்நாடு முழுவதும்" : "Tamil Nadu Statewide"}
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 font-medium hidden sm:block">

@@ -23,7 +23,7 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
       if (!active || inFlight || document.visibilityState !== "visible") return;
       inFlight = true;
       try {
-        const data = await getLatestPrices("Erode");
+        const data = await getLatestPrices();
         if (active) setPrices(data);
       } catch (err) {
         console.warn("Failed to load prices:", err);
@@ -47,6 +47,8 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
     };
   }, []);
 
+  const availableCrops = Array.from(new Set(prices.map((p) => p.crop_name))).slice(0, 8);
+
   const filteredRows = prices.filter((row) => {
     const matchesSearch =
       row.market_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -54,7 +56,7 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
       (row.crop_tamil_name && row.crop_tamil_name.includes(searchTerm));
 
     if (cropFilter === "all") return matchesSearch;
-    return matchesSearch && row.crop_name.toLowerCase().includes(cropFilter);
+    return matchesSearch && row.crop_name.toLowerCase().includes(cropFilter.toLowerCase());
   });
 
   return (
@@ -65,16 +67,16 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
           <div className="flex items-center space-x-2">
             <h3 className="text-base font-bold text-gray-900 tracking-tight flex items-center">
               <Store className="w-5 h-5 text-emerald-600 mr-2" />
-              {lang === "ta" ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் தினசரி விலை நிலவரம்" : "Erode Mandi Daily Auction Rates"}
+              {lang === "ta" ? "தமிழ்நாடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் தினசரி விலை நிலவரம்" : "Tamil Nadu Mandi Daily Auction Rates"}
             </h3>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              {lang === "ta" ? "தினசரி மண்டி தரவு" : "Daily Mandi Data"}
+              {lang === "ta" ? "மாநில மண்டி தரவு" : "Statewide Mandi Feed"}
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {lang === "ta"
               ? "Agmarknet (OGD) மற்றும் ஒழுங்குமுறை சந்தைகளின் சமீபத்திய தினசரி விலைகள்"
-              : "Latest daily prices from official Agmarknet and regulated mandi sources; checked automatically every minute"}
+              : "Latest daily prices from official Agmarknet and regulated mandi sources across Tamil Nadu"}
           </p>
         </div>
 
@@ -91,31 +93,26 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
             />
           </div>
 
-          <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-medium w-full sm:w-auto">
+          <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-medium w-full sm:w-auto flex-wrap">
             <button
               onClick={() => setCropFilter("all")}
-              className={`flex-1 sm:flex-initial px-3 py-1 rounded-lg transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all ${
                 cropFilter === "all" ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
               }`}
             >
               {lang === "ta" ? "அனைத்தும்" : "All"}
             </button>
-            <button
-              onClick={() => setCropFilter("turmeric")}
-              className={`flex-1 sm:flex-initial px-3 py-1 rounded-lg transition-all ${
-                cropFilter === "turmeric" ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
-              }`}
-            >
-              {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
-            </button>
-            <button
-              onClick={() => setCropFilter("banana")}
-              className={`flex-1 sm:flex-initial px-3 py-1 rounded-lg transition-all ${
-                cropFilter === "banana" ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
-              }`}
-            >
-              {lang === "ta" ? "வாழை" : "Banana"}
-            </button>
+            {availableCrops.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCropFilter(c)}
+                className={`px-3 py-1 rounded-lg transition-all capitalize ${
+                  cropFilter.toLowerCase() === c.toLowerCase() ? "bg-white text-emerald-700 font-bold shadow-xs" : "text-gray-500"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
           </div>
         </div>
       </div>

@@ -136,7 +136,7 @@ export default function AdminPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ district: "Erode" }),
+        body: JSON.stringify({ district: "all" }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -361,8 +361,8 @@ export default function AdminPage() {
             </div>
             <CardDescription className="text-xs">
               {lang === "ta"
-                ? "Open-Meteo மூலம் ஈரோட்டிற்கான 7-நாள் வானிலை முன்னறிவிப்பை உடனடியாக பெறவும்."
-                : "Fetch fresh 7-day forecast for Erode district from Open-Meteo right now."}
+                ? "Open-Meteo மூலம் அனைத்து 38 மாவட்டங்களுக்கான 7-நாள் வானிலை முன்னறிவிப்பை உடனடியாக பெறவும்."
+                : "Fetch fresh 7-day forecast for all 38 Tamil Nadu districts from Open-Meteo."}
             </CardDescription>
           </CardHeader>
           <CardContent>

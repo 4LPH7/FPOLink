@@ -28,10 +28,8 @@ def get_latest_prices(
 
     # Subquery for max date per crop/market — whitelisting real sources only
     subq_filters = [MarketPrice.source.in_(REAL_PRICE_SOURCES)]
-    if district and district.lower() != "all":
+    if district and district.lower() not in ("all", "statewide", ""):
         subq_filters.append(func.lower(MarketPrice.district) == district.lower().strip())
-    elif not district:
-        subq_filters.append(MarketPrice.district == settings.DEFAULT_DISTRICT)
 
     if crop_id:
         subq_filters.append(MarketPrice.crop_id == crop_id)
@@ -59,10 +57,8 @@ def get_latest_prices(
         )
         .filter(MarketPrice.source.in_(REAL_PRICE_SOURCES))
     )
-    if district and district.lower() != "all":
+    if district and district.lower() not in ("all", "statewide", ""):
         query = query.filter(func.lower(MarketPrice.district) == district.lower().strip())
-    elif not district:
-        query = query.filter(MarketPrice.district == settings.DEFAULT_DISTRICT)
 
     if crop_id:
         query = query.filter(MarketPrice.crop_id == crop_id)

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "FPOLink Tamil Nadu — உழவர் உற்பத்தியாளர் தளம்",
     short_name: "FPOLink",
-    description: "FPO Digital Operating System for Tamil Nadu (Erode)",
+    description: "FPO Digital Operating System for Tamil Nadu",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

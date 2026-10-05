@@ -45,10 +45,12 @@ import {
   getBuyerRequirements,
   createBuyerRequirement,
   getCrops,
+  getDistricts,
   getFPOs,
   Buyer,
   BuyerRequirement,
   Crop,
+  DistrictItem,
   FPO,
 } from "@/lib/api";
 import { ensureToken } from "@/lib/auth";
@@ -60,6 +62,7 @@ export default function BuyersPage() {
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [requirements, setRequirements] = useState<BuyerRequirement[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [fpos, setFpos] = useState<FPO[]>([]);
   const [activeFpo, setActiveFpo] = useState<FPO | null>(null);
 
@@ -82,7 +85,7 @@ export default function BuyersPage() {
     contact_name: "",
     contact_phone: "",
     contact_email: "",
-    location: "Erode",
+    location: "",
     district: "Erode",
     gstin: "",
   });
@@ -103,15 +106,17 @@ export default function BuyersPage() {
   const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const [token, fpoList, cropList] = await Promise.all([
+      const [token, fpoList, cropList, districtList] = await Promise.all([
         ensureToken(),
         getFPOs(),
         getCrops(),
+        getDistricts(),
       ]);
       setFpos(fpoList);
       const primaryFpo = fpoList[0] || null;
       setActiveFpo(primaryFpo);
       setCrops(cropList);
+      setDistricts(districtList);
 
       const [buyersData, reqsData] = await Promise.all([
         getBuyers({ fpo_id: primaryFpo?.id }, token ?? undefined),
@@ -163,8 +168,8 @@ export default function BuyersPage() {
         contact_name: "",
         contact_phone: "",
         contact_email: "",
-        location: "Erode",
-        district: "Erode",
+        location: "",
+        district: activeFpo?.district || "Erode",
         gstin: "",
       });
       await loadData();
@@ -750,7 +755,7 @@ export default function BuyersPage() {
                     {lang === "ta" ? "இருப்பிடம் / முகவரி" : "Location / Hub"}
                   </label>
                   <Input
-                    placeholder="SIPCOT Perundurai"
+                    placeholder="e.g. SIPCOT Perundurai / Koyambedu"
                     value={buyerForm.location}
                     onChange={(e) => setBuyerForm({ ...buyerForm, location: e.target.value })}
                     className="h-8 text-xs"
@@ -758,15 +763,32 @@ export default function BuyersPage() {
                 </div>
                 <div>
                   <label className="block font-medium text-foreground mb-1">
-                    {lang === "ta" ? "GSTIN எண்" : "GSTIN (Optional)"}
+                    {lang === "ta" ? "மாவட்டம் *" : "District *"}
                   </label>
-                  <Input
-                    placeholder="33AAACI1234A1Z1"
-                    value={buyerForm.gstin}
-                    onChange={(e) => setBuyerForm({ ...buyerForm, gstin: e.target.value })}
-                    className="h-8 text-xs font-mono uppercase"
-                  />
+                  <select
+                    value={buyerForm.district}
+                    onChange={(e) => setBuyerForm({ ...buyerForm, district: e.target.value })}
+                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                  >
+                    {districts.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-medium text-foreground mb-1">
+                  {lang === "ta" ? "GSTIN எண்" : "GSTIN (Optional)"}
+                </label>
+                <Input
+                  placeholder="33AAACI1234A1Z1"
+                  value={buyerForm.gstin}
+                  onChange={(e) => setBuyerForm({ ...buyerForm, gstin: e.target.value })}
+                  className="h-8 text-xs font-mono uppercase"
+                />
               </div>
 
               <div className="pt-3 border-t border-border flex justify-end space-x-2">

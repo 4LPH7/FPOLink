@@ -4,7 +4,7 @@ import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "FPOLink TN — உழவர் உற்பத்தியாளர் தளம்",
-  description: "FPO Digital Operating System for Tamil Nadu (Erode)",
+  description: "FPO Digital Operating System for Tamil Nadu",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",

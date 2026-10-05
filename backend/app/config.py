@@ -124,7 +124,11 @@ class Settings(BaseSettings):
     # Geography & Scope
     STATE: str = "Tamil Nadu"
     DEFAULT_DISTRICT: str = "Erode"
-    DEFAULT_CROPS: str = "turmeric,banana,coconut"
+    DEFAULT_CROPS: str = (
+        "turmeric,banana,coconut,paddy,groundnut,tomato,small onion,onion,"
+        "green chilli,red chilli,maize,cotton,sugarcane,black gram,green gram,"
+        "tapioca,mango,brinjal,ladies finger,ginger"
+    )
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"

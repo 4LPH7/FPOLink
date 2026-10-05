@@ -29,16 +29,29 @@ def run_price_ingestion():
 
 
 def run_weather_ingestion():
-    """Fetch weather data from Open-Meteo / NASA POWER."""
+    """Fetch weather data from Open-Meteo / NASA POWER for all districts."""
     from app.config import settings
     from app.database import SessionLocal
+    from app.models.geography import District
     from app.services.weather_service import WeatherService
 
-    logger.info("Running weather ingestion...")
+    logger.info("Running weather ingestion for all districts...")
     db = SessionLocal()
     try:
-        stored = WeatherService(db).ingest_forecast(settings.DEFAULT_DISTRICT, days=7)
-        logger.info("Weather ingestion complete: stored %s forecast entries", stored)
+        service = WeatherService(db)
+        district_rows = db.query(District.name).order_by(District.name).all()
+        districts = [d[0] for d in district_rows] if district_rows else [settings.DEFAULT_DISTRICT]
+        total = 0
+        for dist in districts:
+            try:
+                total += service.ingest_forecast(dist, days=7)
+            except Exception as e:
+                logger.warning(f"Failed weather ingestion for {dist}: {e}")
+        logger.info(
+            "Weather ingestion complete: stored/updated %s forecast entries across %s districts",
+            total,
+            len(districts),
+        )
     finally:
         db.close()
 

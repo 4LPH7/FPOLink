@@ -69,7 +69,7 @@ const PriceHistoryChart = dynamic(() => import("@/components/PriceHistoryChart")
 export default function PricesPage() {
   const { lang } = useLanguage();
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("Erode");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
   const [prices, setPrices] = useState<MarketPrice[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
   const [selectedCrop, setSelectedCrop] = useState<string>("all");
@@ -185,8 +185,23 @@ export default function PricesPage() {
       : prices.filter((p) => p.crop_name.toLowerCase() === selectedCrop.toLowerCase());
 
   // Dynamically extract real top market cards
-  const turmericTop = prices.find((p) => p.crop_name.toLowerCase().includes("turmeric"));
-  const bananaTop = prices.find((p) => p.crop_name.toLowerCase().includes("banana"));
+  const top1 = prices.find((p) => p.crop_name.toLowerCase().includes("turmeric")) || prices[0];
+  const top2 =
+    prices.find((p) => p.crop_name.toLowerCase().includes("banana") && p.crop_name !== top1?.crop_name) ||
+    prices.find((p) => p.crop_name !== top1?.crop_name) ||
+    prices[1];
+
+  const unit1 =
+    top1 && (top1.crop_name.toLowerCase().includes("banana") || top1.crop_name.toLowerCase().includes("coconut"))
+      ? lang === "ta" ? "/ கிலோ" : "/ kg"
+      : lang === "ta" ? "/ குவிண்டால்" : "/ quintal";
+  const mult1 = unit1.includes("kg") || unit1.includes("கிலோ") ? 1 : 100;
+
+  const unit2 =
+    top2 && (top2.crop_name.toLowerCase().includes("banana") || top2.crop_name.toLowerCase().includes("coconut"))
+      ? lang === "ta" ? "/ கிலோ" : "/ kg"
+      : lang === "ta" ? "/ குவிண்டால்" : "/ quintal";
+  const mult2 = unit2.includes("kg") || unit2.includes("கிலோ") ? 1 : 100;
 
   // Transform real history into chart points (in ₹/quintal)
   const chartData = chartHistory.map((pt) => ({
@@ -231,6 +246,9 @@ export default function PricesPage() {
               onChange={(e) => setSelectedDistrict(e.target.value)}
               className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
             >
+              <option value="all" className="bg-background text-foreground">
+                {lang === "ta" ? "அனைத்து மாவட்டங்களும் (மாநிலம் முழுவதும்)" : "All Districts (Statewide)"}
+              </option>
               {districts.map((d) => (
                 <option key={d.id} value={d.name} className="bg-background text-foreground">
                   {d.name}
@@ -262,95 +280,99 @@ export default function PricesPage() {
         </div>
       </div>
 
-      {/* Top Cards for Anchor Commodities */}
+      {/* Top Cards for Dynamic Anchor Commodities */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Turmeric Top Card */}
+        {/* Top Commodity Card 1 */}
         <Card className="border-l-4 border-l-amber-500 bg-card/60 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-                {lang === "ta" ? "மஞ்சள் (விரலி) · மாதிரி விலை" : "Turmeric (Finger) · Modal Rate"}
+                {top1
+                  ? (lang === "ta" ? `${top1.crop_tamil_name || top1.crop_name} · மாதிரி விலை` : `${top1.crop_name} · Modal Rate`)
+                  : (lang === "ta" ? "முதன்மை பயிர் · மாதிரி விலை" : "Primary Commodity · Modal Rate")}
               </span>
-              {turmericTop?.trend && (
+              {top1?.trend && (
                 <Badge
-                  variant={turmericTop.trend.direction === "up" ? "success" : turmericTop.trend.direction === "down" ? "destructive" : "outline"}
+                  variant={top1.trend.direction === "up" ? "success" : top1.trend.direction === "down" ? "destructive" : "outline"}
                   className="text-xs px-1.5 py-0"
                 >
-                  {turmericTop.trend.direction === "up" && <TrendingUp className="w-3 h-3 mr-1" />}
-                  {turmericTop.trend.direction === "down" && <TrendingDown className="w-3 h-3 mr-1" />}
-                  {turmericTop.trend.direction === "stable" && <Minus className="w-3 h-3 mr-1" />}
-                  {turmericTop.trend.percent > 0 ? `+${turmericTop.trend.percent.toFixed(1)}%` : `${turmericTop.trend.percent.toFixed(1)}%`}
+                  {top1.trend.direction === "up" && <TrendingUp className="w-3 h-3 mr-1" />}
+                  {top1.trend.direction === "down" && <TrendingDown className="w-3 h-3 mr-1" />}
+                  {top1.trend.direction === "stable" && <Minus className="w-3 h-3 mr-1" />}
+                  {top1.trend.percent > 0 ? `+${top1.trend.percent.toFixed(1)}%` : `${top1.trend.percent.toFixed(1)}%`}
                 </Badge>
               )}
             </div>
             <CardTitle className="text-2xl font-bold font-mono mt-1">
-              {turmericTop ? `₹${Math.round(turmericTop.modal_price * 100).toLocaleString()}` : "—"}
+              {top1 ? `₹${Math.round(top1.modal_price * mult1).toLocaleString()}` : "—"}
               <span className="text-xs font-normal text-muted-foreground ml-1.5">
-                {lang === "ta" ? "/ குவிண்டால்" : "/ quintal"}
+                {unit1}
               </span>
             </CardTitle>
             <CardDescription className="text-xs flex items-center justify-between mt-1">
-              <span>{turmericTop ? turmericTop.market_name : `${selectedDistrict} Regulated Market`}</span>
-              <span className="font-mono text-[11px]">{turmericTop ? turmericTop.price_date : "Latest verified"}</span>
+              <span>{top1 ? `${top1.market_name}${top1.district ? ` (${top1.district})` : ""}` : (selectedDistrict === "all" ? "Tamil Nadu Mandi" : `${selectedDistrict} Mandi`)}</span>
+              <span className="font-mono text-[11px]">{top1 ? top1.price_date : "Latest verified"}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2 border-t text-xs text-muted-foreground flex justify-between">
             <span>
               {lang === "ta" ? "குறைந்தபட்சம்: " : "Min: "}
               <strong className="text-foreground font-mono">
-                {turmericTop ? `₹${Math.round(turmericTop.min_price * 100).toLocaleString()}` : "—"}
+                {top1 ? `₹${Math.round(top1.min_price * mult1).toLocaleString()}` : "—"}
               </strong>
             </span>
             <span>
               {lang === "ta" ? "அதிகபட்சம்: " : "Max: "}
               <strong className="text-foreground font-mono">
-                {turmericTop ? `₹${Math.round(turmericTop.max_price * 100).toLocaleString()}` : "—"}
+                {top1 ? `₹${Math.round(top1.max_price * mult1).toLocaleString()}` : "—"}
               </strong>
             </span>
           </CardContent>
         </Card>
 
-        {/* Banana Top Card */}
+        {/* Top Commodity Card 2 */}
         <Card className="border-l-4 border-l-emerald-500 bg-card/60 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
-                {lang === "ta" ? "வாழை (நேந்திரன் / பூவன்) · மாதிரி விலை" : "Banana (Nendran/Poovan) · Modal Rate"}
+                {top2
+                  ? (lang === "ta" ? `${top2.crop_tamil_name || top2.crop_name} · மாதிரி விலை` : `${top2.crop_name} · Modal Rate`)
+                  : (lang === "ta" ? "இரண்டாம் பயிர் · மாதிரி விலை" : "Secondary Commodity · Modal Rate")}
               </span>
-              {bananaTop?.trend && (
+              {top2?.trend && (
                 <Badge
-                  variant={bananaTop.trend.direction === "up" ? "success" : bananaTop.trend.direction === "down" ? "destructive" : "outline"}
+                  variant={top2.trend.direction === "up" ? "success" : top2.trend.direction === "down" ? "destructive" : "outline"}
                   className="text-xs px-1.5 py-0"
                 >
-                  {bananaTop.trend.direction === "up" && <TrendingUp className="w-3 h-3 mr-1" />}
-                  {bananaTop.trend.direction === "down" && <TrendingDown className="w-3 h-3 mr-1" />}
-                  {bananaTop.trend.direction === "stable" && <Minus className="w-3 h-3 mr-1" />}
-                  {bananaTop.trend.percent > 0 ? `+${bananaTop.trend.percent.toFixed(1)}%` : `${bananaTop.trend.percent.toFixed(1)}%`}
+                  {top2.trend.direction === "up" && <TrendingUp className="w-3 h-3 mr-1" />}
+                  {top2.trend.direction === "down" && <TrendingDown className="w-3 h-3 mr-1" />}
+                  {top2.trend.direction === "stable" && <Minus className="w-3 h-3 mr-1" />}
+                  {top2.trend.percent > 0 ? `+${top2.trend.percent.toFixed(1)}%` : `${top2.trend.percent.toFixed(1)}%`}
                 </Badge>
               )}
             </div>
             <CardTitle className="text-2xl font-bold font-mono mt-1">
-              {bananaTop ? `₹${bananaTop.modal_price.toFixed(1)}` : "—"}
+              {top2 ? `₹${Math.round(top2.modal_price * mult2).toLocaleString()}` : "—"}
               <span className="text-xs font-normal text-muted-foreground ml-1.5">
-                {lang === "ta" ? "/ கிலோ" : "/ kg"}
+                {unit2}
               </span>
             </CardTitle>
             <CardDescription className="text-xs flex items-center justify-between mt-1">
-              <span>{bananaTop ? bananaTop.market_name : `${selectedDistrict} Mandi`}</span>
-              <span className="font-mono text-[11px]">{bananaTop ? bananaTop.price_date : "Latest verified"}</span>
+              <span>{top2 ? `${top2.market_name}${top2.district ? ` (${top2.district})` : ""}` : (selectedDistrict === "all" ? "Tamil Nadu Mandi" : `${selectedDistrict} Mandi`)}</span>
+              <span className="font-mono text-[11px]">{top2 ? top2.price_date : "Latest verified"}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2 border-t text-xs text-muted-foreground flex justify-between">
             <span>
               {lang === "ta" ? "குறைந்தபட்சம்: " : "Min: "}
               <strong className="text-foreground font-mono">
-                {bananaTop ? `₹${bananaTop.min_price.toFixed(1)}` : "—"}
+                {top2 ? `₹${Math.round(top2.min_price * mult2).toLocaleString()}` : "—"}
               </strong>
             </span>
             <span>
               {lang === "ta" ? "அதிகபட்சம்: " : "Max: "}
               <strong className="text-foreground font-mono">
-                {bananaTop ? `₹${bananaTop.max_price.toFixed(1)}` : "—"}
+                {top2 ? `₹${Math.round(top2.max_price * mult2).toLocaleString()}` : "—"}
               </strong>
             </span>
           </CardContent>
@@ -414,23 +436,18 @@ export default function PricesPage() {
                     : "Daily modal settlement price trends from verified government market reports"}
                 </CardDescription>
               </div>
-              <div className="flex items-center space-x-1.5">
-                <Button
-                  size="sm"
-                  variant={activeChartCrop === "turmeric" ? "default" : "outline"}
-                  className="h-7 text-xs"
-                  onClick={() => handleChartCropChange("turmeric")}
-                >
-                  {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={activeChartCrop === "banana" ? "default" : "outline"}
-                  className="h-7 text-xs"
-                  onClick={() => handleChartCropChange("banana")}
-                >
-                  {lang === "ta" ? "வாழை" : "Banana"}
-                </Button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {crops.slice(0, 8).map((c) => (
+                  <Button
+                    key={c.id}
+                    size="sm"
+                    variant={activeChartCrop.toLowerCase() === c.name.toLowerCase() ? "default" : "outline"}
+                    className="h-7 text-xs"
+                    onClick={() => handleChartCropChange(c.name)}
+                  >
+                    {lang === "ta" ? c.tamil_name || c.name : c.name}
+                  </Button>
+                ))}
               </div>
             </CardHeader>
             <CardContent>
@@ -441,7 +458,7 @@ export default function PricesPage() {
               ) : (
                 <PriceHistoryChart
                   data={chartData}
-                  strokeColor={activeChartCrop === "turmeric" ? "#d97706" : "#16a34a"}
+                  strokeColor={activeChartCrop.toLowerCase().includes("turmeric") ? "#d97706" : "#16a34a"}
                 />
               )}
             </CardContent>
@@ -452,7 +469,9 @@ export default function PricesPage() {
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-lg">
-                  {lang === "ta" ? `${selectedDistrict} மாவட்ட மண்டி விலைகள் பட்டியல்` : `${selectedDistrict} District Mandi Price Feed`}
+                  {selectedDistrict === "all"
+                    ? (lang === "ta" ? "தமிழ்நாடு மாநில மண்டி விலைகள் பட்டியல்" : "Tamil Nadu Statewide Mandi Price Feed")
+                    : (lang === "ta" ? `${selectedDistrict} மாவட்ட மண்டி விலைகள் பட்டியல்` : `${selectedDistrict} District Mandi Price Feed`)}
                 </CardTitle>
                 <CardDescription>
                   {lang === "ta"
@@ -470,7 +489,7 @@ export default function PricesPage() {
                 >
                   {lang === "ta" ? "அனைத்தும்" : "All"}
                 </Button>
-                {crops.slice(0, 8).map((crop) => (
+                {crops.map((crop) => (
                   <Button
                     key={crop.id}
                     size="sm"
@@ -675,23 +694,18 @@ export default function PricesPage() {
                         : "Median forecast (p50) with 80% prediction uncertainty band (p10 to p90)"}
                     </CardDescription>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant={activeChartCrop === "turmeric" ? "default" : "outline"}
-                      className="h-7 text-xs"
-                      onClick={() => handleChartCropChange("turmeric")}
-                    >
-                      {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={activeChartCrop === "banana" ? "default" : "outline"}
-                      className="h-7 text-xs"
-                      onClick={() => handleChartCropChange("banana")}
-                    >
-                      {lang === "ta" ? "வாழை" : "Banana"}
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {crops.slice(0, 8).map((c) => (
+                      <Button
+                        key={c.id}
+                        size="sm"
+                        variant={activeChartCrop.toLowerCase() === c.name.toLowerCase() ? "default" : "outline"}
+                        className="h-7 text-xs"
+                        onClick={() => handleChartCropChange(c.name)}
+                      >
+                        {lang === "ta" ? c.tamil_name || c.name : c.name}
+                      </Button>
+                    ))}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -733,23 +747,18 @@ export default function PricesPage() {
                   : "Geodesic Haversine distance and freight cost deduction for net realized dispatch margins."}
               </CardDescription>
             </div>
-            <div className="flex items-center space-x-1.5">
-              <Button
-                size="sm"
-                variant={activeChartCrop === "turmeric" ? "default" : "outline"}
-                className="h-7 text-xs"
-                onClick={() => handleChartCropChange("turmeric")}
-              >
-                {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
-              </Button>
-              <Button
-                size="sm"
-                variant={activeChartCrop === "banana" ? "default" : "outline"}
-                className="h-7 text-xs"
-                onClick={() => handleChartCropChange("banana")}
-              >
-                {lang === "ta" ? "வாழை" : "Banana"}
-              </Button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {crops.slice(0, 8).map((c) => (
+                <Button
+                  key={c.id}
+                  size="sm"
+                  variant={activeChartCrop.toLowerCase() === c.name.toLowerCase() ? "default" : "outline"}
+                  className="h-7 text-xs"
+                  onClick={() => handleChartCropChange(c.name)}
+                >
+                  {lang === "ta" ? c.tamil_name || c.name : c.name}
+                </Button>
+              ))}
             </div>
           </CardHeader>
           <CardContent>

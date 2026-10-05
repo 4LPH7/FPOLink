@@ -41,7 +41,7 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
       inFlight = true;
       if (showLoading) setLoading(true);
       try {
-        const prices = await getLatestPrices("Erode");
+        const prices = await getLatestPrices();
         const price = prices.find((item) => item.crop_name.toLowerCase().includes(selectedCrop));
         const hist = price?.crop_id && price.market_id
           ? await getPriceHistory(price.crop_id, price.market_id, days)
@@ -117,11 +117,12 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
               {t.dashboard.market_prices} —{" "}
               {lang === "ta"
                 ? selectedCrop === "turmeric"
-                  ? "ஈரோடு மஞ்சள்"
-                  : "ஈரோடு வாழை"
+                  ? "மஞ்சள்"
+                  : "வாழை"
                 : selectedCrop === "turmeric"
-                ? "Erode Turmeric"
-                : "Erode Banana"}
+                ? "Turmeric"
+                : "Banana"}
+              {currentPrice?.market_name ? ` (${currentPrice.market_name})` : ""}
             </h2>
             <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
               {loading
@@ -133,8 +134,8 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "ta"
-              ? "ஈரோடு ஒழுங்குமுறை விற்பனைக்கூடத்தின் மாதிரி விலை நிலவரம் (ரூ./குவிண்டால்)"
-              : "Daily modal auction rates from official Erode regulated mandis (₹/quintal)"}
+              ? "தமிழ்நாடு ஒழுங்குமுறை விற்பனைக்கூடங்களின் மாதிரி விலை நிலவரம் (ரூ./குவிண்டால்)"
+              : "Daily modal auction rates from official Tamil Nadu regulated mandis (₹/quintal)"}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">
             {lastCheckedAt

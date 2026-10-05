@@ -241,9 +241,13 @@ export async function getCrops(): Promise<Crop[]> {
 }
 
 // ─── Prices API ──────────────────────────────────────────────
-export async function getLatestPrices(district = "Erode"): Promise<MarketPrice[]> {
+export async function getLatestPrices(district?: string): Promise<MarketPrice[]> {
   try {
-    const res = await safeFetch(`${API_BASE}/api/prices/latest?district=${encodeURIComponent(district)}`, {
+    const query =
+      district && district.toLowerCase() !== "all" && district.toLowerCase() !== "statewide"
+        ? `?district=${encodeURIComponent(district)}`
+        : "";
+    const res = await safeFetch(`${API_BASE}/api/prices/latest${query}`, {
       cache: "no-store",
     });
     if (res.ok) {

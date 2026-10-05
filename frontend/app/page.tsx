@@ -47,7 +47,7 @@ export default function DashboardHome() {
       try {
         const [token, prices, wa] = await Promise.all([
           ensureToken(),
-          getLatestPrices("Erode"),
+          getLatestPrices(),
           getWhatsAppActivity(1),
         ]);
 
@@ -87,7 +87,7 @@ export default function DashboardHome() {
       if (!active || inFlight || document.visibilityState !== "visible") return;
       inFlight = true;
       try {
-        const prices = await getLatestPrices("Erode");
+        const prices = await getLatestPrices();
         if (!active) return;
         const turmericPrice = prices.find(
           (price) => price.crop_name?.toLowerCase().includes("turmeric") || price.crop_name?.toLowerCase().includes("மஞ்சள்")
@@ -140,19 +140,19 @@ export default function DashboardHome() {
       <div className="relative overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-950 p-5 text-white shadow-xs sm:p-7">
         <div className="relative z-10 max-w-3xl space-y-2">
           <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-white/15 text-emerald-100 text-xs font-semibold backdrop-blur-xs">
-            <span>🌾 {t.app.district}</span>
+            <span>🌾 {lang === "ta" ? "தமிழ்நாடு" : "Tamil Nadu"}</span>
             <span>•</span>
-            <span>{lang === "ta" ? "கொடுமுடி FPO" : "Kodumudi FPO"}</span>
+            <span>{lang === "ta" ? "உழவர் உற்பத்தியாளர் கூட்டமைப்பு" : "FPO Network"}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             {lang === "ta"
-              ? "கொடுமுடி உழவர் உற்பத்தியாளர் நிறுவனம்"
-              : "Kodumudi Farmer Producer Organization"}
+              ? "தமிழ்நாடு உழவர் உற்பத்தியாளர் தளம்"
+              : "Tamil Nadu Farmer Producer Organization Platform"}
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-emerald-50/85 sm:text-base">
             {lang === "ta"
-              ? "ஈரோடு மாவட்ட FPO செயல்பாடுகளுக்கான சந்தை விலைத் தகவல், அறுவடை மதிப்பீடு மற்றும் கொள்முதல் ஒருங்கிணைப்பு."
-              : "Market prices, harvest estimates and buyer coordination for Erode District FPO operations."}
+              ? "தமிழ்நாடு முழுவதும் உள்ள 38 மாவட்டங்களுக்கான சந்தை விலைத் தகவல், அறுவடை மதிப்பீடு மற்றும் கொள்முதல் ஒருங்கிணைப்பு."
+              : "Statewide market prices, harvest estimates and buyer coordination across 38 Tamil Nadu districts."}
           </p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export default function DashboardHome() {
         <StatCard
           title={t.dashboard.members}
           value={memberCount}
-          subtitle={lang === "ta" ? "ஈரோடு & கொடுமுடி" : "Erode & Kodumudi"}
+          subtitle={lang === "ta" ? "தமிழ்நாடு உழவர்கள்" : "Tamil Nadu Farmers"}
           icon={Users}
           iconColor="text-emerald-700 bg-emerald-50 dark:bg-emerald-950"
         />

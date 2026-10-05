@@ -27,7 +27,7 @@ services:
       - key: ENVIRONMENT
         value: staging
       - key: DEMO_MODE
-        value: "true"
+        value: "false"
       - key: RUN_SCHEDULER
         value: "true"
       - key: WHATSAPP_ENABLED

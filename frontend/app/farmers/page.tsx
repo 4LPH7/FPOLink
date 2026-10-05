@@ -44,6 +44,7 @@ import {
   getFarmers,
   createFarmer,
   getCrops,
+  getDistricts,
   getFarmPlots,
   createFarmPlot,
   deleteFarmPlot,
@@ -51,6 +52,7 @@ import {
   Farmer,
   FPO,
   Crop,
+  DistrictItem,
   FarmPlot,
   FarmYieldEstimate,
   FarmerCreatePayload,
@@ -58,14 +60,13 @@ import {
 } from "@/lib/api";
 import { ensureToken } from "@/lib/auth";
 
-const DEFAULT_DISTRICT = "Erode";
-
 interface AddFarmerForm {
   name: string;
   phone: string;
   password: string;
   village: string;
   taluk: string;
+  district: string;
   farm_area_acres: string;
   language_preference: string;
 }
@@ -76,6 +77,7 @@ const EMPTY_FORM: AddFarmerForm = {
   password: "",
   village: "",
   taluk: "",
+  district: "Erode",
   farm_area_acres: "",
   language_preference: "ta",
 };
@@ -105,6 +107,7 @@ export default function FarmersPage() {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [fpos, setFpos] = useState<FPO[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [activeFpo, setActiveFpo] = useState<FPO | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [consentFilter, setConsentFilter] = useState<"all" | "granted" | "pending">("all");
@@ -134,13 +137,15 @@ export default function FarmersPage() {
   const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const [fpoList, token, cropList] = await Promise.all([
+      const [fpoList, token, cropList, districtList] = await Promise.all([
         getFPOs(),
         ensureToken(),
         getCrops(),
+        getDistricts(),
       ]);
       setFpos(fpoList);
       setCrops(cropList);
+      setDistricts(districtList);
       const primaryFpo = fpoList[0] || null;
       setActiveFpo(primaryFpo);
 
@@ -193,7 +198,7 @@ export default function FarmersPage() {
         password: form.password,
         village: form.village.trim(),
         taluk: form.taluk.trim(),
-        district: DEFAULT_DISTRICT,
+        district: form.district.trim() || activeFpo?.district || "Erode",
         farm_area_acres: parseFloat(form.farm_area_acres) || 0,
         language_preference: form.language_preference,
         consent_given: true,
@@ -1080,7 +1085,23 @@ export default function FarmersPage() {
                       onChange={(e) => setForm((f) => ({ ...f, taluk: e.target.value }))}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div>
+                    <label className="text-xs font-semibold text-foreground block mb-1">
+                      {lang === "ta" ? "மாவட்டம் *" : "District *"}
+                    </label>
+                    <select
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      value={form.district}
+                      onChange={(e) => setForm((f) => ({ ...f, district: e.target.value }))}
+                    >
+                      {districts.map((d) => (
+                        <option key={d.id} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-xs font-semibold text-foreground block mb-1">
                       {lang === "ta" ? "மொழி விருப்பம்" : "Language Preference"}
                     </label>

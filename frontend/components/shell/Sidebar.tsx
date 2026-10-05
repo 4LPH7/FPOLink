@@ -70,7 +70,7 @@ export function Sidebar({
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground font-medium truncate max-w-[150px]">
-            {lang === "ta" ? "ஈரோடு மாவட்டம்" : "Erode District"}
+            {lang === "ta" ? "தமிழ்நாடு முழுவதும்" : "Tamil Nadu Statewide"}
           </p>
         </div>
       </div>

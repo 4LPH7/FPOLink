@@ -24,20 +24,71 @@ def trigger_ingestion(
 
 @router.post("/weather/ingest")
 def trigger_weather_ingest(
-    district: str = "Erode",
+    district: str = "all",
     days: int = 7,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["admin", "state_admin", "data_operator"])),
 ):
-    """Trigger live weather forecast ingestion from Open-Meteo."""
+    """Trigger live weather forecast ingestion from Open-Meteo for a district or statewide."""
+    from app.models.geography import District
     from app.services.weather_service import WeatherService
 
     service = WeatherService(db)
+    if district.lower() in ("all", "statewide"):
+        district_rows = db.query(District.name).order_by(District.name).all()
+        target_districts = [d[0] for d in district_rows] if district_rows else ["Erode"]
+        total_count = 0
+        for d in target_districts:
+            try:
+                total_count += service.ingest_forecast(district=d, days=days)
+            except Exception:
+                pass
+        return {
+            "message": f"Successfully ingested {total_count} forecast days across {len(target_districts)} districts",
+            "district": "statewide",
+            "days_ingested": total_count,
+        }
+
     count = service.ingest_forecast(district=district, days=days)
     return {
         "message": f"Successfully ingested {count} forecast days for {district}",
         "district": district,
         "days_ingested": count,
+    }
+
+
+@router.post("/purge-testing-data")
+def purge_testing_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"])),
+):
+    """Purge synthetic/demo test data so only real ground-truth data remains."""
+    from app.models.market_price import MarketPrice
+    from app.models.weather import WeatherData
+
+    deleted_prices = (
+        db.query(MarketPrice)
+        .filter(
+            (MarketPrice.source.in_(("seed_demo", "demo_seed")))
+            | (MarketPrice.source.like("%synthetic%"))
+            | (MarketPrice.source.like("%sample%"))
+            | (MarketPrice.source.like("%test%"))
+        )
+        .delete(synchronize_session=False)
+    )
+
+    deleted_weather = (
+        db.query(WeatherData)
+        .filter(WeatherData.source.in_(("seed", "synthetic", "sample")))
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+
+    return {
+        "status": "success",
+        "purged_prices": deleted_prices,
+        "purged_weather": deleted_weather,
+        "message": f"Successfully purged {deleted_prices} test price records and {deleted_weather} test weather records.",
     }
 
 

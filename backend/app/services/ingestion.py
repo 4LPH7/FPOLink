@@ -46,7 +46,10 @@ class IngestionService:
         from app.config import settings
 
         crops = crops or settings.default_crops_list
-        districts = districts or [settings.DEFAULT_DISTRICT]
+        if not districts:
+            district_rows = self.db.query(District.name).order_by(District.name).all()
+            districts = [d[0] for d in district_rows] if district_rows else [settings.DEFAULT_DISTRICT]
+
 
         start_time = datetime.now(timezone.utc)
         total_fetched = 0
