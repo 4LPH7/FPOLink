@@ -19,6 +19,8 @@
     "predictions": "Predictions",
     "alerts": "Alerts",
     "admin": "Ingestion Ops",
+    "tasks": "Tasks",
+    "telegram": "Telegram Bot",
     "whatsapp": "WhatsApp Bot",
     "settings": "Settings"
   },
