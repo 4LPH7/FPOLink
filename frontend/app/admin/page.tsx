@@ -40,6 +40,7 @@ import {
   getHealth,
   HealthStatus,
   API_BASE,
+  safeFetch,
   getIngestionRuns,
   getStatewideFreshness,
   triggerIngestionRun,
@@ -129,7 +130,7 @@ export default function AdminPage() {
     setWeatherResult(null);
     try {
       const token = await ensureToken();
-      const res = await fetch(`${API_BASE}/api/admin/weather/ingest`, {
+      const res = await safeFetch(`${API_BASE}/api/admin/weather/ingest`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -156,7 +157,7 @@ export default function AdminPage() {
     setPurgeResult(null);
     try {
       const token = await ensureToken();
-      const res = await fetch(`${API_BASE}/api/admin/retention/purge`, {
+      const res = await safeFetch(`${API_BASE}/api/admin/retention/purge`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

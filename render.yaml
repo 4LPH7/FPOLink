@@ -44,3 +44,10 @@ services:
         value: "8072845239"
       - key: ADMIN_PASSWORD
         sync: false
+      - key: OGD_API_KEY
+        sync: false
+      - key: CEDA_API_KEY
+        sync: false
+      - key: OPEN_METEO_BASE_URL
+        value: "https://api.open-meteo.com/v1"
+

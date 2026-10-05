@@ -8,13 +8,35 @@ from sqlalchemy.orm import Session
 
 from app.data_sources.nasa_power import NASAPowerProvider
 from app.data_sources.weather import WeatherProvider
+from app.models.geography import District
 from app.models.weather import WeatherData
 
 logger = logging.getLogger(__name__)
 
-# Erode district coordinates
+# Key Tamil Nadu district coordinates for Open-Meteo & NASA POWER weather queries
 DEFAULT_LOCATIONS = {
     "Erode": {"latitude": 11.3410, "longitude": 77.7172},
+    "Coimbatore": {"latitude": 11.0168, "longitude": 76.9558},
+    "Salem": {"latitude": 11.6643, "longitude": 78.1460},
+    "Tiruppur": {"latitude": 11.1085, "longitude": 77.3411},
+    "Thirupur": {"latitude": 11.1085, "longitude": 77.3411},
+    "Namakkal": {"latitude": 11.2189, "longitude": 78.1674},
+    "Dharmapuri": {"latitude": 12.1211, "longitude": 78.1582},
+    "Dindigul": {"latitude": 10.3673, "longitude": 77.9803},
+    "Karur": {"latitude": 10.9601, "longitude": 78.0766},
+    "Madurai": {"latitude": 9.9252, "longitude": 78.1198},
+    "Thanjavur": {"latitude": 10.7870, "longitude": 79.1378},
+    "Tiruchirappalli": {"latitude": 10.7905, "longitude": 78.7047},
+    "Trichy": {"latitude": 10.7905, "longitude": 78.7047},
+    "Theni": {"latitude": 10.0104, "longitude": 77.4768},
+    "Krishnagiri": {"latitude": 12.5186, "longitude": 78.2137},
+    "Vellore": {"latitude": 12.9165, "longitude": 79.1325},
+    "Cuddalore": {"latitude": 11.7480, "longitude": 79.7714},
+    "Villupuram": {"latitude": 11.9401, "longitude": 79.4861},
+    "Tirunelveli": {"latitude": 8.7139, "longitude": 77.7567},
+    "Thoothukudi": {"latitude": 8.7642, "longitude": 78.1348},
+    "Kanyakumari": {"latitude": 8.0883, "longitude": 77.5385},
+    "Chennai": {"latitude": 13.0827, "longitude": 80.2707},
 }
 
 
@@ -26,9 +48,22 @@ class WeatherService:
         self.open_meteo = WeatherProvider()
         self.nasa_power = NASAPowerProvider()
 
+    def _resolve_coordinates(self, district: str) -> Optional[dict]:
+        """Resolve coordinates from dictionary or database."""
+        coords = DEFAULT_LOCATIONS.get(district)
+        if not coords:
+            for name, loc in DEFAULT_LOCATIONS.items():
+                if name.lower() == district.lower():
+                    return loc
+            # Fallback to District model
+            d_row = self.db.query(District).filter(District.name.ilike(district)).first()
+            if d_row and d_row.latitude and d_row.longitude:
+                return {"latitude": d_row.latitude, "longitude": d_row.longitude}
+        return coords
+
     def ingest_forecast(self, district: str = "Erode", days: int = 7) -> int:
         """Fetch and store weather forecast."""
-        coords = DEFAULT_LOCATIONS.get(district)
+        coords = self._resolve_coordinates(district)
         if not coords:
             logger.warning(f"No coordinates for district: {district}")
             return 0
@@ -58,6 +93,7 @@ class WeatherService:
                 existing.rainfall_mm = entry["rainfall_mm"] or 0
                 existing.humidity = entry.get("humidity")
                 existing.wind_speed = entry.get("wind_speed")
+                stored += 1
             else:
                 w = WeatherData(
                     district=district,
@@ -73,7 +109,7 @@ class WeatherService:
                 stored += 1
 
         self.db.commit()
-        logger.info(f"Stored {stored} weather entries for {district}")
+        logger.info(f"Stored/updated {stored} weather entries for {district}")
         return stored
 
     def backfill_history(

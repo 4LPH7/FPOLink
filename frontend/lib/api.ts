@@ -8,7 +8,33 @@
 // Browser requests stay same-origin; Next rewrites route /api to the backend.
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
+export const DIRECT_API_FALLBACK = "https://fpolink-api.onrender.com";
+
+export async function safeFetch(pathOrUrl: string, init?: RequestInit): Promise<Response> {
+  const isAbsolute = pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://");
+  const fullUrl = isAbsolute ? pathOrUrl : `${API_BASE}${pathOrUrl}`;
+
+  let res: Response | null = await fetch(fullUrl, init).catch(() => null);
+
+  // If same-origin proxy failed, timed out, or returned 500+ Bad Gateway,
+  // fallback to direct live Render API via CORS
+  if (!res || res.status >= 500) {
+    const fallbackPath = isAbsolute
+      ? new URL(pathOrUrl).pathname + new URL(pathOrUrl).search
+      : pathOrUrl;
+    const directUrl = `${DIRECT_API_FALLBACK}${fallbackPath.startsWith("/") ? fallbackPath : `/${fallbackPath}`}`;
+    const directRes = await fetch(directUrl, init).catch(() => null);
+    if (directRes) return directRes;
+  }
+
+  if (!res) {
+    throw new Error(`Failed to fetch ${pathOrUrl}: Network error`);
+  }
+  return res;
+}
+
 function authHeaders(): Record<string, string> {
+
   if (typeof window === "undefined") return {};
   const token = window.localStorage.getItem("fpolink_access_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -179,7 +205,7 @@ export interface WhatsAppUsageSummary {
 // ─── Health API ──────────────────────────────────────────────
 export async function getHealth(): Promise<HealthStatus> {
   try {
-    const res = await fetch(`${API_BASE}/api/health`, {
+    const res = await safeFetch(`${API_BASE}/api/health`, {
       cache: "no-store",
     });
     if (!res.ok) {
@@ -199,7 +225,7 @@ export async function getHealth(): Promise<HealthStatus> {
 // ─── Crops API ───────────────────────────────────────────────
 export async function getCrops(): Promise<Crop[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/crops/`, {
+    const res = await safeFetch(`${API_BASE}/api/crops/`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -217,7 +243,7 @@ export async function getCrops(): Promise<Crop[]> {
 // ─── Prices API ──────────────────────────────────────────────
 export async function getLatestPrices(district = "Erode"): Promise<MarketPrice[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/prices/latest?district=${encodeURIComponent(district)}`, {
+    const res = await safeFetch(`${API_BASE}/api/prices/latest?district=${encodeURIComponent(district)}`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -238,7 +264,7 @@ export async function getPriceHistory(
   days = 30
 ): Promise<PriceHistoryPoint[]> {
   try {
-    const res = await fetch(
+    const res = await safeFetch(
       `${API_BASE}/api/prices/history?crop_id=${encodeURIComponent(cropId)}&market_id=${encodeURIComponent(marketId)}&days=${days}`,
       { cache: "no-store" }
     );
@@ -257,7 +283,7 @@ export async function getPriceHistory(
 // ─── FPOs API ────────────────────────────────────────────────
 export async function getFPOs(): Promise<FPO[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/fpos/`, {
+    const res = await safeFetch(`${API_BASE}/api/fpos/`, {
       headers: authHeaders(),
       cache: "no-store",
     });
@@ -284,7 +310,7 @@ export async function getFarmers(
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     const query = search ? `?search=${encodeURIComponent(search)}` : "";
-    const res = await fetch(`${API_BASE}/api/farmers/${fpoId}${query}`, {
+    const res = await safeFetch(`${API_BASE}/api/farmers/${fpoId}${query}`, {
       headers,
       cache: "no-store",
     });
@@ -326,7 +352,7 @@ export async function createFarmer(
   token: string
 ): Promise<{ farmer: Farmer | null; error: string | null }> {
   try {
-    const res = await fetch(`${API_BASE}/api/farmers/${fpoId}`, {
+    const res = await safeFetch(`${API_BASE}/api/farmers/${fpoId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -353,7 +379,7 @@ export async function login(
   password: string
 ): Promise<{ access_token: string; refresh_token: string } | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    const res = await safeFetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, password }),
@@ -369,7 +395,7 @@ export async function login(
 // ─── WhatsApp Activity & Usage Telemetry ─────────────────────
 export async function getWhatsAppActivity(limit = 20): Promise<WhatsAppActivitySummary> {
   try {
-    const res = await fetch(`${API_BASE}/api/whatsapp/activity?limit=${limit}`, {
+    const res = await safeFetch(`${API_BASE}/api/whatsapp/activity?limit=${limit}`, {
       headers: authHeaders(),
       cache: "no-store",
     });
@@ -400,7 +426,7 @@ export async function getWhatsAppUsage(
     }
 
     const query = month ? `?month=${encodeURIComponent(month)}` : "";
-    const res = await fetch(`${API_BASE}/api/admin/whatsapp/usage${query}`, {
+    const res = await safeFetch(`${API_BASE}/api/admin/whatsapp/usage${query}`, {
       headers,
       cache: "no-store",
     });
@@ -430,7 +456,7 @@ export async function getFPODashboard(
   token: string
 ): Promise<FPODashboardStats | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/fpos/${fpoId}/dashboard`, {
+    const res = await safeFetch(`${API_BASE}/api/fpos/${fpoId}/dashboard`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -467,7 +493,7 @@ export interface HarvestAggregation {
 
 export async function getHarvestAggregation(): Promise<HarvestAggregation> {
   try {
-    const res = await fetch(`${API_BASE}/api/harvest/aggregation`, {
+    const res = await safeFetch(`${API_BASE}/api/harvest/aggregation`, {
       headers: authHeaders(),
       cache: "no-store",
     });
@@ -484,7 +510,7 @@ export async function getCommodities(category?: string): Promise<CommoditySummar
   try {
     const url = new URL(`${API_BASE}/api/v1/commodities`);
     if (category) url.searchParams.set("category", category);
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await safeFetch(url.toString(), { cache: "no-store" });
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Failed to fetch commodities:", err);
@@ -494,7 +520,7 @@ export async function getCommodities(category?: string): Promise<CommoditySummar
 
 export async function getCommodityDetail(id: string): Promise<CommodityDetail | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/commodities/${id}`, { cache: "no-store" });
+    const res = await safeFetch(`${API_BASE}/api/v1/commodities/${id}`, { cache: "no-store" });
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Failed to fetch commodity detail:", err);
@@ -546,7 +572,7 @@ export async function getIngestionRuns(
   pageSize: number = 10
 ): Promise<{ items: IngestionRunItem[]; total: number }> {
   try {
-    const res = await fetch(
+    const res = await safeFetch(
       `${API_BASE}/api/v1/ingestion/runs?page=${page}&page_size=${pageSize}`,
       { cache: "no-store", headers: authHeaders() }
     );
@@ -559,7 +585,7 @@ export async function getIngestionRuns(
 
 export async function getStatewideFreshness(): Promise<StatewideFreshness | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/ingestion/freshness`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/ingestion/freshness`, {
       headers: authHeaders(),
       cache: "no-store",
     });
@@ -572,7 +598,7 @@ export async function getStatewideFreshness(): Promise<StatewideFreshness | null
 
 export async function triggerIngestionRun(source?: string): Promise<any> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/ingestion/trigger`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/ingestion/trigger`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ source }),
@@ -670,7 +696,7 @@ export interface DistrictItem {
 
 export async function getDistricts(): Promise<DistrictItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/geography/districts`, { cache: "no-store" });
+    const res = await safeFetch(`${API_BASE}/api/v1/geography/districts`, { cache: "no-store" });
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Failed to fetch districts:", err);
@@ -684,7 +710,7 @@ export async function getForecast(
   days: number = 7
 ): Promise<ForecastResponse | null> {
   try {
-    const res = await fetch(
+    const res = await safeFetch(
       `${API_BASE}/api/v1/intelligence/forecast?crop_id=${encodeURIComponent(cropId)}&market_id=${encodeURIComponent(marketId)}&days=${days}`,
       { cache: "no-store" }
     );
@@ -701,7 +727,7 @@ export async function getArbitrage(
   maxDistanceKm: number = 300
 ): Promise<ArbitrageResponse | null> {
   try {
-    const res = await fetch(
+    const res = await safeFetch(
       `${API_BASE}/api/v1/intelligence/arbitrage?crop_id=${encodeURIComponent(cropId)}&origin_market_id=${encodeURIComponent(originMarketId)}&max_distance_km=${maxDistanceKm}`,
       { cache: "no-store" }
     );
@@ -720,7 +746,7 @@ export async function getSpreads(
     const url = district && district !== "all"
       ? `${API_BASE}/api/v1/intelligence/spreads?crop_id=${encodeURIComponent(cropId)}&district=${encodeURIComponent(district)}`
       : `${API_BASE}/api/v1/intelligence/spreads?crop_id=${encodeURIComponent(cropId)}`;
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await safeFetch(url, { cache: "no-store" });
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Failed to fetch spreads:", err);
@@ -814,7 +840,7 @@ export async function getFarmPlots(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/farms/?${q.toString()}`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/farms/?${q.toString()}`, {
       headers,
       cache: "no-store",
     });
@@ -833,7 +859,7 @@ export async function createFarmPlot(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/farms/`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/farms/`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -855,7 +881,7 @@ export async function getFarmYieldEstimate(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/farms/${farmId}/yield-estimate`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/farms/${farmId}/yield-estimate`, {
       headers,
       cache: "no-store",
     });
@@ -871,7 +897,7 @@ export async function deleteFarmPlot(farmId: string, token?: string): Promise<bo
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/farms/${farmId}`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/farms/${farmId}`, {
       method: "DELETE",
       headers,
     });
@@ -983,7 +1009,7 @@ export async function getBuyers(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/buyers/?${q.toString()}`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/buyers/?${q.toString()}`, {
       headers,
       cache: "no-store",
     });
@@ -1002,7 +1028,7 @@ export async function createBuyer(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/buyers/`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/buyers/`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -1039,7 +1065,7 @@ export async function getBuyerRequirements(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/buyers/requirements?${q.toString()}`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/buyers/requirements?${q.toString()}`, {
       headers,
       cache: "no-store",
     });
@@ -1058,7 +1084,7 @@ export async function createBuyerRequirement(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/buyers/requirements`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/buyers/requirements`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -1178,7 +1204,7 @@ export async function getCandidatesForRequirement(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(
+    const res = await safeFetch(
       `${API_BASE}/api/v1/matching/candidates/${requirementId}?max_candidates=${maxCandidates}`,
       { headers, cache: "no-store" }
     );
@@ -1207,7 +1233,7 @@ export async function suggestMatch(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/matching/suggest`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/matching/suggest`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -1230,7 +1256,7 @@ export async function confirmMatch(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/matching/${matchId}/confirm`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/matching/${matchId}/confirm`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -1257,7 +1283,7 @@ export async function rejectMatch(
       ? `${API_BASE}/api/v1/matching/${matchId}/reject?notes=${encodeURIComponent(notes)}`
       : `${API_BASE}/api/v1/matching/${matchId}/reject`;
 
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       method: "POST",
       headers,
     });
@@ -1280,7 +1306,7 @@ export async function getSupplyDemandSummary(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/matching/summary?${q.toString()}`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/matching/summary?${q.toString()}`, {
       headers,
       cache: "no-store",
     });
@@ -1305,7 +1331,7 @@ export async function listSupplyMatches(
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/matching/list?${q.toString()}`, {
+    const res = await safeFetch(`${API_BASE}/api/v1/matching/list?${q.toString()}`, {
       headers,
       cache: "no-store",
     });

@@ -10,7 +10,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { getFPOs, getFarmers, Farmer } from "@/lib/api";
+import { getFPOs, getFarmers, Farmer, safeFetch } from "@/lib/api";
 import { ensureToken } from "@/lib/auth";
 
 interface FarmerInviteCardProps {
@@ -62,7 +62,7 @@ export default function FarmerInviteCard({
     try {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(
+      const res = await safeFetch(
         `/api/farmers/detail/${farmerId}/whatsapp-invite`,
         { headers }
       );
