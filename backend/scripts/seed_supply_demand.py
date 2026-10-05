@@ -52,7 +52,7 @@ def seed_supply_demand():
         print("=" * 60)
 
         # 1. Admin user & FPO lookup
-        admin = db.query(User).filter(User.phone == "9999900000").first()
+        admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
         fpo = db.query(FPO).filter(FPO.registration_number == "FPO-TN-ERD-001").first()
         if not fpo:
             fpo = FPO(

@@ -61,7 +61,7 @@ def seed_data():
         print("=" * 50)
 
         # ─── 1. Admin User ────────────────────────────────
-        admin_phone = "9999900000"
+        admin_phone = os.environ.get("ADMIN_PHONE", "8072845239")
         admin = db.query(User).filter(User.phone == admin_phone).first()
         if not admin:
             admin_password = _development_password("SEED_ADMIN_PASSWORD")

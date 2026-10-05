@@ -158,7 +158,8 @@ class Settings(BaseSettings):
     # Sentry (optional error monitoring)
     SENTRY_DSN: Optional[str] = None
 
-    # Seed Admin Password
+    # Admin Phone & Seed Password
+    ADMIN_PHONE: str = "8072845239"
     SEED_ADMIN_PASSWORD: Optional[str] = None
 
     model_config = SettingsConfigDict(

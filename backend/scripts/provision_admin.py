@@ -18,35 +18,56 @@ from app.services.auth import hash_password
 
 
 def main() -> None:
-    phone = input("Admin phone (10-15 digits, optional leading +): ").strip()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Create or update administrator account.")
+    parser.add_argument("--phone", help="Admin phone number", default=None)
+    parser.add_argument("--password", help="Admin password", default=None)
+    parser.add_argument("--name", help="Admin name", default=None)
+    args = parser.parse_args()
+
+    phone = (args.phone or input("Admin phone (10-15 digits, optional leading +): ")).strip()
     if not re.fullmatch(r"\+?\d{10,15}", phone):
         raise SystemExit("Invalid phone number format")
 
-    password = getpass.getpass("Admin password (minimum 12 characters): ")
-    confirmation = getpass.getpass("Confirm admin password: ")
-    if len(password) < 12:
-        raise SystemExit("Password must be at least 12 characters")
-    if password != confirmation:
-        raise SystemExit("Passwords do not match")
+    if args.password:
+        password = args.password
+    else:
+        password = getpass.getpass("Admin password (minimum 8 characters): ")
+        confirmation = getpass.getpass("Confirm admin password: ")
+        if password != confirmation:
+            raise SystemExit("Passwords do not match")
+
+    if len(password) < 8:
+        raise SystemExit("Password must be at least 8 characters")
+
+    name = (args.name or (input("Admin name [Admin]: ").strip() or "Admin")).strip()
 
     db = SessionLocal()
     try:
-        if db.query(User).filter(User.phone == phone).first():
-            raise SystemExit("An account with that phone number already exists")
+        existing = db.query(User).filter(User.phone == phone).first()
+        if existing:
+            existing.name = name or existing.name
+            existing.role = UserRole.ADMIN
+            existing.hashed_password = hash_password(password)
+            existing.password_change_required = False
+            existing.is_active = True
+            db.commit()
+            print(f"Administrator {phone} ({name}) updated successfully.")
+            return
+
         admin = User(
-            name=input("Admin name: ").strip(),
+            name=name,
             phone=phone,
             role=UserRole.ADMIN,
             hashed_password=hash_password(password),
-            password_change_required=True,
+            password_change_required=False,
             is_active=True,
-            language_preference="en",
+            language_preference="ta",
         )
-        if not admin.name:
-            raise SystemExit("Admin name is required")
         db.add(admin)
         db.commit()
-        print("Administrator created. Sign in with the phone number and password you entered.")
+        print(f"Administrator {phone} ({name}) created successfully.")
     finally:
         db.close()
 
