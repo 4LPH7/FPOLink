@@ -29,7 +29,7 @@ def upgrade() -> None:
 
     # Force staff and administrative accounts created before this release to rotate
     # their password before accessing any protected application route.
-    op.execute("UPDATE users SET password_change_required = TRUE " "WHERE role::text <> 'FARMER'")
+    op.execute("UPDATE users SET password_change_required = TRUE WHERE role::text <> 'FARMER'")
 
 
 def downgrade() -> None:

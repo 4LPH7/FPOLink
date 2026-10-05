@@ -146,7 +146,7 @@ export default function FarmersPage() {
 
       if (primaryFpo) {
         const res = await getFarmers(primaryFpo.id, token ?? undefined, searchTerm);
-        setFarmers(res.farmers);
+        setFarmers(Array.isArray(res?.farmers) ? res.farmers : []);
       }
     } finally {
       setLoading(false);
@@ -163,13 +163,20 @@ export default function FarmersPage() {
     if (activeFpo) {
       const token = await ensureToken();
       const res = await getFarmers(activeFpo.id, token ?? undefined, term);
-      setFarmers(res.farmers);
+      setFarmers(Array.isArray(res?.farmers) ? res.farmers : []);
     }
   };
 
   const handleAddFarmer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeFpo) return;
+    if (!activeFpo) {
+      setSubmitError(
+        lang === "ta"
+          ? "செயலில் உள்ள FPO கிடைக்கவில்லை. பக்கத்தை மீண்டும் ஏற்றவும்."
+          : "No active FPO selected or session expired. Please refresh the page."
+      );
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
 
@@ -196,7 +203,7 @@ export default function FarmersPage() {
 
       const { farmer, error } = await createFarmer(activeFpo.id, payload, token);
       if (error) {
-        setSubmitError(error);
+        setSubmitError(typeof error === "string" ? error : JSON.stringify(error));
       } else {
         setSubmitSuccess(true);
         setForm(EMPTY_FORM);
@@ -325,7 +332,9 @@ export default function FarmersPage() {
     return Math.round(area * basePerAcreKg * irrigMult * soilMult);
   }, [plotForm.area_acres, plotForm.crop_id, plotForm.soil_type, plotForm.irrigation_type, crops]);
 
-  const filteredFarmers = farmers.filter((f) => {
+  const safeFarmers = Array.isArray(farmers) ? farmers : [];
+  const filteredFarmers = safeFarmers.filter((f) => {
+    if (!f) return false;
     if (consentFilter === "granted") return Boolean(f.notice_sent_at || f.alerts_opt_in);
     if (consentFilter === "pending") return !f.notice_sent_at && !f.alerts_opt_in;
     return true;
@@ -465,8 +474,9 @@ export default function FarmersPage() {
               ) : (
                 filteredFarmers.map((f) => {
                   const hasConsent = Boolean(f.notice_sent_at || f.alerts_opt_in);
-                  const maskedPhone = f.phone
-                    ? f.phone.replace(/(\+?\d{2,5}\s?\d{3})\d{4}/, "$1••••")
+                  const phoneStr = String(f?.phone || "");
+                  const maskedPhone = phoneStr
+                    ? phoneStr.replace(/(\+?\d{2,5}\s?\d{3})\d{4}/, "$1••••")
                     : "—";
 
                   return (
@@ -870,7 +880,7 @@ export default function FarmersPage() {
 
               {plotError && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
-                  {plotError}
+                  {typeof plotError === "string" ? plotError : JSON.stringify(plotError)}
                 </p>
               )}
 
@@ -1087,7 +1097,7 @@ export default function FarmersPage() {
 
                 {submitError && (
                   <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
-                    {submitError}
+                    {typeof submitError === "string" ? submitError : JSON.stringify(submitError)}
                   </p>
                 )}
 

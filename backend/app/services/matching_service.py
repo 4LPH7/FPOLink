@@ -30,6 +30,19 @@ GRADE_VALUES = {
     HarvestGrade.C: 1,
 }
 
+_DISTRICT_COORD_CACHE: Dict[UUID, tuple[Optional[float], Optional[float]]] = {}
+
+
+def _get_district_lat_lon(
+    db: Session, district_id: UUID
+) -> tuple[Optional[float], Optional[float]]:
+    if district_id in _DISTRICT_COORD_CACHE:
+        return _DISTRICT_COORD_CACHE[district_id]
+    d = db.query(District.latitude, District.longitude).filter(District.id == district_id).first()
+    coords = (d[0], d[1]) if d else (None, None)
+    _DISTRICT_COORD_CACHE[district_id] = coords
+    return coords
+
 
 def compute_proximity_score(
     db: Session,
@@ -45,10 +58,10 @@ def compute_proximity_score(
 
     # 2. Try geospatial Haversine using District centroids
     if delivery_district_id and farmer_district_id:
-        d1 = db.query(District).filter(District.id == delivery_district_id).first()
-        d2 = db.query(District).filter(District.id == farmer_district_id).first()
-        if d1 and d2 and d1.latitude and d1.longitude and d2.latitude and d2.longitude:
-            dist_km = haversine_distance_km(d1.latitude, d1.longitude, d2.latitude, d2.longitude)
+        lat1, lon1 = _get_district_lat_lon(db, delivery_district_id)
+        lat2, lon2 = _get_district_lat_lon(db, farmer_district_id)
+        if lat1 and lon1 and lat2 and lon2:
+            dist_km = haversine_distance_km(lat1, lon1, lat2, lon2)
             prox_score = max(0.0, min(100.0, 100.0 - (dist_km / 300.0) * 100.0))
             return round(prox_score, 1), dist_km
 

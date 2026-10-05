@@ -8,6 +8,11 @@ import os
 import sys
 from decimal import Decimal
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

@@ -28,13 +28,14 @@ TN_HOLIDAYS_2026 = {
     date(2026, 10, 2): "Gandhi Jayanti",
 }
 
+
 # Base trends and daily noise generator
 def get_daily_prices(current_date: date):
     days_since_start = (current_date - START_DATE).days
-    
+
     # Turmeric seasonal wave: rising into mid-summer then moderating
     t_wave = math.sin(days_since_start / 35.0) * 800 + (days_since_start * 4.0)
-    
+
     # Erode Turmeric Finger: Base ~14,600
     finger_noise = random.randint(-120, 150)
     turmeric_finger_modal = int(14600 + t_wave + finger_noise)
@@ -139,7 +140,9 @@ def main():
         writer.writeheader()
         writer.writerows(records)
 
-    print(f"Generated {len(records)} records across {(END_DATE - START_DATE).days} days.")
+    print(
+        f"Generated {len(records)} records across {(END_DATE - START_DATE).days} days."
+    )
     print(f"Saved to: {OUT_FILE}")
 
 

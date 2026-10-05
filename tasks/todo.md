@@ -128,3 +128,168 @@ Details, acceptance criteria and verification for each task are in `tasks/plan.m
 - [ ] 2-week pilot with 10–20 farmers from one FPO (runbook: `docs/PILOT_RUNBOOK.md`)
 - [ ] Native-speaker review of Tamil copy and expand/adjust/stop decision (evaluation rubric: `docs/PILOT_RUNBOOK.md`)
 
+# FPOLink MVP Sprint — Tasks M1–M4
+
+Append to `tasks/todo.md`. IDs use the `M` prefix to avoid clashing with T0–T6.
+
+Scope: Erode district, turmeric + banana, free sources only, WhatsApp-only bot.
+
+**MVP definition:** one FPO admin logs in (Tamil-first), sees today's prices + 30-day trend + a forecast,
+
+records harvests and sees the aggregate batch; a farmer asks the WhatsApp bot for a price and gets a Tamil/English reply.
+
+**Out of scope for MVP:** buyer matching, maps, demand forecasting, anomaly detection, coconut, XGBoost tuning.
+
+---
+
+## Phase M0 — Pre-flight (do first, ~1 hour)
+
+- [ ] **M0.1 Confirm latest work is pushed**
+
+  - Run `git status` and `git log origin/main -3`; push anything unpushed.
+
+  - Accept: public GitHub shows `tasks/`, `docs/`, Phase 5 files, CI green.
+
+- [ ] **M0.2 Remove stale Telegram/legacy bits**
+
+  - Delete `bot/` folder if empty, Telegram refs in README/config/`notifications/`, `python-jose` mentions.
+
+  - Update GitHub repo description (drop "Telegram Bot").
+
+  - Accept: `grep -ri telegram .` returns nothing outside git history/changelog.
+
+## Phase M1 — Real price data (blocker)
+
+- [ ] **M1.1 Verify OGD (data.gov.in Agmarknet) adapter against the live API**
+
+  - Accept: one command fetches latest records for Erode-area markets and writes `raw_ingest` rows.
+
+- [ ] **M1.2 Backfill history**
+
+  - Backfill as many months as the source provides for turmeric + banana; use the manual CSV adapter for gaps.
+
+  - Accept: ≥ 6 months of cleaned rows per crop per market with data; gap report printed.
+
+- [ ] **M1.3 Normalize units and varieties**
+
+  - Quintal vs kg, turmeric variety (finger/bulb), banana variety mapped via `varieties`.
+
+  - Accept: every price row has a canonical unit (₹/quintal) and variety; tests cover conversions.
+
+- [ ] **M1.4 Freshness metadata**
+
+  - API returns `last_updated` and `source` per price.
+
+  - Accept: `/prices/latest` includes both fields; test added.
+
+- [ ] **M1.5 Scheduled daily ingest in worker**
+
+  - Accept: worker ingests daily at configured IST time; failure logged to Sentry; idempotent re-runs.
+
+- [ ] **M1.6 Data-health endpoint**
+
+  - Rows per market per day, gaps, outliers removed.
+
+  - Accept: `/admin/data-health` returns JSON; covered by a test.
+
+**Checkpoint A:** `curl /prices/latest?crop=turmeric&market=erode` returns real, fresh, correctly-united data.
+
+## Phase M2 — Honest forecasting
+
+- [ ] **M2.1 Baseline forecaster**
+
+  - Seasonal-naive + moving average with a simple confidence band, 7 and 30 day horizons.
+
+  - Accept: `/forecast?crop=…` returns point + lower/upper; unit tests on synthetic data.
+
+- [ ] **M2.2 Backtest harness**
+
+  - Rolling-origin evaluation (MAE/MAPE) on a held-out window; store results in `model_versions`.
+
+  - Accept: one command prints baseline metrics per crop.
+
+- [ ] **M2.3 Optional: XGBoost/RandomForest challenger**
+
+  - Only promoted if it beats the baseline on the backtest by a clear margin.
+
+  - Accept: promotion rule coded; baseline stays default otherwise.
+
+- [ ] **M2.4 Forecast logging and scoring**
+
+  - Log every prediction to `forecast_log`; nightly job fills in actuals and error.
+
+  - Accept: scored rows appear the day after actuals arrive.
+
+- [ ] **M2.5 UI/API disclaimer text**
+
+  - "Estimate, not advice" string in Tamil and English returned with every forecast.
+
+**Checkpoint B:** backtest report committed to `docs/FORECAST_BACKTEST.md`.
+
+## Phase M3 — Tamil-first dashboard on Vercel
+
+- [ ] **M3.1 API client + auth flow** (login, token refresh, logout)
+
+- [ ] **M3.2 Prices screen**: crop/market selector, 30-day chart, today's table, freshness badge, forecast band
+
+- [ ] **M3.3 Harvest entry screen**: member picker, crop, quantity, expected date; validation in Tamil/English
+
+- [ ] **M3.4 Batch summary screen**: aggregated harvest per crop/week, total quantity, member breakdown
+
+- [ ] **M3.5 i18n pass**: Tamil default, English toggle, no untranslated strings (script that fails CI on missing keys)
+
+- [ ] **M3.6 Mobile polish**: ≥ 44px touch targets, readable charts at 360px width, loading/empty/error states
+
+- [ ] **M3.7 Deploy to Vercel**: `NEXT_PUBLIC_API_URL` env var, CORS allowlist on backend
+
+  - Accept: public Vercel URL logs in against the hosted backend.
+
+**Checkpoint C:** admin completes login → view price → add harvest → see batch on a phone.
+
+## Phase M4 — Hosting, WhatsApp and pilot
+
+- [ ] **M4.1 Pick and set up always-on backend host** (prod compose from T5.1; verify free-tier terms first)
+
+  - Accept: `/health` green externally; retention + sweep jobs running.
+
+- [ ] **M4.2 Seed admin from env vars, remove `admin123`; force password change on first login**
+
+- [ ] **M4.3 WhatsApp price lookup (test number)**
+
+  - Intents: price for crop (Tamil/English), "no data yet" reply, help text.
+
+  - Accept: a real phone gets a correct Tamil reply for "மஞ்சள் விலை" within seconds; replies include date and source.
+
+- [ ] **M4.4 DPDP basics**: consent text at registration, member data delete, WhatsApp opt-out handling
+
+- [ ] **M4.5 End-to-end smoke test**: ingest → forecast → API → WhatsApp reply (CI job)
+
+- [ ] **M4.6 README + screenshots**: WhatsApp-only, Argon2/PyJWT, correct clone URL, real setup steps
+
+- [ ] **M4.7 Kill-switch drill**: trigger once per `docs/OPS_RUNBOOK.md`, confirm bot stops and recovers
+
+- [ ] **M4.8 Pilot onboarding**: 1 FPO admin + 5–10 farmers, short Tamil how-to, feedback log
+
+**Checkpoint D (MVP done):** pilot farmers receive real prices on WhatsApp; admin uses the dashboard; CI green; no secrets or default passwords in repo.
+
+---
+
+## Suggested order and timing
+
+| Days | Work |
+
+|------|------|
+
+| 0 | M0 |
+
+| 1–3 | M1 |
+
+| 3–5 | M2 |
+
+| 5–10 | M3 |
+
+| 10–12 | M4.1–M4.3 |
+
+| 12–14 | M4.4–M4.8 |
+
+Parallelizable with subagents: M2 with M3.1–M3.2, and M4.4 with M4.6.

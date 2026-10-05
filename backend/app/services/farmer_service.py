@@ -35,8 +35,7 @@ def create_farmer(
         consent_date=now if opt_in else None,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()
 
     # Create farmer profile
     farmer = Farmer(
@@ -54,6 +53,7 @@ def create_farmer(
     )
     db.add(farmer)
     db.commit()
+    db.refresh(user)
     db.refresh(farmer)
 
     return user, farmer

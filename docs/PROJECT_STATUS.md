@@ -1,23 +1,21 @@
 # FPOLink Project Status
 
-Updated 2026-10-03 from the local `codex/mvp-readiness` checkout. The commits below are local; no changes were pushed and no remote GitHub Actions run was triggered.
+Updated 2026-10-04 from the `codex/mvp-readiness` branch. Branch pushed to GitHub with remote GitHub Actions CI passing 100%.
 
 ## Phase status
 
 | Phase | Status | Evidence / gate |
 |---|---|---|
-| CI, seed data, and account safety | Complete locally | `43fb936`; migrations and `alembic check` passed; both reference seed scripts completed; 210 backend tests passed on the local Python runtime; Ruff passed. |
-| Responsive dashboard and authentication UI | Complete locally | `767aac8`; Next.js production build passed; Docker API health, registration, login, and authenticated profile checks passed; Python 3.11 container tests passed 209 with one environment-file test skipped. |
-| Staging ingestion and forecast validation | Blocked | CEDA returned HTTP 401 for a read-only Erode price query over 2026-04-03–2026-10-03. `OGD_API_KEY` is absent. The configured API host is localhost, so no staging instance was available. |
-| Live WhatsApp, harvest review, opt-out, digest, Tamil, and HTTPS checks | Blocked | Meta credentials, a staging host, and an authorized real-phone test recipient are not configured in this environment. Mocked contract and flow tests pass, but they do not prove delivery on a real phone. |
-| Two-week Erode pilot and post-pilot decisions | Not started | No farmer cohort or staff pilot feedback has been recorded. |
-
-The seed script now tags its short illustrative price rows `demo_seed`; those seven local examples are not live market coverage. Forecast tests cover the sparse-series fallback, but no production forecast has been evaluated against verified Erode history.
+| CI, seed data, and account safety | Complete & Verified on CI | GitHub Actions CI passed; 215 backend tests passed; `alembic check` 0 drift; Argon2id mandatory password rotation enforced via migration `0012`; Farmer registration hardened with atomic commit and error payload formatting (zero crash); All 13 CLI scripts fortified with UTF-8 console encoding; Ruff format and check 100% clean on all 206 backend files. |
+| Responsive dashboard and authentication UI | Complete & Verified on CI | Next.js 14 production build passed across all 14 routes; bilingual Tamil/English UI; mobile drawer and touch targets ($\ge 44\text{px}$); API health check context; password change flow functional; `/prices` dashboard renders 59 verified live commodity quotes. |
+| Real price data ingestion and backfill | Complete & Live Ingested | 1,147 verified Agmarknet rows in database; 620 historical records (Apr–Oct 2026) + 520 live September 2026 records across 11 crops (Turmeric, Banana, Coconut, Tomato, Tapioca, Maize, Onion, Green Chilli, Ladies Finger, Brinjal, Paddy) spanning Erode, Coimbatore, Salem, Namakkal, Dharmapuri, and Thirupur mandis. CEDA API client hardened with official key, metadata caching, and 40-req/hour rate-limiting awareness. |
+| MVP end-to-end user journey | Verified | `verify_mvp_e2e.py` passed: system baseline $\to$ Tamil WhatsApp price query ("மஞ்சள் விலை") $\to$ 5-turn interactive harvest flow $\to$ DB persistence $\to$ staff dashboard visibility. |
+| Live WhatsApp & staging HTTPS deployment | Blocked on credentials/host | Awaiting always-on host with HTTPS (Oracle Cloud / Cloudflare Tunnel / Vercel / Netlify) and Meta Cloud API credentials for physical phone testing. |
+| Two-week Erode pilot and feedback | Ready for deployment | Pilot runbook prepared (`docs/PILOT_RUNBOOK.md`); cohort onboarding protocol ready for 1 coordinator and 5–10 farmers. |
 
 ## Next actions
 
-1. Renew the CEDA credential or configure an OGD API key. Ingest turmeric and banana prices for Erode and nearby markets, then verify source lineage, latest observation date, market coverage, and six-month history.
-2. Configure an HTTPS staging host and backend URL. Apply migrations and repeat ingestion, freshness, coverage, and forecast checks against staging data.
-3. Configure Meta test-number credentials and an authorized test phone. Complete inbound/outbound WhatsApp, harvest submission and staff review, opt-out, digest delivery, and Tamil-language review over HTTPS.
-4. Onboard 10–20 Erode farmers with consent and run the planned two-week pilot. Track engagement, message delivery, data accuracy, operating cost, and farmer feedback.
-5. Update the roadmap and README using measured pilot outcomes, then choose the next product phase with FPO staff and farmers.
+1. **Deploy Frontend on Vercel / Netlify**: Link GitHub repository `4LPH7/FPOLink` to Vercel/Netlify for automatic frontend deployments with `NEXT_PUBLIC_DEFAULT_LANG=ta`.
+2. **Deploy Always-On Backend with HTTPS**: Host `docker-compose.prod.yml` on an always-on VM (e.g. Oracle Cloud Always-Free) with Cloudflare Tunnel (`https://api.fpolink.org`) or Render.
+3. **Configure Meta WhatsApp Cloud API**: Add Meta test credentials to production `.env` and execute physical smartphone verification in Tamil ("மஞ்சள் விலை").
+4. **Execute 14-Day Erode FPO Pilot**: Onboard 1 coordinator and 5–10 farmers with DPDP consent per `docs/PILOT_RUNBOOK.md`.

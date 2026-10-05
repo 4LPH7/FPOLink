@@ -3,10 +3,19 @@
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/context";
 import StatCard from "@/components/StatCard";
-import PriceChart from "@/components/PriceChart";
 import AlertPanel from "@/components/AlertPanel";
 import AggregationSummary from "@/components/AggregationSummary";
 import FarmerInviteCard from "@/components/FarmerInviteCard";
+import dynamic from "next/dynamic";
+
+const PriceChart = dynamic(() => import("@/components/PriceChart"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border bg-card p-6 shadow-sm animate-pulse h-80 flex items-center justify-center text-muted-foreground text-sm">
+      <span className="text-xs">Loading price chart...</span>
+    </div>
+  ),
+});
 import {
   TrendingUp,
   Users,

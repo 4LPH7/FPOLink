@@ -14,6 +14,30 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export function formatApiError(detail: any, fallback: string = "Unknown error"): string {
+  if (!detail) return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item: any) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const loc = Array.isArray(item.loc)
+            ? item.loc.filter((l: any) => l !== "body").join(".")
+            : "";
+          const msg = item.msg || item.message || JSON.stringify(item);
+          return loc ? `${loc}: ${msg}` : msg;
+        }
+        return String(item);
+      })
+      .join("; ");
+  }
+  if (typeof detail === "object") {
+    return detail.msg || detail.message || detail.detail || JSON.stringify(detail);
+  }
+  return String(detail);
+}
+
 export interface Crop {
   id: string;
   name: string;
@@ -314,8 +338,11 @@ export async function createFarmer(
     if (res.ok) {
       return { farmer: await res.json(), error: null };
     }
-    const errData = await res.json().catch(() => ({ detail: "Unknown error" }));
-    return { farmer: null, error: errData.detail || `HTTP ${res.status}` };
+    const errData = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    return {
+      farmer: null,
+      error: formatApiError(errData?.detail ?? errData, `HTTP ${res.status}`),
+    };
   } catch (err) {
     return { farmer: null, error: String(err) };
   }
@@ -812,8 +839,8 @@ export async function createFarmPlot(
       body: JSON.stringify(payload),
     });
     if (res.ok) return await res.json();
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to create farm plot");
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(formatApiError(err?.detail ?? err, "Failed to create farm plot"));
   } catch (err: any) {
     console.error("createFarmPlot error:", err);
     throw err;
@@ -981,8 +1008,8 @@ export async function createBuyer(
       body: JSON.stringify(payload),
     });
     if (res.ok) return await res.json();
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to create buyer");
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(formatApiError(err?.detail ?? err, "Failed to create buyer"));
   } catch (err: any) {
     console.error("createBuyer error:", err);
     throw err;
@@ -1037,8 +1064,8 @@ export async function createBuyerRequirement(
       body: JSON.stringify(payload),
     });
     if (res.ok) return await res.json();
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to create buyer requirement");
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(formatApiError(err?.detail ?? err, "Failed to create buyer requirement"));
   } catch (err: any) {
     console.error("createBuyerRequirement error:", err);
     throw err;
@@ -1186,8 +1213,8 @@ export async function suggestMatch(
       body: JSON.stringify(payload),
     });
     if (res.ok) return await res.json();
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to create match");
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(formatApiError(err?.detail ?? err, "Failed to create match"));
   } catch (err: any) {
     console.error("suggestMatch error:", err);
     throw err;
@@ -1209,8 +1236,8 @@ export async function confirmMatch(
       body: JSON.stringify(payload),
     });
     if (res.ok) return await res.json();
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to confirm match");
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(formatApiError(err?.detail ?? err, "Failed to confirm match"));
   } catch (err: any) {
     console.error("confirmMatch error:", err);
     throw err;

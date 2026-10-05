@@ -14,6 +14,11 @@ Idempotent: safe to run multiple times without duplicating or corrupting data.
 import os
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # Add backend directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -1302,12 +1307,12 @@ def seed_statewide():
         assert len(TIER_A_CROPS) == 20, f"Configured crops: {len(TIER_A_CROPS)}, expected 20"
         total_taluks = sum(len(t) for t in TALUKS_BY_DISTRICT.values())
         assert total_taluks == 25, f"Configured taluks: {total_taluks}, expected 25"
-        assert (
-            len(PILOT_MARKETS) == 8
-        ), f"Configured pilot markets: {len(PILOT_MARKETS)}, expected 8"
-        assert (
-            len(STATEWIDE_MARKETS) >= 38
-        ), f"Configured statewide markets: {len(STATEWIDE_MARKETS)}, expected >= 38"
+        assert len(PILOT_MARKETS) == 8, (
+            f"Configured pilot markets: {len(PILOT_MARKETS)}, expected 8"
+        )
+        assert len(STATEWIDE_MARKETS) >= 38, (
+            f"Configured statewide markets: {len(STATEWIDE_MARKETS)}, expected >= 38"
+        )
         assert len(DATA_SOURCES) == 5, f"Configured sources: {len(DATA_SOURCES)}, expected 5"
 
         db_districts = db.query(District).count()
@@ -1322,9 +1327,9 @@ def seed_statewide():
         assert db_taluks >= 25, f"DB taluks count {db_taluks} < 25"
         assert db_markets >= 38, f"DB markets count {db_markets} < 38"
         assert db_sources >= 5, f"DB sources count {db_sources} < 5"
-        assert (
-            distinct_market_districts == 38
-        ), f"DB markets must cover all 38 districts, got {distinct_market_districts}"
+        assert distinct_market_districts == 38, (
+            f"DB markets must cover all 38 districts, got {distinct_market_districts}"
+        )
 
         print(
             "✓ Verified all reference counts: 38 Districts, 20 Tier-A Crops, 25 Taluks, 43 Markets covering all 38 Districts, 5 Data Sources"

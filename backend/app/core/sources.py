@@ -7,7 +7,7 @@ farmer-facing responses, dashboard statistics, or ML training pipelines.
 from typing import Dict, Set, Tuple
 
 # Whitelist of real, verified market price sources
-REAL_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet")
+REAL_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet", "mandiprices_agmarknet")
 REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
 
 # Deterministic source arbitration priority (lower number = higher priority)
@@ -18,6 +18,7 @@ REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
 SOURCE_PRIORITY: Dict[str, int] = {
     "ogd": 1,
     "agmarknet": 2,
+    "mandiprices_agmarknet": 2,
     "ceda": 3,
 }
 

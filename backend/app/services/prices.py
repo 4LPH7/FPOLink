@@ -80,6 +80,39 @@ def get_latest_prices(
             if get_source_priority(mp.source) < get_source_priority(existing_mp.source):
                 winner_per_pair[pair_key] = (mp, crop, market)
 
+    # Batch fetch previous prices for all pairs to compute trends without N+1 queries
+    previous_prices_by_pair: dict = {}
+    if winner_per_pair:
+        min_date = min(mp.price_date for mp, _, _ in winner_per_pair.values()) - timedelta(days=4)
+        max_date = max(mp.price_date for mp, _, _ in winner_per_pair.values())
+        crop_ids = {mp.crop_id for mp, _, _ in winner_per_pair.values()}
+        market_ids = {mp.market_id for mp, _, _ in winner_per_pair.values()}
+
+        hist_rows = (
+            db.query(
+                MarketPrice.crop_id,
+                MarketPrice.market_id,
+                MarketPrice.price_date,
+                MarketPrice.modal_price,
+                MarketPrice.source,
+            )
+            .filter(
+                MarketPrice.crop_id.in_(crop_ids),
+                MarketPrice.market_id.in_(market_ids),
+                MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                MarketPrice.price_date >= min_date,
+                MarketPrice.price_date <= max_date,
+            )
+            .all()
+        )
+        for h_crop_id, h_market_id, h_date, h_modal, h_source in hist_rows:
+            key = (h_crop_id, h_market_id)
+            if key not in previous_prices_by_pair:
+                previous_prices_by_pair[key] = {}
+            existing = previous_prices_by_pair[key].get(h_date)
+            if existing is None or get_source_priority(h_source) < get_source_priority(existing[1]):
+                previous_prices_by_pair[key][h_date] = (h_modal, h_source)
+
     prices = []
     for mp, crop, market in winner_per_pair.values():
         if min_quality is not None:
@@ -87,8 +120,16 @@ def get_latest_prices(
             if score < min_quality:
                 continue
 
-        # Calculate trend
-        trend = _calculate_trend(db, mp.crop_id, mp.market_id, mp.price_date)
+        # Look up nearest previous modal price within 4 days
+        pair_dates = previous_prices_by_pair.get((mp.crop_id, mp.market_id), {})
+        prev_price = None
+        for offset in range(1, 5):
+            d = mp.price_date - timedelta(days=offset)
+            if d in pair_dates:
+                prev_price = pair_dates[d][0]
+                break
+
+        trend = _calc_change(mp.modal_price, prev_price)
 
         prices.append(
             {

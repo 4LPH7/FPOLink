@@ -46,17 +46,25 @@ import {
   ForecastResponse,
   ArbitrageResponse,
 } from "@/lib/api";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import dynamic from "next/dynamic";
+
+const ForecastAreaChart = dynamic(() => import("@/components/ForecastAreaChart"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-72 w-full flex items-center justify-center text-muted-foreground animate-pulse border rounded-lg bg-card/40">
+      <span className="text-xs">Loading chart visualization...</span>
+    </div>
+  ),
+});
+
+const PriceHistoryChart = dynamic(() => import("@/components/PriceHistoryChart"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 w-full flex items-center justify-center text-muted-foreground animate-pulse border rounded-lg bg-card/40">
+      <span className="text-xs">Loading chart visualization...</span>
+    </div>
+  ),
+});
 
 export default function PricesPage() {
   const { lang } = useLanguage();
@@ -431,28 +439,10 @@ export default function PricesPage() {
                   {lang === "ta" ? "இந்த சந்தைக்கு வரலாற்று விலைத் தரவு இல்லை." : "No historical prices available for this crop and market."}
                 </div>
               ) : (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
-                      <Tooltip
-                        formatter={(val: any) => [`₹${Number(val).toLocaleString()}`, "Modal Rate"]}
-                        labelFormatter={(lbl) => `Date: ${lbl}`}
-                        contentStyle={{ backgroundColor: "#1e293b", color: "#fff", borderRadius: "8px", fontSize: "12px" }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="modal"
-                        stroke={activeChartCrop === "turmeric" ? "#d97706" : "#16a34a"}
-                        strokeWidth={2.5}
-                        dot={{ r: 3 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <PriceHistoryChart
+                  data={chartData}
+                  strokeColor={activeChartCrop === "turmeric" ? "#d97706" : "#16a34a"}
+                />
               )}
             </CardContent>
           </Card>
@@ -705,43 +695,7 @@ export default function PricesPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-72 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={forecastChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
-                        <Tooltip
-                          formatter={(val: any, name: string) => [
-                            `₹${Number(val).toLocaleString()}`,
-                            name === "predicted" ? "Predicted (p50)" : name === "upper" ? "Upper Bound (p90)" : "Lower Bound (p10)",
-                          ]}
-                          contentStyle={{ backgroundColor: "#1e293b", color: "#fff", borderRadius: "8px", fontSize: "12px" }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="upper"
-                          stroke="transparent"
-                          fill="#10b981"
-                          fillOpacity={0.15}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="lower"
-                          stroke="transparent"
-                          fill="#ffffff"
-                          fillOpacity={1.0}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="predicted"
-                          stroke="#10b981"
-                          strokeWidth={3}
-                          dot={{ r: 4, fill: "#10b981" }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ForecastAreaChart data={forecastChartData} />
                 </CardContent>
               </Card>
             </>

@@ -17,7 +17,7 @@ import logging
 import time
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -38,6 +38,12 @@ KNOWN_COMMODITY_IDS: Dict[str, int] = {
     "turmeric": 39,
     "banana": 19,
     "coconut": 138,
+    "tomato": 78,
+    "maize": 24,
+    "paddy": 2,
+    "groundnut": 10,
+    "onion": 23,
+    "small onion": 23,
 }
 
 
@@ -51,13 +57,14 @@ class CEDAAPIProvider(MarketDataProvider):
     _circuit_open_until: float = 0.0
     failure_threshold: int = 3
     cooldown_seconds: float = 300.0  # 5 minute cooldown
+    _commodities_cache: Optional[List[Dict[str, Any]]] = None
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         base_url: str = CEDA_API_BASE_URL,
-        timeout: float = 15.0,
-        connect_timeout: float = 5.0,
+        timeout: float = 30.0,
+        connect_timeout: float = 10.0,
         max_retries: int = 2,
     ) -> None:
         self.api_key = api_key or settings.CEDA_API_KEY
@@ -80,6 +87,7 @@ class CEDAAPIProvider(MarketDataProvider):
         """Reset circuit breaker state (useful for tests or recovery)."""
         self.__class__._failure_count = 0
         self.__class__._circuit_open_until = 0.0
+        self.__class__._commodities_cache = None
 
     def _record_failure(self) -> None:
         self.__class__._failure_count += 1
@@ -137,6 +145,26 @@ class CEDAAPIProvider(MarketDataProvider):
                     if attempts <= self.max_retries:
                         time.sleep(0.3 * attempts)
                         continue
+                elif e.response.status_code == 429:
+                    last_exception = e
+                    retry_after = 2.0 * attempts
+                    try:
+                        header_val = e.response.headers.get(
+                            "Retry-After"
+                        ) or e.response.headers.get("ratelimit-reset")
+                        if header_val:
+                            retry_after = float(header_val)
+                    except (ValueError, TypeError):
+                        pass
+                    logger.warning(
+                        f"CEDA API 429 rate limit hit. Reset in {retry_after}s. "
+                        f"Ashoka CEDA enforces a 40 requests/hour quota."
+                    )
+                    # If reset is short (<= 5s), wait and retry; otherwise break to avoid blocking
+                    if attempts <= self.max_retries and retry_after <= 5.0:
+                        time.sleep(retry_after)
+                        continue
+                    break
                 elif 400 <= e.response.status_code < 500:
                     # Non-transient 4xx errors (401, 403, 422, etc.) propagate immediately
                     # and must not increment circuit breaker failure state
@@ -167,6 +195,9 @@ class CEDAAPIProvider(MarketDataProvider):
 
     def get_commodities(self) -> List[Dict[str, Any]]:
         """Retrieve list of all commodities: [{"id": int, "name": str}]."""
+        if self.__class__._commodities_cache is not None:
+            return self.__class__._commodities_cache
+
         if not self.is_available():
             logger.warning("CEDA API key not configured")
             return []
@@ -177,17 +208,47 @@ class CEDAAPIProvider(MarketDataProvider):
                 data = resp.json()
                 output = data.get("output", {})
                 if isinstance(output, dict) and "data" in output:
-                    return [
+                    self.__class__._commodities_cache = [
                         {
                             "id": item.get("commodity_id"),
                             "name": item.get("commodity_name"),
                         }
                         for item in output["data"]
                     ]
-                return data.get("commodities", [])
+                    return self.__class__._commodities_cache
+                commodities = data.get("commodities", [])
+                if commodities:
+                    self.__class__._commodities_cache = commodities
+                    return self.__class__._commodities_cache
             except Exception as e:
                 logger.error(f"Error parsing CEDA commodities JSON: {e}")
         return []
+
+    def validate_key(self) -> Tuple[bool, str]:
+        """Test if the configured API key is valid."""
+        if not self.is_available():
+            return False, "CEDA API key is not configured"
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(f"{self.base_url}/agmarknet/commodities", headers=self._headers())
+                if resp.status_code == 200:
+                    data = resp.json()
+                    commodities_count = len(data.get("output", {}).get("data", [])) or len(
+                        data.get("commodities", [])
+                    )
+                    return True, f"Key active: {commodities_count} commodities accessible"
+                elif resp.status_code == 401:
+                    data = (
+                        resp.json()
+                        if "application/json" in resp.headers.get("content-type", "")
+                        else {}
+                    )
+                    msg = data.get("message", "Api key expired or unauthorized")
+                    return False, f"HTTP 401: {msg}"
+                else:
+                    return False, f"HTTP {resp.status_code}: {resp.text[:100]}"
+        except Exception as e:
+            return False, f"Connection error: {e}"
 
     def get_geographies(self) -> List[Dict[str, Any]]:
         """Retrieve geographies: [{"state_id": int, "state_name": str, "districts": [...]}]"""
@@ -205,6 +266,83 @@ class CEDAAPIProvider(MarketDataProvider):
                 return data.get("geographies", [])
             except Exception as e:
                 logger.error(f"Error parsing CEDA geographies JSON: {e}")
+        return []
+
+    def get_markets(
+        self,
+        state_id: int = TN_CENSUS_STATE_ID,
+        district_id: Optional[int] = ERODE_CENSUS_DISTRICT_ID,
+        commodity_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Retrieve markets: POST /agmarknet/markets."""
+        if not self.is_available():
+            logger.warning("CEDA API key not configured")
+            return []
+
+        payload: Dict[str, Any] = {"state_id": state_id}
+        if district_id is not None:
+            payload["district_id"] = [district_id]
+        if commodity_id is not None:
+            payload["commodity_id"] = commodity_id
+
+        resp = self._request_with_retry("POST", f"{self.base_url}/agmarknet/markets", json=payload)
+        if resp is not None:
+            try:
+                data = resp.json()
+                output = data.get("output", {})
+                if isinstance(output, dict) and "data" in output:
+                    return output["data"]
+                return data.get("markets", [])
+            except Exception as e:
+                logger.error(f"Error parsing CEDA markets JSON: {e}")
+        return []
+
+    def get_quantities(
+        self,
+        crop: str,
+        district: str = "Erode",
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        commodity_id: Optional[int] = None,
+        state_id: int = TN_CENSUS_STATE_ID,
+        district_id: Optional[int] = ERODE_CENSUS_DISTRICT_ID,
+    ) -> List[Dict[str, Any]]:
+        """Retrieve arrivals / quantities: POST /agmarknet/quantities."""
+        if not self.is_available():
+            logger.warning("CEDA API key not configured")
+            return []
+
+        cid = commodity_id or KNOWN_COMMODITY_IDS.get(crop.lower().strip())
+        if cid is None:
+            commodities = self.get_commodities()
+            for item in commodities:
+                if crop.lower() in item.get("name", "").lower():
+                    cid = item.get("id")
+                    break
+        if cid is None:
+            return []
+
+        payload: Dict[str, Any] = {
+            "commodity_id": cid,
+            "state_id": state_id,
+            "from_date": (start_date or date(2024, 1, 1)).isoformat(),
+            "to_date": (end_date or date.today()).isoformat(),
+        }
+        if district_id is not None:
+            payload["district_id"] = [district_id]
+
+        resp = self._request_with_retry(
+            "POST", f"{self.base_url}/agmarknet/quantities", json=payload
+        )
+        if resp is not None:
+            try:
+                data = resp.json()
+                output = data.get("output", {})
+                if isinstance(output, dict) and "data" in output:
+                    return output["data"]
+                return data.get("quantities", [])
+            except Exception as e:
+                logger.error(f"Error parsing CEDA quantities JSON: {e}")
         return []
 
     def fetch_prices(
@@ -268,6 +406,7 @@ class CEDAAPIProvider(MarketDataProvider):
                     record = self._parse_api_item(item, crop, district)
                     if record:
                         records.append(record)
+
                 logger.info(
                     f"Fetched {len(records)} records from CEDA API for {crop} in {district}"
                 )
@@ -291,15 +430,17 @@ class CEDAAPIProvider(MarketDataProvider):
             min_price = raw_min / QUINTAL_TO_KG
             max_price = raw_max / QUINTAL_TO_KG
 
-            date_val = date.fromisoformat(item["date"])
+            date_str = str(item.get("date", ""))[:10]
+            date_val = date.fromisoformat(date_str) if date_str else date.today()
             market_id = item.get("market_id")
             market_name = str(item.get("market_name") or f"Mandi {market_id or district}")
+            item_district = str(item.get("district_name") or district)
 
             return PriceRecord(
                 crop_name=crop.lower(),
                 variety_name=item.get("variety"),
                 market_name=market_name,
-                district=district,
+                district=item_district,
                 state="Tamil Nadu",
                 min_price=min_price,
                 max_price=max_price,

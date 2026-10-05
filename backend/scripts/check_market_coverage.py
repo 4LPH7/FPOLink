@@ -13,6 +13,9 @@ import os
 import sys
 from typing import List, Tuple
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -37,7 +40,7 @@ def check_coverage(crop: str = "turmeric", district: str = "Erode", db=None) -> 
         JOIN crops c ON c.id = p.crop_id
         WHERE c.name ILIKE :crop_pattern
           AND m.district ILIKE :district_pattern
-          AND p.source IN ('ceda', 'ogd', 'agmarknet')
+          AND p.source IN ('ceda', 'ogd', 'agmarknet', 'mandiprices_agmarknet')
         GROUP BY 1, 2
         ORDER BY 1, 2;
         """

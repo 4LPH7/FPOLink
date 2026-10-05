@@ -668,7 +668,7 @@ export default function BuyersPage() {
               {errorMsg && (
                 <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{errorMsg}</span>
+                  <span>{typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg)}</span>
                 </div>
               )}
 
@@ -819,7 +819,7 @@ export default function BuyersPage() {
               {errorMsg && (
                 <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{errorMsg}</span>
+                  <span>{typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg)}</span>
                 </div>
               )}
 
