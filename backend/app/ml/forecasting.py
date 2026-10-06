@@ -45,14 +45,14 @@ def load_price_series(
     Only whitelisted sources are used (synthetic rows never train models). Multiple
     varieties / sources reported on the same day are averaged into one daily observation.
     """
-    from app.core.sources import REAL_PRICE_SOURCES
+    from app.core.sources import get_real_price_sources
 
     records = (
         db.query(MarketPrice)
         .filter(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
-            MarketPrice.source.in_(REAL_PRICE_SOURCES),
+            MarketPrice.source.in_(get_real_price_sources()),
         )
         .order_by(MarketPrice.price_date.desc())
         .limit(limit * 4)

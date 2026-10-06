@@ -2,7 +2,7 @@
 
 **Tamil Nadu Agricultural Intelligence Platform & FPO Operating System**
 
-A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), district administrators, and state agricultural departments, with up-to-date mandi price intelligence, harvest aggregation, demand forecasting, multi-tenant governance, and automated farmer communication via WhatsApp — designed for all 38 districts of Tamil Nadu.
+A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), district administrators, and state agricultural departments, with up-to-date mandi price intelligence, harvest aggregation, demand forecasting, multi-tenant governance, and automated farmer communication via Telegram and WhatsApp — designed for all 38 districts of Tamil Nadu.
 
 [![CI](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml/badge.svg)](https://github.com/4LPH7/FPOLink/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
@@ -33,41 +33,44 @@ A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), 
              ┌───────────────────────────┼───────────────────────────┐
              │                           │                           │
        PostgreSQL 16             APScheduler Worker            Notifications
-    (31 Relational Tables)      (Container Isolation)      (WhatsApp Cloud API)
+    (31 Relational Tables)      (Container Isolation)      (Telegram & WhatsApp)
              │                           │                           │
     Statewide Foundation:       Ingestion & Quality:        At-Least-Once Sweeper:
-    ├── 38 Revenue Districts    ├── OGD India Mandi Feed    ├── Interactive Menus
-    ├── Taluk/Block/Village     ├── CEDA Ashoka Mandi Feed  ├── Daily Price Digest
-    ├── Canonical Crop Ontology ├── Source Mapping Layer    └── Price-Move Alerts
-    ├── Regulated Market Master ├── Raw Replay & Lineage
-    └── Tamper-Evident Audit    └── Explainable QA (0–100)
+    ├── 38 Revenue Districts    ├── OGD India Mandi Feed    ├── Telegram (Active Default)
+    ├── 46 Regulated Markets    ├── CEDA Ashoka Mandi Feed  ├── Daily Price Digests
+    ├── Canonical Crop Ontology ├── Source Mapping Layer    ├── Harvest Submissions
+    ├── Pilot Taluk/Village Data ├── Raw Replay & Lineage   └── Price-Move Alerts
+    └── Tamper-Evident Audit    └── Explainable QA (0–100)      (WhatsApp: Dormant)
 ```
 
 ---
 
-## Key Modules
+## Key Modules & Implementation Status
 
-| Module | Description | Status |
+| Module | Description | Verification Status |
 |---|---|---|
-| **Administrative Geography** | Full 5-tier relational hierarchy: State, 38 Districts, Taluks, Blocks, and Villages | **Active** |
-| **Agricultural Crop Ontology** | Canonical crop catalog with botanical classifications, Tamil names, and aliases | **Active** |
-| **Market Master Registry** | Normalized mandi master registry with geo-coordinates and regional aliases | **Active** |
-| **Source Mapping Layer** | Deterministic Stage 0 mapping (OGD, Agmarknet, CEDA) with confidence scoring | **Active** |
-| **Raw Persistence & Replay** | Immutable raw packet storage with SHA-256 deduplication and offline replay harness | **Active** |
-| **End-to-End Data Lineage** | Complete provenance tracking (MarketPrice -> IngestionRun -> RawIngest) | **Active** |
-| **Commodity Registry UI** | Staff UI (/admin/commodities) to browse botanical cultivars, aliases & mappings | **Active** |
-| **Ingestion Center Console** | Telemetry dashboard (/admin) tracking 38-district reporting freshness & runs | **Active** |
-| **Multi-Tenant RBAC & Audit** | 9 discrete roles (`STATE_ADMIN`, `DISTRICT_ADMIN`, `FPO_ADMIN`, etc.) with audit logging | **Active** |
-| **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Active** |
-| **Mandi Price Ingestion** | Daily price feeds from data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes; automated refreshes during market hours when API credentials are configured | **Active** |
-| **Agricultural Feature Store** | 26 leak-free tabular features (lags, rolling stats, arrival momentum, Tamil festival flags) | **Active** |
-| **Dual Forecasting Engine (v0.7)** | LightGBM quantile regression (p10/p50/p90) + rolling baseline + actionable signals | **Active** |
-| **Geospatial Arbitrage Engine** | Haversine distance matrix across mandis with freight deduction (₹50 + ₹1.20/km/qtl) | **Active** |
-| **Prices & Intelligence UI** | 38-district selector, Recharts 7-day quantile confidence bands, and arbitrage matrix | **Active** |
-| **Staff Web Dashboard** | Next.js 14 PWA, Tailwind CSS, shadcn/ui, Tamil typography, 30-day price trends | **Active** |
-| **WhatsApp Conversational Bot** | Meta Cloud API v23.0, 3-button interactive menu, idempotent harvest logging | **Active** |
-| **DPDP Act 2023 Compliance** | Digital Personal Data Protection Act compliance, consent ledger, 7-day raw purge | **Active** |
-| **Zero-Cost Production Stack** | Cloudflare Tunnel sidecar + Oracle Cloud Always Free VM deployment guide | **Active** |
+| **Administrative Geography** | 5-tier relational schema (State, 38 Districts, Taluks, Blocks, Villages); 38 districts & 46 mandis reference-seeded; pilot taluks | **Implemented & Seeded** |
+| **Agricultural Crop Ontology** | Canonical crop catalog with botanical classifications, Tamil names, and aliases | **Implemented & Seeded** |
+| **Market Master Registry** | Normalized mandi master registry with geo-coordinates and regional aliases | **Implemented & Seeded** |
+| **Source Mapping Layer** | Deterministic Stage 0 mapping (OGD, Agmarknet, CEDA) with confidence scoring | **Implemented & Tested** |
+| **Raw Persistence & Replay** | Immutable raw packet storage with SHA-256 deduplication and offline replay harness | **Implemented & Tested** |
+| **End-to-End Data Lineage** | Complete provenance tracking (`MarketPrice` -> `IngestionRun` -> `RawIngest`) | **Implemented & Tested** |
+| **Commodity Registry UI** | Staff UI (`/admin/commodities`) to browse botanical cultivars, aliases & mappings | **Cloud Deployed** |
+| **Ingestion Center Console** | Telemetry dashboard (`/admin`) tracking 38-district reporting freshness & runs | **Cloud Deployed** |
+| **Multi-Tenant RBAC & Audit** | 9 discrete roles (`STATE_ADMIN`, `DISTRICT_ADMIN`, `FPO_ADMIN`, etc.) with strict tenant isolation and audit logging | **Implemented & Tested** |
+| **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Implemented & Tested** |
+| **Mandi Price Ingestion** | Daily price feeds from data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes; automated refreshes with stale warnings | **Implemented & Tested** |
+| **Agricultural Feature Store** | 26 leak-free tabular features (lags, rolling stats, arrival momentum, Tamil festival flags) | **Implemented & Tested** |
+| **Dual Forecasting Engine (v0.7)** | LightGBM quantile regression (p10/p50/p90) + rolling baseline with chronological backtests and input freshness metadata | **Implemented & Tested** |
+| **Geospatial Arbitrage Engine** | Haversine distance matrix across mandis with configurable handling, commission, spoilage risk, and freight assumptions | **Implemented & Tested** |
+| **FPO Action Workspace** | Mobile-first operational cockpit (`/`) answering what is for sale, pending confirmations, matching buyers, and urgent tasks | **Cloud Deployed & Pilot** |
+| **Prices & Intelligence UI** | 38-district selector, Recharts 7-day quantile confidence bands, and arbitrage matrix (`/prices`) with provenance badges | **Cloud Deployed** |
+| **Demand & Matching Console** | 5-factor semi-automatic candidate ranking and 1-click staff confirmation (`/matching`, `/buyers`) | **Cloud Deployed & Pilot** |
+| **FPO Operations Board** | Tenant-scoped task management with due dates, priorities, categories, and overdue tracking (`/tasks`) | **Cloud Deployed** |
+| **Telegram Conversational Bot** | Free-tier conversational bot (`/telegram`) for farmer onboarding, price lookups, and harvest submission | **Cloud Deployed** |
+| **WhatsApp Conversational Bot** | Meta Cloud API v23.0 integration with interactive buttons; dormant by default until Meta credentials are set | **Implemented (Dormant)** |
+| **DPDP Act 2023 Compliance** | Digital Personal Data Protection Act compliance, consent ledger, 7-day raw purge | **Implemented & Tested** |
+| **Zero-Cost Production Stack** | Cloudflare Tunnel sidecar + Oracle Cloud Always Free VM or Render + Vercel deployment | **Documented & Tested** |
 
 ---
 
@@ -78,11 +81,12 @@ A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), 
 | **Frontend** | Next.js 14 (App Router), React 18, Tailwind CSS, shadcn/ui | High performance, responsive PWA, bilingual support (Tamil/English) |
 | **Backend API** | FastAPI, Pydantic v2, Python 3.11 | Asynchronous capability, automated OpenAPI v3 documentation |
 | **Database** | PostgreSQL 16 (`psycopg` 3 native driver), SQLAlchemy 2.0 | Transactional integrity, UUID primary keys, JSONB for telemetry |
-| **Migrations** | Alembic | Strict, version-controlled schema migrations (`0001` through `0010`) |
-| **Security & Auth** | `pwdlib[argon2]`, `PyJWT` | OWASP-recommended password hashing and stateless JWT bearer tokens |
+| **Migrations** | Alembic | Strict, version-controlled schema migrations (`0001` through `0013`) |
+| **Security & Auth** | `pwdlib[argon2]`, `PyJWT` | OWASP-recommended password hashing, scoped tenant auth, mandatory password rotation |
 | **Background Worker** | APScheduler | Dedicated worker container for mandi ingestion and broadcast digests |
 | **Quality & Anomaly** | Custom QA Scoring (0–100), Median Absolute Deviation (MAD) | Outlier detection robust against agricultural price volatility |
-| **Messaging** | Meta WhatsApp Cloud API (Graph API v23.0) | Zero-cost official API integration, interactive quick-reply buttons |
+| **Messaging (Active)** | Telegram Bot API (via webhook/polling) | Zero-cost active conversational channel on Render/free tier |
+| **Messaging (Optional)** | Meta WhatsApp Cloud API (Graph API v23.0) | Optional enterprise channel; disabled by default (`WHATSAPP_ENABLED=false`) |
 | **Containerization** | Docker Engine & Docker Compose | Uniform local development and reproducible server deployments |
 
 ---
@@ -226,6 +230,7 @@ The platform database schema is managed via Alembic:
 | `0010_source_mappings_markets` | Source-to-canonical mappings and market expansion |
 | `0011_supply_demand_network` | Farm plots, buyer requirements, and supply matches |
 | `0012_required_password_rotation` | Required password rotation for existing privileged accounts |
+| `0013_fpo_tasks` | FPO-scoped operations to-do task board with roles and audit tracking |
 
 To check migration status:
 ```bash
@@ -235,16 +240,65 @@ docker compose exec backend alembic check
 
 ---
 
+## What Works Today
+
+FPOLink has verified end-to-end user workflows tested via automated integration and regression suites (246+ tests):
+
+### 1. Verified Workflows
+- **Administrator Bootstrap & Security Governance**:
+  - Secure CLI admin bootstrapping via `python backend/scripts/create_admin.py` with Argon2id password hashing.
+  - Strict JWT authentication boundary requiring immediate password rotation (`/change-password`) on first login before privileged tokens are issued.
+  - Strict tenant isolation verified across all 9 roles: cross-FPO data mutation, unauthorized farmer access, and cross-district administrative leakage are completely blocked at the database layer.
+- **Farmer Onboarding & DPDP Consent Ledger**:
+  - Farmer enrollment capturing phone, acreages, language preference, and explicit DPDP Act 2023 consent records (`/farmers`).
+- **Mandi Price Ingestion & Explainable Quality Scoring**:
+  - Automated ingestion from official mandi portals (OGD India, CEDA Ashoka) with deterministic canonical entity resolution (`/api/v1/crops/resolve`, `/api/v1/markets/resolve`).
+  - Explainable quality scoring (0–100) assessing freshness, canonical match confidence, source authority, and field completeness.
+  - Full raw packet persistence (`raw_ingest_payloads`) ensuring complete provenance traceability and offline replayability.
+- **Price Freshness, Stale Warnings & Demo Isolation**:
+  - Every price record exposes its observation date, ingestion timestamp, raw source, unit, variety, and quality score.
+  - Clear visual indicators distinguish **Fresh** ($\le 2$ days), **Stale** ($3\text{--}7$ days), **Outdated** ($> 7$ days), and **Demo Seed** records.
+  - Ingestion outages display last-known observations with high-visibility stale warning banners—never disguising outdated data as fresh.
+  - Demo seeds (`demo_seed`) are strictly banned from production farmer feeds, recommendations, and alert digests via startup checks and queries.
+- **Harvest Aggregation & 1-Click Verification**:
+  - Farmer-declared harvests logged via bot or web.
+  - FPO staff verify submissions with 1 click from the action workspace, instantly locking them into pooled batches (`/`).
+- **Commercial Demand & 5-Factor Supply Matching**:
+  - Commercial buyer requirements registered with target grades, deadlines, and ceiling prices (`/buyers`).
+  - 5-factor matching algorithm evaluates crop compatibility, geographic proximity (km), quantity fit ratio, harvest delivery timing, and minimum grade fit (`/matching`).
+  - 1-click staff confirmation creates binding execution ledger entries.
+- **FPO Action Workspace & Task Board**:
+  - Single mobile-first home console (`/`) answering what is for sale, pending harvest confirmations, matching buyer orders, and urgent tasks.
+  - Operational task tracker (`/tasks`) scoped to FPO staff with overdue deadlines.
+- **Bilingual Conversational Interface**:
+  - Zero-cost Telegram bot (`/telegram`) operating with Tamil and English menus for harvest logging and price inquiries.
+
+### 2. Deployment Requirements
+- **Compute**: Minimum 1 vCPU, 1 GB RAM (runs on Oracle Cloud Always Free VM or Render Free Tier).
+- **Database**: PostgreSQL 16+ with UUID extensions (SQLite supported for rapid local testing).
+- **Environment**: Node.js 18+ (frontend Next.js 14) and Python 3.11+ (FastAPI backend).
+
+### 3. Known Pilot Limitations & Boundaries
+- **Messaging Channel**: Telegram is the active default channel for cloud deployments. Meta WhatsApp Cloud API is fully implemented but requires enterprise Meta business verification and webhook setup (`WHATSAPP_ENABLED=true`).
+- **Forecast Cold Starts**: Quantile forecasting models require at least 180 daily historical observations per crop-mandi pair. Rolling 14-day baselines are automatically used when observations are sparse.
+- **Geography Coverage**: The relational schema supports the full 5-tier statewide administrative hierarchy (State -> 38 Districts -> Taluks -> Blocks -> Villages). Reference seed files populate all 38 revenue districts, 46 regulated markets, and 20 Tier-A crops; taluks and villages are currently populated for pilot agricultural clusters (Erode, Salem, Coimbatore).
+
+---
+
 ## Testing & Quality Assurance
 
-The test suite covers unit tests, integration tests, contract tests, and compatibility shims.
+The test suite covers unit tests, integration tests, contract tests, security tenant isolation, and complete user journeys.
 
-Execute the full regression test suite inside the container:
+Execute the full regression test suite inside the container or virtual environment:
 ```bash
+# Inside Docker
 docker compose exec backend pytest -v --tb=short
+
+# Or locally
+pytest -v backend/tests
 ```
 
-The CI workflow applies migrations, seeds the required reference data, runs the PostgreSQL-backed suite, checks Ruff lint and formatting, builds the frontend, and exercises Docker health and authentication.
+The CI workflow applies migrations, seeds required reference data, runs the PostgreSQL-backed suite (246+ tests), checks Ruff lint and formatting, builds the Next.js frontend, and exercises Docker health and authentication.
 
 ---
 
@@ -253,7 +307,7 @@ The CI workflow applies migrations, seeds the required reference data, runs the 
 > [!IMPORTANT]
 > A source label alone does not verify that a price came from a live provider. The development seed creates synthetic examples marked `demo_seed`; staging ingestion freshness, coverage, and farmer-facing isolation still need a live deployment check.
 > - **Provider records** may be tagged `ogd`, `agmarknet`, or `ceda`; verify their ingestion run and raw lineage before treating them as current market observations.
-> - **Development examples** are tagged `demo_seed` and must not be presented as verified market prices.
+> - **Development examples** are tagged `demo_seed` and must not be presented as verified market prices. In production (`ENVIRONMENT="production"`), synthetic records are rejected automatically at startup.
 > - See [docs/data-provenance.md](docs/data-provenance.md) for the intended source and fixture handling.
 
 ---
@@ -262,12 +316,12 @@ The CI workflow applies migrations, seeds the required reference data, runs the 
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-## Free deployment (Render + Vercel)
+## Free Deployment (Render + Vercel)
 
 **Backend (Render):** New → Blueprint → select this repo. `render.yaml` creates the
 `fpolink-api` web service and a free PostgreSQL database. In the dashboard set:
 - `TELEGRAM_BOT_TOKEN` – token from @BotFather (secret, never commit)
-- `CORS_ORIGINS` – your Vercel URL (any `*.vercel.app` origin is also allowed by regex)
+- `CORS_ORIGIN_REGEX` – `^https://fpolink(-[a-z0-9-]+)?\.vercel\.app$` (tightly restricts access to official preview and production deployments, preventing unauthorized third-party origins)
 
 Migrations run on every start (`alembic upgrade head`). Demo data: open the Render shell and run
 `python scripts/seed_statewide_foundation.py` (prices tagged `demo_seed` are only served while `DEMO_MODE=true`).
@@ -275,8 +329,15 @@ Migrations run on every start (`alembic upgrade head`). Demo data: open the Rend
 **Frontend (Vercel):** Import repo, Root Directory `frontend`, env var
 `API_INTERNAL_URL=https://<your-render-service>.onrender.com`. `/api/*` is proxied to the backend.
 
-**Telegram:** see `docs/TELEGRAM_SETUP.md`. **WhatsApp:** disabled (`WHATSAPP_ENABLED=false`).
+**Messaging:**
+- **Telegram (Active)**: See `docs/TELEGRAM_SETUP.md`. Works immediately on free-tier deployments.
+- **WhatsApp (Optional)**: Disabled by default (`WHATSAPP_ENABLED=false`). Enable by configuring Meta Cloud API credentials in `.env`.
 
-**Local dev:** `DATABASE_URL=sqlite:///./fpolink.db` works for quick runs; PostgreSQL in production.
+**Local Dev:** `DATABASE_URL=sqlite:///./fpolink.db` works for quick runs; PostgreSQL 16 in production.
 
-**To-do module:** `/api/tasks` (list/summary/create/update/delete, FPO-scoped).
+**Operational Modules:**
+- `/` – Mobile-friendly FPO Action Workspace (Today's Work, Ready Supply, Buyer Matches, Market Freshness).
+- `/tasks` – FPO-scoped operations to-do task board.
+- `/matching` – 5-factor semi-automatic supply-demand matching console.
+- `/buyers` – Commercial buyer directory and procurement requirement board.
+- `/prices` – 38-district mandi price feed with data provenance and quality indicators.

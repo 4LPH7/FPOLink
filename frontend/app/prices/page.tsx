@@ -522,13 +522,13 @@ export default function PricesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{lang === "ta" ? "பயிர்" : "Crop"}</TableHead>
+                      <TableHead>{lang === "ta" ? "பயிர் & வகை" : "Crop & Variety"}</TableHead>
                       <TableHead>{lang === "ta" ? "சந்தை / மண்டி" : "Mandi Market"}</TableHead>
                       <TableHead>{lang === "ta" ? "குறைந்த விலை" : "Min Price"}</TableHead>
                       <TableHead>{lang === "ta" ? "அதிக விலை" : "Max Price"}</TableHead>
                       <TableHead>{lang === "ta" ? "மாதிரி விலை" : "Modal Price"}</TableHead>
                       <TableHead>{lang === "ta" ? "போக்கு" : "Trend"}</TableHead>
-                      <TableHead className="text-right">{lang === "ta" ? "தேதி & ஆதாரம்" : "Date & Source"}</TableHead>
+                      <TableHead className="text-right">{lang === "ta" ? "நம்பகத்தன்மை & ஆதாரம்" : "Provenance & Trust"}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -542,9 +542,16 @@ export default function PricesPage() {
                         <TableRow key={row.id}>
                           <TableCell className="font-medium">
                             <div>
-                              <span>{lang === "ta" ? row.crop_tamil_name || row.crop_name : row.crop_name}</span>
+                              <span className="font-semibold text-foreground">
+                                {lang === "ta" ? row.crop_tamil_name || row.crop_name : row.crop_name}
+                              </span>
                               <span className="block text-xs text-muted-foreground capitalize">
                                 {row.crop_name}
+                                {row.variety_name && (
+                                  <span className="ml-1 text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
+                                    • {row.variety_name}
+                                  </span>
+                                )}
                               </span>
                             </div>
                           </TableCell>
@@ -589,10 +596,34 @@ export default function PricesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="text-xs font-mono">{row.price_date}</div>
-                            <Badge variant="outline" className="text-[10px] uppercase">
-                              {row.source}
-                            </Badge>
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-mono font-medium">{row.price_date}</span>
+                                <Badge variant="outline" className="text-[9px] uppercase px-1 py-0 font-semibold tracking-wider">
+                                  {row.source}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {row.source === "demo_seed" || row.freshness_category === "demo" ? (
+                                  <Badge variant="destructive" className="text-[9px] px-1 py-0">
+                                    {lang === "ta" ? "டெமோ தரவு" : "Demo Seed"}
+                                  </Badge>
+                                ) : row.is_stale || row.freshness_category === "stale" || row.freshness_category === "outdated" ? (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
+                                    {lang === "ta" ? `பழையது (${row.stale_days || 3} நாள்)` : `Stale (${row.stale_days || 3}d ago)`}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300">
+                                    {lang === "ta" ? "புதியது" : "Fresh Observation"}
+                                  </Badge>
+                                )}
+                                {typeof row.quality_score === "number" && (
+                                  <span className="text-[10px] text-muted-foreground font-mono" title={row.quality_breakdown ? JSON.stringify(row.quality_breakdown) : "QA Score"}>
+                                    QA {Math.round(row.quality_score)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

@@ -10,7 +10,7 @@ from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.sources import REAL_PRICE_SOURCES
+from app.core.sources import get_real_price_sources
 from app.database import SessionLocal
 from app.messaging.base import mask
 from app.messaging.whatsapp_cloud import WhatsAppCloudChannel
@@ -171,7 +171,7 @@ class PriceMoveAlertService:
                 MarketPrice.crop_id == crop_id,
                 MarketPrice.price_date <= target_date,
                 MarketPrice.price_date >= target_date - timedelta(days=7),
-                MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                MarketPrice.source.in_(get_real_price_sources()),
             )
             .order_by(MarketPrice.price_date.desc(), MarketPrice.modal_price.desc())
             .all()

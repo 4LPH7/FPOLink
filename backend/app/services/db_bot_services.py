@@ -155,7 +155,7 @@ class DbBotServices:
         """
         from sqlalchemy import case
 
-        from app.core.sources import REAL_PRICE_SOURCES
+        from app.core.sources import get_real_price_sources
 
         source_precedence = case(
             (MarketPrice.source == "ogd", 1),
@@ -171,7 +171,7 @@ class DbBotServices:
                 .join(Market, MarketPrice.market_id == Market.id)
                 .filter(
                     Crop.name.ilike(f"{crop}%"),
-                    MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                    MarketPrice.source.in_(get_real_price_sources()),
                 )
             )
 
@@ -224,7 +224,7 @@ class DbBotServices:
 
     async def forecast_text(self, crop: str, lang: str = "ta") -> Optional[str]:
         """Return the 7-day price outlook for a crop (stored prediction, else computed live)."""
-        from app.core.sources import REAL_PRICE_SOURCES
+        from app.core.sources import get_real_price_sources
 
         with self.db_factory() as db:
             crop_obj = db.query(Crop).filter(Crop.name.ilike(f"{crop}%")).first()
@@ -257,7 +257,7 @@ class DbBotServices:
                     db.query(MarketPrice.market_id, sa_func.count(MarketPrice.id).label("n"))
                     .filter(
                         MarketPrice.crop_id == crop_obj.id,
-                        MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                        MarketPrice.source.in_(get_real_price_sources()),
                     )
                     .group_by(MarketPrice.market_id)
                     .order_by(sa_func.count(MarketPrice.id).desc())

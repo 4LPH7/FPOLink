@@ -15,9 +15,23 @@ VERIFIED_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet", "mandipri
 # so a fresh test deployment has something to show; every response carries source="demo_seed".
 DEMO_PRICE_SOURCE = "demo_seed"
 
-# Sources served by price APIs, the bot and forecasting.
+def get_real_price_sources() -> Tuple[str, ...]:
+    """Dynamically return verified price sources based on environment and DEMO_MODE.
+    
+    Guarantees that DEMO_PRICE_SOURCE is never included in production environments.
+    """
+    from app.config import settings
+
+    if settings.ENVIRONMENT.lower() == "production":
+        return VERIFIED_PRICE_SOURCES
+    if getattr(settings, "DEMO_MODE", False):
+        return VERIFIED_PRICE_SOURCES + (DEMO_PRICE_SOURCE,)
+    return VERIFIED_PRICE_SOURCES
+
+
+# Default tuple for static references
 REAL_PRICE_SOURCES: Tuple[str, ...] = VERIFIED_PRICE_SOURCES + (
-    (DEMO_PRICE_SOURCE,) if settings.DEMO_MODE else ()
+    (DEMO_PRICE_SOURCE,) if (settings.DEMO_MODE and settings.ENVIRONMENT.lower() != "production") else ()
 )
 REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
 
@@ -32,8 +46,6 @@ SOURCE_PRIORITY: Dict[str, int] = {
     "mandiprices_agmarknet": 2,
     "ceda": 3,
 }
-if settings.DEMO_MODE:
-    SOURCE_PRIORITY[DEMO_PRICE_SOURCE] = 50
 
 # Synthetic or unverified sources that MUST NEVER be served to farmers
 SYNTHETIC_SOURCES: Tuple[str, ...] = (
@@ -49,7 +61,7 @@ def is_real_source(source: str) -> bool:
     """Return True if source is in the real verified price sources whitelist."""
     if not source:
         return False
-    return source.lower().strip() in REAL_PRICE_SOURCES_SET
+    return source.lower().strip() in set(get_real_price_sources())
 
 
 def get_source_priority(source: str) -> int:
@@ -57,6 +69,14 @@ def get_source_priority(source: str) -> int:
 
     Unknown sources receive lowest priority (99).
     """
+    from app.config import settings
+
     if not source:
         return 99
-    return SOURCE_PRIORITY.get(source.lower().strip(), 99)
+    base = dict(SOURCE_PRIORITY)
+    if (
+        getattr(settings, "DEMO_MODE", False)
+        and settings.ENVIRONMENT.lower() != "production"
+    ):
+        base[DEMO_PRICE_SOURCE] = 50
+    return base.get(source.lower().strip(), 99)

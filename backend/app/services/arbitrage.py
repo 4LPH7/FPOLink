@@ -38,9 +38,15 @@ def find_market_arbitrage(
     max_distance_km: float = 300.0,
     base_transport_cost: float = 50.0,  # Base loading/unloading fee per quintal
     rate_per_km_quintal: float = 1.20,  # Freight rate ₹/km/quintal
+    handling_cost_per_qtl: float = 0.0,  # Handling / bagging per quintal
+    commission_pct: float = 0.0,  # Mandi market commission %
+    spoilage_risk_pct: float = 0.0,  # Transit shrinkage / spoilage %
+    min_shipment_qtl: float = 10.0,  # Minimum economic shipment size in quintals
     days_window: int = 7,
 ) -> Dict:
     """Evaluate inter-district arbitrage opportunities for a crop from an origin mandi."""
+    from app.core.sources import get_real_price_sources
+
     origin_market = db.query(Market).filter(Market.id == origin_market_id).first()
     crop = db.query(Crop).filter(Crop.id == crop_id).first()
 
@@ -50,7 +56,11 @@ def find_market_arbitrage(
     # Fetch newest price at origin
     origin_price_rec = (
         db.query(MarketPrice)
-        .filter(MarketPrice.crop_id == crop_id, MarketPrice.market_id == origin_market_id)
+        .filter(
+            MarketPrice.crop_id == crop_id,
+            MarketPrice.market_id == origin_market_id,
+            MarketPrice.source.in_(get_real_price_sources()),
+        )
         .order_by(MarketPrice.price_date.desc())
         .first()
     )
@@ -77,6 +87,7 @@ def find_market_arbitrage(
         .filter(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id != origin_market_id,
+            MarketPrice.source.in_(get_real_price_sources()),
             MarketPrice.price_date >= cutoff_date,
         )
         .group_by(MarketPrice.market_id)
@@ -91,7 +102,10 @@ def find_market_arbitrage(
             (MarketPrice.market_id == subq.c.market_id)
             & (MarketPrice.price_date == subq.c.max_date),
         )
-        .filter(MarketPrice.crop_id == crop_id)
+        .filter(
+            MarketPrice.crop_id == crop_id,
+            MarketPrice.source.in_(get_real_price_sources()),
+        )
         .all()
     )
 
@@ -113,8 +127,15 @@ def find_market_arbitrage(
 
         target_modal = float(mp.modal_price)
         gross_spread = round(target_modal - origin_price, 2)
-        transport_cost = round(base_transport_cost + (distance_km * rate_per_km_quintal), 2)
-        net_spread = round(gross_spread - transport_cost, 2)
+
+        freight_cost = round(base_transport_cost + (distance_km * rate_per_km_quintal), 2)
+        handling_cost = round(handling_cost_per_qtl, 2)
+        commission_cost = round(target_modal * (commission_pct / 100.0), 2)
+        spoilage_cost = round(origin_price * (spoilage_risk_pct / 100.0), 2)
+        total_costs = round(freight_cost + handling_cost + commission_cost + spoilage_cost, 2)
+
+        net_spread = round(gross_spread - total_costs, 2)
+        date_diff = (origin_price_rec.price_date - mp.price_date).days
 
         if net_spread >= 100.0:
             recommendation = "strong_arbitrage"
@@ -132,9 +153,17 @@ def find_market_arbitrage(
                 "price_date": mp.price_date.isoformat(),
                 "distance_km": distance_km,
                 "gross_spread": gross_spread,
-                "transport_cost": transport_cost,
+                "transport_cost": freight_cost,
                 "net_spread": net_spread,
                 "recommendation": recommendation,
+                "costs_breakdown": {
+                    "freight": freight_cost,
+                    "handling": handling_cost,
+                    "commission": commission_cost,
+                    "spoilage_risk": spoilage_cost,
+                    "total_cost": total_costs,
+                },
+                "date_difference_days": date_diff,
             }
         )
 
@@ -151,5 +180,18 @@ def find_market_arbitrage(
         "origin_price": origin_price,
         "origin_price_date": origin_price_rec.price_date.isoformat(),
         "total_destinations_analyzed": len(opportunities),
+        "assumptions": {
+            "base_transport_cost": base_transport_cost,
+            "rate_per_km_quintal": rate_per_km_quintal,
+            "handling_cost_per_qtl": handling_cost_per_qtl,
+            "commission_pct": commission_pct,
+            "spoilage_risk_pct": spoilage_risk_pct,
+            "min_shipment_qtl": min_shipment_qtl,
+        },
+        "disclaimer": (
+            "Estimated net opportunities based on reported mandi modal prices. "
+            "Does not guarantee realized trading profit; actual outcomes depend on live arrival "
+            "volumes, transporter quotes, quality grading, and mandi market fees."
+        ),
         "opportunities": opportunities,
     }

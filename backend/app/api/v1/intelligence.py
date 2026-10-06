@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.sources import REAL_PRICE_SOURCES
+from app.core.sources import get_real_price_sources
 from app.database import get_db
 from app.ml.forecasting import ForecastingService
 from app.models.crop import Crop
@@ -33,7 +33,7 @@ def get_crop_forecast(
     days: int = Query(default=7, ge=1, le=30, description="Forecast horizon in days"),
     db: Session = Depends(get_db),
 ):
-    """Generate forward price forecasts with p10/p50/p90 intervals and actionable signals."""
+    """Generate forward price forecasts with p10/p50/p90 intervals, input freshness & actionable signals."""
     crop = db.query(Crop).filter(Crop.id == crop_id).first()
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
@@ -48,12 +48,21 @@ def get_crop_forecast(
         .filter(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
-            MarketPrice.source.in_(REAL_PRICE_SOURCES),
+            MarketPrice.source.in_(get_real_price_sources()),
         )
         .order_by(MarketPrice.price_date.desc())
         .first()
     )
     current_modal = float(latest_price.modal_price) if latest_price else None
+
+    input_date = latest_price.price_date if latest_price else None
+    days_old = (date.today() - input_date).days if input_date else None
+    is_stale = (days_old > 7) if days_old is not None else True
+    stale_warn = (
+        f"Input observation is {days_old} days old; forecast uncertainty is elevated."
+        if is_stale and days_old is not None
+        else None
+    )
 
     service = ForecastingService(db)
     # Read-only endpoint: do not persist a new Prediction row on every page view.
@@ -65,11 +74,15 @@ def get_crop_forecast(
         crop_id=str(crop.id),
         crop_name=crop.name,
         crop_tamil_name=crop.tamil_name,
-        market_id=str(market.id),
         market_name=market.name,
+        market_id=str(market.id),
         district=market.district,
         current_modal_price=current_modal,
         horizon_days=days,
+        input_freshness_date=input_date.isoformat() if input_date else None,
+        days_since_last_observation=days_old,
+        is_stale=is_stale,
+        stale_warning=stale_warn,
         forecast=points,
     )
 
@@ -83,9 +96,13 @@ def get_arbitrage_opportunities(
     ),
     base_cost: float = Query(default=50.0, ge=0.0, description="Base loading cost per quintal (₹)"),
     rate_per_km: float = Query(default=1.20, ge=0.1, description="Freight cost ₹/km/quintal"),
+    handling_cost: float = Query(default=0.0, ge=0.0, description="Handling cost per quintal (₹)"),
+    commission_pct: float = Query(default=0.0, ge=0.0, le=10.0, description="Mandi commission percentage (%)"),
+    spoilage_risk_pct: float = Query(default=0.0, ge=0.0, le=20.0, description="Transit shrinkage / spoilage risk (%)"),
+    min_shipment_qtl: float = Query(default=10.0, ge=1.0, description="Minimum economic shipment size (qtl)"),
     db: Session = Depends(get_db),
 ):
-    """Evaluate inter-district market arbitrage deducting estimated freight costs."""
+    """Evaluate inter-district market arbitrage deducting estimated freight, handling, and commission costs."""
     result = find_market_arbitrage(
         db,
         crop_id=crop_id,
@@ -93,6 +110,10 @@ def get_arbitrage_opportunities(
         max_distance_km=max_distance_km,
         base_transport_cost=base_cost,
         rate_per_km_quintal=rate_per_km,
+        handling_cost_per_qtl=handling_cost,
+        commission_pct=commission_pct,
+        spoilage_risk_pct=spoilage_risk_pct,
+        min_shipment_qtl=min_shipment_qtl,
     )
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
@@ -120,7 +141,11 @@ def get_price_spreads(
             MarketPrice.market_id,
             func.max(MarketPrice.price_date).label("max_date"),
         )
-        .filter(MarketPrice.crop_id == crop_id, MarketPrice.price_date >= cutoff_date)
+        .filter(
+            MarketPrice.crop_id == crop_id,
+            MarketPrice.price_date >= cutoff_date,
+            MarketPrice.source.in_(get_real_price_sources()),
+        )
         .group_by(MarketPrice.market_id)
         .subquery()
     )
@@ -133,7 +158,10 @@ def get_price_spreads(
             (MarketPrice.market_id == subq.c.market_id)
             & (MarketPrice.price_date == subq.c.max_date),
         )
-        .filter(MarketPrice.crop_id == crop_id)
+        .filter(
+            MarketPrice.crop_id == crop_id,
+            MarketPrice.source.in_(get_real_price_sources()),
+        )
     )
 
     if district and district.lower() != "all":

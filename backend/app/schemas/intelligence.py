@@ -26,6 +26,10 @@ class ForecastResponse(BaseModel):
     district: str
     current_modal_price: Optional[float] = None
     horizon_days: int
+    input_freshness_date: Optional[str] = None
+    days_since_last_observation: Optional[int] = None
+    is_stale: Optional[bool] = None
+    stale_warning: Optional[str] = None
     forecast: List[ForecastPoint]
 
 
@@ -40,6 +44,8 @@ class ArbitrageOpportunity(BaseModel):
     transport_cost: float
     net_spread: float
     recommendation: str
+    costs_breakdown: Optional[Dict[str, float]] = None
+    date_difference_days: Optional[int] = None
 
 
 class ArbitrageResponse(BaseModel):
@@ -52,6 +58,8 @@ class ArbitrageResponse(BaseModel):
     origin_price: Optional[float] = None
     origin_price_date: Optional[str] = None
     total_destinations_analyzed: int
+    assumptions: Optional[Dict[str, float]] = None
+    disclaimer: Optional[str] = None
     opportunities: List[ArbitrageOpportunity]
 
 

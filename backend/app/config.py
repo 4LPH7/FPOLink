@@ -49,6 +49,11 @@ class Settings(BaseSettings):
                     "FATAL SECURITY ERROR: production database password must be at least "
                     "16 characters and must not be a common default."
                 )
+            if self.DEMO_MODE:
+                raise ValueError(
+                    "FATAL SECURITY ERROR: DEMO_MODE cannot be enabled in production. "
+                    "Production environments must only serve verified market price data."
+                )
             if self.WHATSAPP_ENABLED:
                 missing_wa = []
                 if not self.WHATSAPP_VERIFY_TOKEN:
@@ -132,8 +137,8 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
-    # Regex for additional allowed origins (e.g. Vercel preview deployments).
-    CORS_ORIGIN_REGEX: str = r"https://.*\.vercel\.app"
+    # Regex for additional allowed origins (scoped to FPOLink Vercel previews).
+    CORS_ORIGIN_REGEX: str = r"^https://fpolink(-[a-z0-9-]+)?\.vercel\.app$"
 
     @property
     def default_crops_list(self) -> List[str]:

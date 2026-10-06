@@ -118,6 +118,8 @@ export interface MarketPrice {
   market_id?: string;
   crop_name: string;
   crop_tamil_name?: string;
+  variety_name?: string | null;
+  variety_tamil_name?: string | null;
   market_name: string;
   district: string;
   min_price: number;
@@ -125,7 +127,15 @@ export interface MarketPrice {
   modal_price: number;
   price_date: string;
   source: string;
+  unit?: string;
   arrival_quantity?: number | null;
+  quality_score?: number | null;
+  quality_breakdown?: Record<string, any> | null;
+  ingested_at?: string | null;
+  raw_ingest_id?: string | null;
+  is_stale?: boolean;
+  stale_days?: number;
+  freshness_category?: "fresh" | "stale" | "outdated" | "demo";
   trend?: PriceTrend;
 }
 
@@ -225,7 +235,7 @@ export async function getHealth(): Promise<HealthStatus> {
 // ─── Crops API ───────────────────────────────────────────────
 export async function getCrops(): Promise<Crop[]> {
   try {
-    const res = await safeFetch(`${API_BASE}/api/crops/`, {
+    const res = await safeFetch(`${API_BASE}/api/crops`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -287,7 +297,7 @@ export async function getPriceHistory(
 // ─── FPOs API ────────────────────────────────────────────────
 export async function getFPOs(): Promise<FPO[]> {
   try {
-    const res = await safeFetch(`${API_BASE}/api/fpos/`, {
+    const res = await safeFetch(`${API_BASE}/api/fpos`, {
       headers: authHeaders(),
       cache: "no-store",
     });
@@ -639,6 +649,10 @@ export interface ForecastResponse {
   district: string;
   current_modal_price?: number;
   horizon_days: number;
+  input_freshness_date?: string | null;
+  days_since_last_observation?: number | null;
+  is_stale?: boolean;
+  stale_warning?: string | null;
   forecast: ForecastPoint[];
 }
 
@@ -653,6 +667,14 @@ export interface ArbitrageOpportunity {
   transport_cost: number;
   net_spread: number;
   recommendation: "strong_arbitrage" | "profitable_dispatch" | "local_preferred";
+  costs_breakdown?: {
+    freight: number;
+    handling: number;
+    commission: number;
+    spoilage_risk: number;
+    total_cost: number;
+  };
+  date_difference_days?: number;
 }
 
 export interface ArbitrageResponse {
@@ -665,6 +687,8 @@ export interface ArbitrageResponse {
   origin_price?: number;
   origin_price_date?: string;
   total_destinations_analyzed: number;
+  assumptions?: Record<string, number>;
+  disclaimer?: string;
   opportunities: ArbitrageOpportunity[];
 }
 
@@ -1345,3 +1369,129 @@ export async function listSupplyMatches(
   }
   return { matches: [], total: 0 };
 }
+
+// ---------------------------------------------------------------------------
+// FPO Tasks & Harvest Workflow
+// ---------------------------------------------------------------------------
+
+export interface TaskItem {
+  id: string;
+  fpo_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: "todo" | "in_progress" | "done";
+  priority: "low" | "medium" | "high" | "urgent";
+  category: string;
+  due_date?: string | null;
+  farmer_id?: string | null;
+  farmer_name?: string | null;
+  harvest_id?: string | null;
+  assigned_to_id?: string | null;
+  assigned_to_name?: string | null;
+  is_overdue?: boolean;
+  completed_at?: string | null;
+  created_at?: string | null;
+}
+
+export async function getTasks(
+  params?: { status?: string },
+  token?: string
+): Promise<TaskItem[]> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const query = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
+    const res = await safeFetch(`${API_BASE}/api/tasks${query}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch tasks:", err);
+  }
+  return [];
+}
+
+export async function updateTaskStatus(
+  taskId: string,
+  status: "todo" | "in_progress" | "done",
+  token?: string
+): Promise<TaskItem | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await safeFetch(`${API_BASE}/api/tasks/${taskId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to update task status:", err);
+  }
+  return null;
+}
+
+export interface HarvestRecord {
+  id: string;
+  farmer_id: string;
+  farmer_name?: string | null;
+  crop_id: string;
+  crop_name: string;
+  crop_tamil_name?: string | null;
+  quantity_kg: number;
+  grade: string;
+  harvest_date: string;
+  status: "submitted" | "verified" | "aggregated" | "sold";
+  source_message_id?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+}
+
+export async function getHarvests(
+  params?: { status?: string; fpo_id?: string; page?: number; page_size?: number },
+  token?: string
+): Promise<{ harvests: HarvestRecord[]; total: number }> {
+  try {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.fpo_id) q.set("fpo_id", params.fpo_id);
+    if (params?.page) q.set("page", params.page.toString());
+    if (params?.page_size) q.set("page_size", params.page_size.toString());
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await safeFetch(`${API_BASE}/api/harvest?${q.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch harvests:", err);
+  }
+  return { harvests: [], total: 0 };
+}
+
+export async function updateHarvestStatus(
+  harvestId: string,
+  status: "submitted" | "verified" | "aggregated" | "sold",
+  notes?: string,
+  token?: string
+): Promise<HarvestRecord | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await safeFetch(`${API_BASE}/api/harvest/${harvestId}/status`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ status, notes }),
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Failed to update harvest status:", err);
+  }
+  return null;
+}
+

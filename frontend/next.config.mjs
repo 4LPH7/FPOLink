@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  skipTrailingSlashRedirect: true,
   // Netlify's Next.js adapter manages its own runtime output. Standalone is
   // enabled only for the Docker image, which copies .next/standalone.
   ...(process.env.NEXT_OUTPUT_STANDALONE === "true" ? { output: "standalone" } : {}),
@@ -28,7 +29,7 @@ const nextConfig = {
     const defaultBackend =
       process.env.NODE_ENV === "production" || process.env.VERCEL === "1"
         ? "https://fpolink-api.onrender.com"
-        : "http://localhost:8000";
+        : "http://127.0.0.1:8000";
 
     const targetUrl = (apiInternalUrl || defaultBackend).replace(/\/+$/, "");
 

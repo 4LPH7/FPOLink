@@ -49,6 +49,18 @@ def test_production_rejects_default_database_password():
     assert "database password" in str(exc_info.value)
 
 
+def test_production_rejects_demo_mode():
+    with pytest.raises((ValidationError, ValueError)) as exc_info:
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="a" * 64,
+            DATABASE_URL="postgresql+psycopg://fpolink:ci-database-password-123@localhost/fpolink",
+            DEMO_MODE=True,
+            WHATSAPP_ENABLED=False,
+        )
+    assert "DEMO_MODE cannot be enabled in production" in str(exc_info.value)
+
+
 def test_development_allows_default_secret_key(caplog):
     settings = Settings(
         ENVIRONMENT="development",

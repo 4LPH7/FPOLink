@@ -10,6 +10,7 @@ from app.schemas.crop import CropListResponse, CropResponse
 router = APIRouter(prefix="/api/crops", tags=["crops"])
 
 
+@router.get("", response_model=CropListResponse)
 @router.get("/", response_model=CropListResponse)
 def list_crops(db: Session = Depends(get_db)):
     """List all configured crops."""

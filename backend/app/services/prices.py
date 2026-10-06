@@ -8,10 +8,11 @@ from typing import List, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.sources import REAL_PRICE_SOURCES, get_source_priority
+from app.core.sources import get_real_price_sources, get_source_priority
 from app.models.crop import Crop
 from app.models.market import Market
 from app.models.market_price import MarketPrice
+from app.models.variety import Variety
 from app.services.data_cleaning import detect_anomaly_mad
 
 logger = logging.getLogger(__name__)
@@ -23,11 +24,13 @@ def get_latest_prices(
     crop_id: Optional[str] = None,
     min_quality: Optional[float] = None,
 ) -> List[dict]:
-    """Get the most recent verified price for each crop in each market."""
+    """Get the most recent verified price for each crop in each market with provenance & freshness."""
     from app.config import settings
 
+    real_sources = get_real_price_sources()
+
     # Subquery for max date per crop/market — whitelisting real sources only
-    subq_filters = [MarketPrice.source.in_(REAL_PRICE_SOURCES)]
+    subq_filters = [MarketPrice.source.in_(real_sources)]
     if district and district.lower() not in ("all", "statewide", ""):
         subq_filters.append(func.lower(MarketPrice.district) == district.lower().strip())
 
@@ -46,16 +49,17 @@ def get_latest_prices(
     )
 
     query = (
-        db.query(MarketPrice, Crop, Market)
+        db.query(MarketPrice, Crop, Market, Variety)
         .join(Crop, MarketPrice.crop_id == Crop.id)
         .join(Market, MarketPrice.market_id == Market.id)
+        .outerjoin(Variety, MarketPrice.variety_id == Variety.id)
         .join(
             subq,
             (MarketPrice.crop_id == subq.c.crop_id)
             & (MarketPrice.market_id == subq.c.market_id)
             & (MarketPrice.price_date == subq.c.max_date),
         )
-        .filter(MarketPrice.source.in_(REAL_PRICE_SOURCES))
+        .filter(MarketPrice.source.in_(real_sources))
     )
     if district and district.lower() not in ("all", "statewide", ""):
         query = query.filter(func.lower(MarketPrice.district) == district.lower().strip())
@@ -67,22 +71,22 @@ def get_latest_prices(
 
     # If both OGD and CEDA report on max_date, arbitrate using SOURCE_PRIORITY
     winner_per_pair = {}
-    for mp, crop, market in results:
+    for mp, crop, market, variety in results:
         pair_key = (mp.crop_id, mp.market_id)
         if pair_key not in winner_per_pair:
-            winner_per_pair[pair_key] = (mp, crop, market)
+            winner_per_pair[pair_key] = (mp, crop, market, variety)
         else:
-            existing_mp, _, _ = winner_per_pair[pair_key]
+            existing_mp, _, _, _ = winner_per_pair[pair_key]
             if get_source_priority(mp.source) < get_source_priority(existing_mp.source):
-                winner_per_pair[pair_key] = (mp, crop, market)
+                winner_per_pair[pair_key] = (mp, crop, market, variety)
 
     # Batch fetch previous prices for all pairs to compute trends without N+1 queries
     previous_prices_by_pair: dict = {}
     if winner_per_pair:
-        min_date = min(mp.price_date for mp, _, _ in winner_per_pair.values()) - timedelta(days=4)
-        max_date = max(mp.price_date for mp, _, _ in winner_per_pair.values())
-        crop_ids = {mp.crop_id for mp, _, _ in winner_per_pair.values()}
-        market_ids = {mp.market_id for mp, _, _ in winner_per_pair.values()}
+        min_date = min(mp.price_date for mp, _, _, _ in winner_per_pair.values()) - timedelta(days=4)
+        max_date = max(mp.price_date for mp, _, _, _ in winner_per_pair.values())
+        crop_ids = {mp.crop_id for mp, _, _, _ in winner_per_pair.values()}
+        market_ids = {mp.market_id for mp, _, _, _ in winner_per_pair.values()}
 
         hist_rows = (
             db.query(
@@ -95,7 +99,7 @@ def get_latest_prices(
             .filter(
                 MarketPrice.crop_id.in_(crop_ids),
                 MarketPrice.market_id.in_(market_ids),
-                MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                MarketPrice.source.in_(real_sources),
                 MarketPrice.price_date >= min_date,
                 MarketPrice.price_date <= max_date,
             )
@@ -109,8 +113,9 @@ def get_latest_prices(
             if existing is None or get_source_priority(h_source) < get_source_priority(existing[1]):
                 previous_prices_by_pair[key][h_date] = (h_modal, h_source)
 
+    today = date.today()
     prices = []
-    for mp, crop, market in winner_per_pair.values():
+    for mp, crop, market, variety in winner_per_pair.values():
         if min_quality is not None:
             score = mp.quality_score if mp.quality_score is not None else 100.0
             if score < min_quality:
@@ -127,6 +132,22 @@ def get_latest_prices(
 
         trend = _calc_change(mp.modal_price, prev_price)
 
+        stale_days = (today - mp.price_date).days if mp.price_date else 0
+        if mp.source == "demo_seed":
+            freshness_category = "demo"
+            is_stale = False
+        elif stale_days <= 2:
+            freshness_category = "fresh"
+            is_stale = False
+        elif stale_days <= 7:
+            freshness_category = "stale"
+            is_stale = True
+        else:
+            freshness_category = "outdated"
+            is_stale = True
+
+        unit = mp.raw_unit or (crop.market_unit if hasattr(crop, "market_unit") and crop.market_unit else None) or (crop.default_unit if hasattr(crop, "default_unit") and crop.default_unit else None) or "quintal"
+
         prices.append(
             {
                 "id": str(mp.id),
@@ -134,6 +155,8 @@ def get_latest_prices(
                 "market_id": str(mp.market_id),
                 "crop_name": crop.name,
                 "crop_tamil_name": crop.tamil_name,
+                "variety_name": variety.name if variety else None,
+                "variety_tamil_name": variety.tamil_name if variety else None,
                 "market_name": market.name,
                 "district": mp.district,
                 "min_price": mp.min_price,
@@ -141,9 +164,15 @@ def get_latest_prices(
                 "modal_price": mp.modal_price,
                 "price_date": mp.price_date,
                 "source": mp.source,
+                "unit": unit,
                 "arrival_quantity": mp.arrival_quantity,
                 "quality_score": mp.quality_score,
                 "quality_breakdown": mp.quality_breakdown,
+                "ingested_at": mp.created_at.isoformat() if mp.created_at else None,
+                "raw_ingest_id": str(mp.raw_ingest_id) if mp.raw_ingest_id else None,
+                "is_stale": is_stale,
+                "stale_days": stale_days,
+                "freshness_category": freshness_category,
                 "trend": trend,
             }
         )
@@ -167,7 +196,7 @@ def get_price_history(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
             MarketPrice.price_date >= start_date,
-            MarketPrice.source.in_(REAL_PRICE_SOURCES),
+            MarketPrice.source.in_(get_real_price_sources()),
         )
         .order_by(MarketPrice.price_date)
         .all()
@@ -289,7 +318,7 @@ def check_anomalies(
             MarketPrice.crop_id == crop_id,
             MarketPrice.market_id == market_id,
             MarketPrice.price_date >= start_date,
-            MarketPrice.source.in_(REAL_PRICE_SOURCES),
+            MarketPrice.source.in_(get_real_price_sources()),
         )
         .order_by(MarketPrice.price_date)
         .all()
@@ -340,7 +369,7 @@ def _get_price_on_date(db: Session, crop_id, market_id, target_date: date) -> Op
                 MarketPrice.crop_id == crop_id,
                 MarketPrice.market_id == market_id,
                 MarketPrice.price_date == d,
-                MarketPrice.source.in_(REAL_PRICE_SOURCES),
+                MarketPrice.source.in_(get_real_price_sources()),
             )
             .order_by(source_precedence.asc())
             .first()

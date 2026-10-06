@@ -21,6 +21,7 @@ from app.services.fpo_service import (
 router = APIRouter(prefix="/api/fpos", tags=["fpos"])
 
 
+@router.post("", response_model=FPOResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=FPOResponse, status_code=status.HTTP_201_CREATED)
 def create(
     data: FPOCreate,
@@ -43,6 +44,7 @@ def create(
     )
 
 
+@router.get("")
 @router.get("/")
 def list_all(
     skip: int = 0,
