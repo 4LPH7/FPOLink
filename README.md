@@ -61,10 +61,10 @@ A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), 
 | **Data Quality Engine** | Explainable scoring (0–100) based on Freshness, Source, Match, and Completeness | **Implemented & Tested** |
 | **Mandi Price Ingestion** | Daily price feeds from data.gov.in (OGD), CEDA Ashoka, and manual mandi quotes; automated refreshes with stale warnings | **Implemented & Tested** |
 | **Agricultural Feature Store** | 26 leak-free tabular features (lags, rolling stats, arrival momentum, Tamil festival flags) | **Implemented & Tested** |
-| **Dual Forecasting Engine (v0.7)** | LightGBM quantile regression (p10/p50/p90) + rolling baseline with chronological backtests and input freshness metadata | **Implemented & Tested** |
-| **Geospatial Arbitrage Engine** | Haversine distance matrix across mandis with configurable handling, commission, spoilage risk, and freight assumptions | **Implemented & Tested** |
+| **Dual Forecasting Engine (v0.7 & M2)** | LightGBM quantile regression (p10/p50/p90) + Seasonal Naive & Median baselines with rolling-origin backtesting, automated champion promotion (≥3% MAE gain), nightly scoring, and bilingual disclaimers | **Implemented & Verified** |
+| **Defensible Arbitrage Engine (M3)** | Inter-district net realization with commercial vehicle profiles (Pickup, LCV, Truck), commodity spoilage defaults, itemized deductions, like-for-like variety matching, and multi-factor uncertainty ratings | **Implemented & Verified** |
 | **FPO Action Workspace** | Mobile-first operational cockpit (`/`) answering what is for sale, pending confirmations, matching buyers, and urgent tasks | **Cloud Deployed & Pilot** |
-| **Prices & Intelligence UI** | 38-district selector, Recharts 7-day quantile confidence bands, and arbitrage matrix (`/prices`) with provenance badges | **Cloud Deployed** |
+| **Prices & Intelligence UI** | 38-district selector, Recharts 7-day quantile confidence bands, interactive vehicle switcher, cost deduction sliders, and arbitrage matrix (`/prices`) with provenance badges | **Cloud Deployed** |
 | **Demand & Matching Console** | 5-factor semi-automatic candidate ranking and 1-click staff confirmation (`/matching`, `/buyers`) | **Cloud Deployed & Pilot** |
 | **FPO Operations Board** | Tenant-scoped task management with due dates, priorities, categories, and overdue tracking (`/tasks`) | **Cloud Deployed** |
 | **Telegram Conversational Bot** | Free-tier conversational bot (`/telegram`) for farmer onboarding, price lookups, and harvest submission | **Cloud Deployed** |
@@ -94,6 +94,8 @@ A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), 
 ## Documentation Index
 
 - [**Quickstart Guide**](docs/QUICKSTART.md) — Step-by-step setup from git clone to first API call.
+- [**Forecast Backtest & Validation Report**](docs/FORECAST_BACKTEST.md) — Rolling-origin walk-forward evaluation, LightGBM vs. baseline benchmark tables, and promotion decisions.
+- [**Arbitrage & Transport Realization Spec**](docs/ARBITRAGE_SPEC.md) — Mathematical cost equations, commercial vehicle presets, and uncertainty scoring rubrics.
 - [**Statewide Foundation (v0.5 Architecture)**](docs/STATEWIDE_FOUNDATION.md) — Detailed architecture for statewide multi-tenancy, ontology, and quality scoring.
 - [**Production Hosting Runbook**](docs/HOSTING.md) — Free-tier deployment on Oracle Cloud VM with Cloudflare Tunnel.
 - [**Operations Runbook**](docs/OPS_RUNBOOK.md) — Incident response, kill-switch procedures, and log inspection.
@@ -242,7 +244,7 @@ docker compose exec backend alembic check
 
 ## What Works Today
 
-FPOLink has verified end-to-end user workflows tested via automated integration and regression suites (246+ tests):
+FPOLink has verified end-to-end user workflows tested via automated integration and regression suites (264+ automated tests):
 
 ### 1. Verified Workflows
 - **Administrator Bootstrap & Security Governance**:
@@ -260,6 +262,19 @@ FPOLink has verified end-to-end user workflows tested via automated integration 
   - Clear visual indicators distinguish **Fresh** ($\le 2$ days), **Stale** ($3\text{--}7$ days), **Outdated** ($> 7$ days), and **Demo Seed** records.
   - Ingestion outages display last-known observations with high-visibility stale warning banners—never disguising outdated data as fresh.
   - Demo seeds (`demo_seed`) are strictly banned from production farmer feeds, recommendations, and alert digests via startup checks and queries.
+- **Defensible Machine Learning Forecasting (Phase M2)**:
+  - Dual-engine architecture evaluating LightGBM quantile regression ($p_{10}, p_{50}, p_{90}$) against Seasonal Naive and Seasonal Median rolling baselines.
+  - Strict walk-forward rolling-origin backtest CLI (`backend/scripts/backtest_forecaster.py`) evaluating MAE, RMSE, MAPE, and 80% prediction interval coverage across chronological splits.
+  - Automated champion promotion rule requiring $\ge 3\%$ MAE improvement over baselines before ML models serve live inferences.
+  - Continuous telemetry scoring (`score_past_forecasts`) running nightly in the background worker against realized ground-truth mandi prices.
+  - Bilingual advisory disclaimers and input data freshness indicators protecting farmers from acting on cold-start or stale forecasts. See [docs/FORECAST_BACKTEST.md](docs/FORECAST_BACKTEST.md).
+- **Defensible Inter-District Transport Arbitrage (Phase M3)**:
+  - Inter-district net realization modeling accounting for commercial vehicle profiles (`pickup` 1.5T, `lcv` 3.5T default, `medium_truck` 10T, or custom capacity/mileage/fuel parameters).
+  - Itemized deductions accounting for freight transport, labor/loading handling, APMC mandi commissions, and commodity-specific transit spoilage risk (e.g. 3.0% for banana, 1.0% for coconut, 0.0% for turmeric).
+  - Like-for-like variety match indicator (`exact` vs. `cross_variety_approximate`) and observation date disparity tracking (`date_difference_days`).
+  - Multi-factor uncertainty assessment (`low`, `moderate`, `high`) evaluating route distance, data latency, variety approximation, and margin cushion.
+  - Interactive UI controls on `/prices` with commercial vehicle switcher, cost deduction sliders, itemized breakdown columns, and uncertainty tags.
+  - Bilingual legal and advisory disclaimers (Tamil / English) explicitly clarifying that arbitrage estimates represent theoretical net margins subject to mandi cess, physical grade variance, and loading charges. See [docs/ARBITRAGE_SPEC.md](docs/ARBITRAGE_SPEC.md).
 - **Harvest Aggregation & 1-Click Verification**:
   - Farmer-declared harvests logged via bot or web.
   - FPO staff verify submissions with 1 click from the action workspace, instantly locking them into pooled batches (`/`).
@@ -298,7 +313,7 @@ docker compose exec backend pytest -v --tb=short
 pytest -v backend/tests
 ```
 
-The CI workflow applies migrations, seeds required reference data, runs the PostgreSQL-backed suite (246+ tests), checks Ruff lint and formatting, builds the Next.js frontend, and exercises Docker health and authentication.
+The CI workflow applies migrations, seeds required reference data, runs the PostgreSQL-backed suite (264+ tests), checks Ruff lint and formatting, builds the Next.js frontend, and exercises Docker health and authentication.
 
 ---
 
@@ -335,9 +350,16 @@ Migrations run on every start (`alembic upgrade head`). Demo data: open the Rend
 
 **Local Dev:** `DATABASE_URL=sqlite:///./fpolink.db` works for quick runs; PostgreSQL 16 in production.
 
-**Operational Modules:**
+**Operational Modules & Interfaces:**
 - `/` – Mobile-friendly FPO Action Workspace (Today's Work, Ready Supply, Buyer Matches, Market Freshness).
 - `/tasks` – FPO-scoped operations to-do task board.
 - `/matching` – 5-factor semi-automatic supply-demand matching console.
 - `/buyers` – Commercial buyer directory and procurement requirement board.
-- `/prices` – 38-district mandi price feed with data provenance and quality indicators.
+- `/prices` – 38-district mandi price feed with data provenance, quantile bands, and defensible arbitrage matrix.
+- `/telegram` – Free-tier conversational bot integration for farmers.
+
+**Operational Scripts & CLIs:**
+- `python backend/scripts/backtest_forecaster.py` – Walk-forward rolling-origin forecast model backtesting, baseline comparisons, and promotion evaluation.
+- `python backend/scripts/evaluate_arbitrage.py` – CLI evaluation of inter-district transport arbitrage across commodities and vehicle profiles.
+- `python backend/scripts/create_admin.py` – Bootstraps initial administrator account with mandatory password change enforcement.
+- `python backend/scripts/seed_statewide_foundation.py` – Seeds 38 Tamil Nadu districts, regulated mandis, and commodity ontologies.
