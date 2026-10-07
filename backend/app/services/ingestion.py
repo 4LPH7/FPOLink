@@ -239,6 +239,32 @@ class IngestionService:
                     if variety:
                         variety_id = variety.id
 
+                # Guarantee a variety assignment (Other/Unspecified or default crop variety)
+                if not variety_id:
+                    from app.models.variety import Variety
+
+                    variety = (
+                        self.db.query(Variety)
+                        .filter(
+                            Variety.crop_id == crop.id,
+                            Variety.name.in_(["Other/Unspecified", "Other", "Common", "Standard", "General"]),
+                        )
+                        .first()
+                    )
+                    if not variety:
+                        variety = self.db.query(Variety).filter(Variety.crop_id == crop.id).first()
+                    if not variety:
+                        variety = Variety(
+                            crop_id=crop.id,
+                            name="Other/Unspecified",
+                            canonical_name="other_unspecified",
+                            tamil_name="பிற / பொது",
+                        )
+                        self.db.add(variety)
+                        self.db.flush()
+                    if variety:
+                        variety_id = variety.id
+
                 # Stage 5 & 6: Normalization & Geographic Verification
                 geo_penalty = 0.0
                 if record.district and market.district:

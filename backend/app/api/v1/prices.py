@@ -22,15 +22,19 @@ router = APIRouter(prefix="/prices", tags=["prices-v1"])
 def latest_prices(
     district: Optional[str] = None,
     crop_id: Optional[str] = None,
+    crop: Optional[str] = Query(default=None, description="Crop name filter (e.g. turmeric)"),
+    market: Optional[str] = Query(default=None, description="Market name filter (e.g. erode)"),
     min_quality: Optional[float] = Query(default=None, ge=0.0, le=100.0),
     db: Session = Depends(get_db),
 ):
-    """Get the latest verified mandi prices across districts with optional quality score filter."""
+    """Get the latest verified mandi prices across districts with optional quality score, crop, and market filters."""
     prices = get_latest_prices(
         db,
         district=district,
         crop_id=crop_id,
         min_quality=min_quality,
+        crop=crop,
+        market=market,
     )
     return {"prices": prices}
 

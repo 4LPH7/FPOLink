@@ -30,8 +30,9 @@ class OGDProvider(MarketDataProvider):
 
     source_name = "ogd"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, resource_id: Optional[str] = None):
         self.api_key = api_key or settings.OGD_API_KEY
+        self.resource_id = resource_id or getattr(settings, "OGD_RESOURCE_ID", OGD_RESOURCE_ID)
 
     def is_available(self) -> bool:
         return bool(self.api_key)
@@ -61,7 +62,7 @@ class OGDProvider(MarketDataProvider):
 
             with httpx.Client(timeout=30.0) as client:
                 response = client.get(
-                    f"{OGD_BASE_URL}/{OGD_RESOURCE_ID}",
+                    f"{OGD_BASE_URL}/{self.resource_id}",
                     params=params,
                 )
                 response.raise_for_status()

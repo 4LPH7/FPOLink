@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -20,10 +20,13 @@ router = APIRouter(prefix="/api/prices", tags=["prices"])
 @router.get("/latest")
 def latest_prices(
     district: Optional[str] = None,
+    crop: Optional[str] = None,
+    market: Optional[str] = None,
+    crop_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Get latest prices for all crops in a district."""
-    return {"prices": get_latest_prices(db, district)}
+    """Get latest prices for all crops in a district with optional crop and market filters."""
+    return {"prices": get_latest_prices(db, district=district, crop_id=crop_id, crop=crop, market=market)}
 
 
 @router.get("/history")
@@ -139,3 +142,27 @@ def record_manual_price(
     db.commit()
     db.refresh(mp)
     return {"message": "Price recorded successfully", "id": str(mp.id)}
+
+
+@router.post("/upload-csv")
+async def upload_csv_prices(
+    file: UploadFile = File(...),
+    district: Optional[str] = Query(default="Erode"),
+    db: Session = Depends(get_db),
+):
+    """Bulk import mandi prices from CSV file."""
+    from app.data_sources.manual import ManualProvider
+    from app.services.ingestion import IngestionService
+
+    content = await file.read()
+    text = content.decode("utf-8-sig", errors="replace")
+    records = ManualProvider.parse_csv(text, default_district=district or "Erode")
+    if not records:
+        raise HTTPException(status_code=400, detail="No valid price records found in uploaded CSV")
+    service = IngestionService(db)
+    stored_count = service._store_records(records)
+    return {
+        "message": f"Successfully processed {len(records)} records from CSV ({stored_count} stored)",
+        "records_parsed": len(records),
+        "records_stored": stored_count,
+    }

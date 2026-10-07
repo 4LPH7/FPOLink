@@ -6,11 +6,15 @@
 
 ---
 
-## 1. Emergency WhatsApp Kill Switch
+## 1. Emergency Messaging Kill Switches
 
-FPOLink includes a global kill switch governed by the `WHATSAPP_ENABLED` configuration parameter in [backend/app/config.py](file:///d:/PROJECTS/FPOLink/backend/app/config.py). When deactivated, all WhatsApp ingress endpoints, bot processing, and scheduled outbound broadcast jobs are halted immediately.
+FPOLink supports channel-level emergency kill switches governed by `WHATSAPP_ENABLED` and `TELEGRAM_ENABLED` in `backend/app/config.py`.
 
-### When to Activate the Kill Switch
+### 1.1 Emergency WhatsApp Kill Switch (Dormant by default in MVP)
+
+Governed by `WHATSAPP_ENABLED=false` by default. When deactivated, all WhatsApp ingress endpoints, bot processing, and scheduled outbound broadcast jobs are halted immediately.
+
+### When to Activate the WhatsApp Kill Switch
 
 Activate the kill switch immediately if any of the following scenarios occur:
 
@@ -26,7 +30,7 @@ Activate the kill switch immediately if any of the following scenarios occur:
 
 To immediately disable WhatsApp functionality across the platform:
 
-1. Open the production environment configuration file ([.env](file:///d:/PROJECTS/FPOLink/.env)) on the host:
+1. Open the production environment configuration file (`.env`) on the host:
    ```bash
    nano .env
    # or
@@ -91,7 +95,7 @@ If you receive HTTP 503, the kill switch is confirmed active.
 
 Once the underlying issue (credential rotation, Meta ticket resolution, rate-limit reset, bugfix) has been resolved:
 
-1. Edit [.env](file:///d:/PROJECTS/FPOLink/.env) and set:
+1. Edit `.env` and set:
    ```dotenv
    WHATSAPP_ENABLED=true
    ```
@@ -120,6 +124,42 @@ Once the underlying issue (credential rotation, Meta ticket resolution, rate-lim
 6. Execute a sanity check from a test mobile number:
    - Send `வணக்கம்` or `price turmeric`.
    - Verify prompt response and check that HTTP 200 is returned to Meta.
+
+---
+
+### 1.2 Emergency Telegram Kill Switch (Active Live Channel in MVP)
+
+Telegram is the live farmer channel in the MVP. It is governed by `TELEGRAM_ENABLED` in `backend/app/config.py`.
+
+### When to Activate the Telegram Kill Switch
+
+1. **Bot Token Compromised:** Suspected leak of `TELEGRAM_BOT_TOKEN`.
+2. **Looping / Spam Behavior:** Bot runner or webhook responding in an infinite loop.
+3. **Upstream Telegram API Outage:** Telegram servers returning persistent errors.
+
+### How to Disable Telegram
+
+1. Set the flag in `.env` (or environment):
+   ```dotenv
+   TELEGRAM_ENABLED=false
+   ```
+2. Stop the polling process or restart the service:
+   ```bash
+   # If running webhook / service:
+   docker compose restart backend
+   # If running polling runner:
+   pkill -f telegram_poll.py
+   ```
+
+### What Disabling Affects
+
+- `POST /api/telegram/webhook` returns **HTTP 503 Service Unavailable** with `{"detail": "Telegram bot is disabled"}`.
+- Long-polling runner `scripts/telegram_poll.py` exits gracefully immediately.
+
+### Re-Enabling Telegram
+
+1. Set `TELEGRAM_ENABLED=true` in `.env`.
+2. Restart backend and restart the polling worker (`python scripts/telegram_poll.py`).
 
 ---
 

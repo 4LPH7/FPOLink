@@ -23,6 +23,7 @@ class MarketPriceResponse(BaseModel):
     quality_score: Optional[float] = None
     quality_breakdown: Optional[dict] = None
     ingested_at: Optional[datetime] = None
+    last_updated: Optional[datetime] = None
     raw_ingest_id: Optional[str] = None
     is_stale: bool = False
     stale_days: int = 0

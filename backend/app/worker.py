@@ -23,7 +23,14 @@ def run_price_ingestion():
         summary = IngestionService(db).run_ingestion()
         logger.info("Price ingestion complete: %s", summary)
         if summary["errors"] and not summary["records_stored"]:
-            raise RuntimeError("Price ingestion failed for all configured sources")
+            err = RuntimeError("Price ingestion failed for all configured sources")
+            try:
+                import sentry_sdk
+
+                sentry_sdk.capture_exception(err)
+            except Exception:
+                pass
+            raise err
     finally:
         db.close()
 
@@ -174,8 +181,14 @@ def register_jobs(scheduler) -> None:
     # Daily at 5 AM IST — weather
     scheduler.add_job(run_weather_ingestion, "cron", hour=5, minute=0, id="weather_ingestion")
 
-    # Daily at 6 AM IST — prices
-    scheduler.add_job(run_price_ingestion, "cron", hour=6, minute=0, id="price_ingestion")
+    # Daily at configured time IST — prices
+    scheduler.add_job(
+        run_price_ingestion,
+        "cron",
+        hour=getattr(settings, "PRICE_INGEST_HOUR_IST", 6),
+        minute=getattr(settings, "PRICE_INGEST_MINUTE_IST", 0),
+        id="price_ingestion",
+    )
 
     # OGD/CEDA publish daily mandi observations rather than exchange ticks. Recheck
     # during market hours so the dashboard picks up new observations after publication.

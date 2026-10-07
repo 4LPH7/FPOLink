@@ -11,7 +11,7 @@ alembic==1.14.1
 pydantic==2.10.4
 pydantic-settings==2.7.1
 
-# Auth (maintained replacements for passlib/python-jose)
+# Auth (Argon2id and PyJWT)
 pwdlib[argon2]==0.2.1
 PyJWT[crypto]==2.15.1
 

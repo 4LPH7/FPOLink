@@ -23,19 +23,51 @@ def get_latest_prices(
     district: Optional[str] = None,
     crop_id: Optional[str] = None,
     min_quality: Optional[float] = None,
+    crop: Optional[str] = None,
+    market: Optional[str] = None,
 ) -> List[dict]:
     """Get the most recent verified price for each crop in each market with provenance & freshness."""
     from app.config import settings
 
     real_sources = get_real_price_sources()
 
+    target_crop_ids = None
+    if crop_id:
+        target_crop_ids = [crop_id]
+    elif crop:
+        c_matches = (
+            db.query(Crop.id)
+            .filter(
+                (func.lower(Crop.name) == crop.lower().strip())
+                | (Crop.name.ilike(f"%{crop.strip()}%"))
+                | (Crop.tamil_name.ilike(f"%{crop.strip()}%"))
+            )
+            .all()
+        )
+        target_crop_ids = [str(r[0]) for r in c_matches] if c_matches else ["00000000-0000-0000-0000-000000000000"]
+
+    target_market_ids = None
+    if market:
+        m_matches = (
+            db.query(Market.id)
+            .filter(
+                (func.lower(Market.name) == market.lower().strip())
+                | (Market.name.ilike(f"%{market.strip()}%"))
+            )
+            .all()
+        )
+        target_market_ids = [str(r[0]) for r in m_matches] if m_matches else ["00000000-0000-0000-0000-000000000000"]
+
     # Subquery for max date per crop/market — whitelisting real sources only
     subq_filters = [MarketPrice.source.in_(real_sources)]
     if district and district.lower() not in ("all", "statewide", ""):
         subq_filters.append(func.lower(MarketPrice.district) == district.lower().strip())
 
-    if crop_id:
-        subq_filters.append(MarketPrice.crop_id == crop_id)
+    if target_crop_ids is not None:
+        subq_filters.append(MarketPrice.crop_id.in_(target_crop_ids))
+
+    if target_market_ids is not None:
+        subq_filters.append(MarketPrice.market_id.in_(target_market_ids))
 
     subq = (
         db.query(
@@ -64,8 +96,11 @@ def get_latest_prices(
     if district and district.lower() not in ("all", "statewide", ""):
         query = query.filter(func.lower(MarketPrice.district) == district.lower().strip())
 
-    if crop_id:
-        query = query.filter(MarketPrice.crop_id == crop_id)
+    if target_crop_ids is not None:
+        query = query.filter(MarketPrice.crop_id.in_(target_crop_ids))
+
+    if target_market_ids is not None:
+        query = query.filter(MarketPrice.market_id.in_(target_market_ids))
 
     results = query.all()
 
@@ -169,6 +204,7 @@ def get_latest_prices(
                 "quality_score": mp.quality_score,
                 "quality_breakdown": mp.quality_breakdown,
                 "ingested_at": mp.created_at.isoformat() if mp.created_at else None,
+                "last_updated": mp.created_at.isoformat() if mp.created_at else (mp.price_date.isoformat() if mp.price_date else None),
                 "raw_ingest_id": str(mp.raw_ingest_id) if mp.raw_ingest_id else None,
                 "is_stale": is_stale,
                 "stale_days": stale_days,
