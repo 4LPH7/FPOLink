@@ -275,15 +275,20 @@ def test_cors_origin_regex_security():
 
     # Valid project domains
     assert pattern.match("https://fpolink.vercel.app") is not None
+    assert pattern.match("https://fpo-link.vercel.app") is not None
     assert pattern.match("https://fpolink-preview-123.vercel.app") is not None
+    assert pattern.match("https://fpo-link-preview-123.vercel.app") is not None
     assert pattern.match("https://fpolink-feat-branch.vercel.app") is not None
+    assert pattern.match("https://fpo-link-feat-branch.vercel.app") is not None
 
     # Blocked / malicious domains
     assert pattern.match("https://attacker-app.vercel.app") is None
     assert pattern.match("https://evil-fpolink.vercel.app") is None
     assert pattern.match("https://random-app.vercel.app") is None
     assert pattern.match("http://fpolink.vercel.app") is None  # Insecure HTTP
+    assert pattern.match("http://fpo-link.vercel.app") is None  # Insecure HTTP
     assert pattern.match("https://fpolink.vercel.app.attacker.com") is None
+    assert pattern.match("https://fpo-link.vercel.app.attacker.com") is None
 
 
 def test_district_admin_boundary_isolation(client, db):

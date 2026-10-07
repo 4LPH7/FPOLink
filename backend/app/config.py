@@ -152,9 +152,11 @@ class Settings(BaseSettings):
     )
 
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000"
-    # Regex for additional allowed origins (scoped to FPOLink Vercel previews).
-    CORS_ORIGIN_REGEX: str = r"^https://fpolink(-[a-z0-9-]+)?\.vercel\.app$"
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,https://fpo-link.vercel.app,https://fpolink.vercel.app"
+    )
+    # Regex for additional allowed origins (scoped to FPOLink and FPO-Link Vercel previews).
+    CORS_ORIGIN_REGEX: str = r"^https://(fpolink|fpo-link)(-[a-z0-9-]+)?\.vercel\.app$"
 
     @property
     def default_crops_list(self) -> List[str]:

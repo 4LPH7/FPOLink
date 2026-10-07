@@ -39,7 +39,9 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: "http://localhost:3000,https://fpo-link.vercel.app,https://fpolink.vercel.app"
+      - key: CORS_ORIGIN_REGEX
+        value: "^https://(fpolink|fpo-link)(-[a-z0-9-]+)?\\.vercel\\.app$"
       - key: ADMIN_PHONE
         sync: false
       - key: ADMIN_PASSWORD
