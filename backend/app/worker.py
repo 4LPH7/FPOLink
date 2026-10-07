@@ -226,10 +226,6 @@ def register_jobs(scheduler) -> None:
     scheduler.add_job(run_inbound_sweep, "interval", minutes=10, id="inbound_sweep")
 
 
-if __name__ == "__main__":
-    main()
-
-
 def run_forecast_scoring():
     """M2.4: nightly scoring of past forecasts against actual mandi prices."""
     from app.database import SessionLocal
@@ -242,3 +238,7 @@ def run_forecast_scoring():
         logger.exception("Forecast scoring failed")
     finally:
         db.close()
+
+
+if __name__ == "__main__":
+    main()
