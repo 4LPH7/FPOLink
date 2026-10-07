@@ -731,6 +731,7 @@ export interface DistrictItem {
   id: string;
   name: string;
   code: string;
+  tamil_name?: string;
 }
 
 export async function getDistricts(): Promise<DistrictItem[]> {

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,6 +16,8 @@ import {
   Send,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/context";
+import { useDistrict } from "@/lib/district-context";
+import { getFPOs, FPO } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -37,6 +39,47 @@ const navItems: NavItem[] = [
   { href: "/whatsapp", labelKey: "whatsapp", icon: MessageSquare },
 ];
 
+const TAMIL_DISTRICT_MAP: Record<string, string> = {
+  ariyalur: "அரியலூர்",
+  chengalpattu: "செங்கல்பட்டு",
+  chennai: "சென்னை",
+  coimbatore: "கோயம்புத்தூர்",
+  cuddalore: "கடலூர்",
+  dharmapuri: "தர்மபுரி",
+  dindigul: "திண்டுக்கல்",
+  erode: "ஈரோடு",
+  kallakurichi: "கள்ளக்குறிச்சி",
+  kanchipuram: "காஞ்சிபுரம்",
+  kanyakumari: "கன்னியாகுமரி",
+  karur: "கரூர்",
+  krishnagiri: "கிருஷ்ணகிரி",
+  madurai: "மதுரை",
+  mayiladuthurai: "மயிலாடுதுறை",
+  nagapattinam: "நாகப்பட்டினம்",
+  namakkal: "நாமக்கல்",
+  nilgiris: "நீலகிரி",
+  perambalur: "பெரம்பலூர்",
+  pudukkottai: "புதுக்கோட்டை",
+  ramanathapuram: "ராமநாதபுரம்",
+  ranipet: "ராணிப்பேட்டை",
+  salem: "சேலம்",
+  sivaganga: "சிவகங்கை",
+  tenkasi: "தென்காசி",
+  thanjavur: "தஞ்சாவூர்",
+  theni: "தேனி",
+  thoothukudi: "தூத்துக்குடி",
+  tiruchirappalli: "திருச்சிராப்பள்ளி",
+  tirunelveli: "திருநெல்வேலி",
+  tirupathur: "திருப்பத்தூர்",
+  tiruppur: "திருப்பூர்",
+  tiruvallur: "திருவள்ளூர்",
+  tiruvannamalai: "திருவண்ணாமலை",
+  tiruvarur: "திருவாரூர்",
+  vellore: "வேலூர்",
+  viluppuram: "விழுப்புரம்",
+  virudhunagar: "விருதுநகர்",
+};
+
 export function Sidebar({
   className,
   onNavigate,
@@ -46,6 +89,57 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { lang, t } = useLanguage();
+  const { selectedDistrict, districts } = useDistrict();
+  const [fpos, setFpos] = useState<FPO[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    getFPOs().then((list) => {
+      if (mounted && Array.isArray(list) && list.length > 0) {
+        setFpos(list);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const activeDistrictObj = useMemo(() => {
+    if (!selectedDistrict || selectedDistrict === "all") return null;
+    return districts.find(
+      (d) => d.name.toLowerCase() === selectedDistrict.toLowerCase()
+    );
+  }, [selectedDistrict, districts]);
+
+  const activeDistrictTamil = useMemo(() => {
+    if (!selectedDistrict || selectedDistrict === "all") return "";
+    const lower = selectedDistrict.toLowerCase().trim();
+    return TAMIL_DISTRICT_MAP[lower] || activeDistrictObj?.tamil_name || selectedDistrict;
+  }, [selectedDistrict, activeDistrictObj]);
+
+  const workspaceName = useMemo(() => {
+    if (!selectedDistrict || selectedDistrict === "all") {
+      return lang === "ta" ? "தமிழ்நாடு உழவர் கூட்டமைப்பு" : "Tamil Nadu State Collective";
+    }
+    const matchedFpo = fpos.find(
+      (f) => f.district.toLowerCase() === selectedDistrict.toLowerCase()
+    );
+    if (matchedFpo) {
+      return matchedFpo.name;
+    }
+    return lang === "ta"
+      ? `${activeDistrictTamil} உழவர் கூட்டமைப்பு`
+      : `${selectedDistrict} FPO Collective`;
+  }, [selectedDistrict, fpos, activeDistrictTamil, lang]);
+
+  const workspaceSubtitle = useMemo(() => {
+    if (!selectedDistrict || selectedDistrict === "all") {
+      return lang === "ta" ? "அனைத்து 38 மாவட்டங்கள்" : "Statewide (38 Districts)";
+    }
+    return lang === "ta"
+      ? `${activeDistrictTamil} மண்டல செயல்பாடுகள்`
+      : `${selectedDistrict} District Operations`;
+  }, [selectedDistrict, activeDistrictTamil, lang]);
 
   return (
     <aside
@@ -119,11 +213,21 @@ export function Sidebar({
       {/* Bottom Status Card */}
       <div className="shrink-0 border-t border-border p-4">
         <div className="rounded-xl bg-muted/60 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {lang === "ta" ? "உங்கள் பணியிடம்" : "Your workspace"}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {lang === "ta" ? "உங்கள் பணியிடம்" : "Your workspace"}
+            </p>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-primary/10 text-primary">
+              {selectedDistrict === "all"
+                ? (lang === "ta" ? "மாநிலம்" : "Statewide")
+                : (lang === "ta" && activeDistrictTamil ? activeDistrictTamil : selectedDistrict)}
+            </span>
+          </div>
+          <p className="mt-1.5 truncate text-sm font-semibold text-foreground" title={workspaceName}>
+            {workspaceName}
           </p>
-          <p className="mt-1 truncate text-sm font-semibold text-foreground">
-            {lang === "ta" ? "கொடுமுடி FPO" : "Kodumudi FPO"}
+          <p className="text-[11px] text-muted-foreground truncate">
+            {workspaceSubtitle}
           </p>
         </div>
       </div>

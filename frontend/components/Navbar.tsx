@@ -137,9 +137,11 @@ export default function Navbar({
             {/* FPO Staff Badge */}
             <div className="hidden sm:flex items-center space-x-2 pl-2 border-l border-gray-200 text-xs font-medium text-gray-700">
               <div className="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-bold">
-                E
+                TN
               </div>
-              <span className="text-gray-900 font-semibold">Kodumudi FPO</span>
+              <span className="text-gray-900 font-semibold">
+                {lang === "ta" ? "உழவர் கூட்டமைப்பு" : "FPO Collective"}
+              </span>
             </div>
           </div>
         </div>

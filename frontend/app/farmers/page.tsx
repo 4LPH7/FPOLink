@@ -1095,7 +1095,7 @@ export default function FarmersPage() {
                     </label>
                     <Input
                       required
-                      placeholder={lang === "ta" ? "கிராமம்" : "e.g. Kodumudi"}
+                      placeholder={lang === "ta" ? "கிராமம்" : "e.g. Village Name"}
                       value={form.village}
                       onChange={(e) => setForm((f) => ({ ...f, village: e.target.value }))}
                     />
