@@ -73,6 +73,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-jetbrains-mono), 'JetBrains Mono', 'Noto Sans Tamil', monospace, sans-serif;
+    font-size-adjust: from-font;
     font-feature-settings: "rlig" 1, "calt" 1;
     text-rendering: optimizeLegibility;
     -webkit-tap-highlight-color: transparent;
@@ -93,8 +95,14 @@
 }
 
 @layer components {
-.data-card {
+  .data-card {
     @apply rounded-2xl border border-border bg-card shadow-sm;
+  }
+
+  /* Modern Web Guidance: Deferred rendering for large tabular lists */
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 52px;
   }
 }
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/context";
+import { useDistrict } from "@/lib/district-context";
 import {
   Card,
   CardHeader,
@@ -56,6 +57,7 @@ const FPO_ID = process.env.NEXT_PUBLIC_FPO_ID || "d7342e5d-bac6-466e-a18b-366133
 
 export default function FPOActionWorkspace() {
   const { lang } = useLanguage();
+  const { selectedDistrict } = useDistrict();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,7 +93,7 @@ export default function FPOActionWorkspace() {
         tasksData,
         statsData,
       ] = await Promise.all([
-        getLatestPrices(),
+        getLatestPrices(selectedDistrict),
         getHarvestAggregation(),
         getBuyerRequirements({ status: "open", page_size: 6 }, activeToken ?? undefined),
         getHarvests({ status: "submitted", page_size: 10 }, activeToken ?? undefined),
@@ -111,7 +113,7 @@ export default function FPOActionWorkspace() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedDistrict]);
 
   useEffect(() => {
     loadWorkspaceData();
@@ -444,10 +446,10 @@ export default function FPOActionWorkspace() {
               {/* Quick Task Add */}
               <form onSubmit={handleQuickAddTask} className="flex gap-2">
                 <Input
-                  placeholder={lang === "ta" ? "+ புதிய பணி சேர்க்க (எ.கா: ITC தர மாதிரி அனுப்பவும்)..." : "+ Quick add task (e.g. Dispatch turmeric samples to ITC)..."}
+                  placeholder={lang === "ta" ? "+ புதிய பணி சேர்க்க (எ.கா: வாங்குபவருக்கு மாதிரி அனுப்பவும்)..." : "+ Quick add task (e.g. Dispatch produce samples to buyer)..."}
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs font-sans"
                 />
                 <Button
                   type="submit"
@@ -686,8 +688,8 @@ export default function FPOActionWorkspace() {
                             ? `கூட்டமைப்பில் ${matchingBatch.total_kg.toLocaleString()} kg இருப்பு உள்ளது. தரம் ${req.min_grade}+ தேவை பூர்த்தியாகும்.`
                             : `FPO holds ${matchingBatch.total_kg.toLocaleString()} kg ready stock. Meets min Grade ${req.min_grade}.`
                           : lang === "ta"
-                            ? `ஈரோடு மண்டல கிடங்கில் முன்னோடி ஒப்பந்தத்திற்கு தகுதியானது.`
-                            : `High-value institutional demand in current procurement corridor.`}
+                            ? `${req.district || req.delivery_location || "மண்டல"} கிடங்கில் நேரடி கொள்முதல் ஒப்பந்தத்திற்கு தகுதியானது.`
+                            : `High-value institutional demand in ${req.district || req.delivery_location || "regional"} procurement corridor.`}
                       </p>
                     </div>
 

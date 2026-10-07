@@ -128,6 +128,7 @@ export interface MarketPrice {
   price_date: string;
   source: string;
   unit?: string;
+  raw_unit?: string | null;
   arrival_quantity?: number | null;
   quality_score?: number | null;
   quality_breakdown?: Record<string, any> | null;
@@ -1006,6 +1007,7 @@ export interface BuyerRequirement {
   delivery_window_days: number;
   max_price_per_kg?: number | null;
   delivery_location?: string | null;
+  district?: string | null;
   status: string;
   notes?: string | null;
   created_at?: string | null;

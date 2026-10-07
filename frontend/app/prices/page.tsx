@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useLanguage } from "@/lib/i18n/context";
+import { useDistrict } from "@/lib/district-context";
 import {
   Card,
   CardHeader,
@@ -35,18 +36,17 @@ import {
   SlidersHorizontal,
   AlertCircle,
   CheckCircle2,
+  Search,
 } from "lucide-react";
 import {
   getLatestPrices,
   getCrops,
   getPriceHistory,
-  getDistricts,
   getForecast,
   getArbitrage,
   MarketPrice,
   Crop,
   PriceHistoryPoint,
-  DistrictItem,
   ForecastResponse,
   ArbitrageResponse,
 } from "@/lib/api";
@@ -70,14 +70,25 @@ const PriceHistoryChart = dynamic(() => import("@/components/PriceHistoryChart")
   ),
 });
 
+function resolveCropUnit(unit?: string | null, rawUnit?: string | null, lang?: "ta" | "en") {
+  const u = (unit || rawUnit || "").toLowerCase();
+  if (u === "kg" || u.includes("kilo") || u.includes("கிலோ")) {
+    return { label: lang === "ta" ? "/ கிலோ" : "/ kg", shortLabel: "/kg", multiplier: 1 };
+  }
+  if (u === "tonne" || u.includes("டன்")) {
+    return { label: lang === "ta" ? "/ டன்" : "/ tonne", shortLabel: "/t", multiplier: 1000 };
+  }
+  return { label: lang === "ta" ? "/ குவிண்டால்" : "/ quintal", shortLabel: "/qtl", multiplier: 100 };
+}
+
 export default function PricesPage() {
   const { lang } = useLanguage();
-  const [districts, setDistricts] = useState<DistrictItem[]>([]);
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
+  const { selectedDistrict, setSelectedDistrict, districts } = useDistrict();
   const [prices, setPrices] = useState<MarketPrice[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
   const [selectedCrop, setSelectedCrop] = useState<string>("all");
-  const [activeChartCrop, setActiveChartCrop] = useState<string>("turmeric");
+  const [cropSearch, setCropSearch] = useState<string>("");
+  const [activeChartCrop, setActiveChartCrop] = useState<string>("");
   const [chartHistory, setChartHistory] = useState<PriceHistoryPoint[]>([]);
   const [forecastData, setForecastData] = useState<ForecastResponse | null>(null);
   const [arbitrageData, setArbitrageData] = useState<ArbitrageResponse | null>(null);
@@ -94,18 +105,26 @@ export default function PricesPage() {
   const loadData = async (district = selectedDistrict) => {
     setIsRefreshing(true);
     try {
-      const [districtsData, pricesData, cropsData] = await Promise.all([
-        getDistricts(),
+      const [pricesData, cropsData] = await Promise.all([
         getLatestPrices(district),
         getCrops(),
       ]);
-      setDistricts(districtsData);
       setPrices(pricesData);
       setCrops(cropsData);
       setLastPricesCheck(new Date());
 
-      // Load initial history, forecast, and arbitrage
-      await loadIntelligenceData(activeChartCrop, cropsData, pricesData, district);
+      // Resolve effective chart crop dynamically
+      const candidateCrop =
+        activeChartCrop ||
+        pricesData[0]?.crop_name ||
+        cropsData[0]?.name ||
+        "Paddy";
+
+      if (!activeChartCrop) {
+        setActiveChartCrop(candidateCrop);
+      }
+
+      await loadIntelligenceData(candidateCrop, cropsData, pricesData, district);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -230,29 +249,38 @@ export default function PricesPage() {
     await loadIntelligenceData(cropName);
   };
 
-  const filteredPrices =
-    selectedCrop === "all"
-      ? prices
-      : prices.filter((p) => p.crop_name.toLowerCase() === selectedCrop.toLowerCase());
+  const filteredPrices = useMemo(() => {
+    let list = prices;
+    if (selectedCrop !== "all") {
+      list = list.filter((p) => p.crop_name.toLowerCase() === selectedCrop.toLowerCase());
+    }
+    if (cropSearch.trim()) {
+      const q = cropSearch.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          p.crop_name.toLowerCase().includes(q) ||
+          (p.crop_tamil_name && p.crop_tamil_name.toLowerCase().includes(q)) ||
+          p.market_name.toLowerCase().includes(q) ||
+          p.district.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [prices, selectedCrop, cropSearch]);
 
-  // Dynamically extract real top market cards
-  const top1 = prices.find((p) => p.crop_name.toLowerCase().includes("turmeric")) || prices[0];
+  // Dynamically extract real top market cards based on active crop and distinct commodities
+  const top1 =
+    (activeChartCrop ? prices.find((p) => p.crop_name.toLowerCase() === activeChartCrop.toLowerCase()) : null) ||
+    prices[0];
   const top2 =
-    prices.find((p) => p.crop_name.toLowerCase().includes("banana") && p.crop_name !== top1?.crop_name) ||
-    prices.find((p) => p.crop_name !== top1?.crop_name) ||
+    prices.find((p) => p.crop_name.toLowerCase() !== top1?.crop_name.toLowerCase()) ||
     prices[1];
 
-  const unit1 =
-    top1 && (top1.crop_name.toLowerCase().includes("banana") || top1.crop_name.toLowerCase().includes("coconut"))
-      ? lang === "ta" ? "/ கிலோ" : "/ kg"
-      : lang === "ta" ? "/ குவிண்டால்" : "/ quintal";
-  const mult1 = unit1.includes("kg") || unit1.includes("கிலோ") ? 1 : 100;
-
-  const unit2 =
-    top2 && (top2.crop_name.toLowerCase().includes("banana") || top2.crop_name.toLowerCase().includes("coconut"))
-      ? lang === "ta" ? "/ கிலோ" : "/ kg"
-      : lang === "ta" ? "/ குவிண்டால்" : "/ quintal";
-  const mult2 = unit2.includes("kg") || unit2.includes("கிலோ") ? 1 : 100;
+  const unitInfo1 = resolveCropUnit(top1?.unit, top1?.raw_unit, lang);
+  const unitInfo2 = resolveCropUnit(top2?.unit, top2?.raw_unit, lang);
+  const unit1 = unitInfo1.label;
+  const mult1 = unitInfo1.multiplier;
+  const unit2 = unitInfo2.label;
+  const mult2 = unitInfo2.multiplier;
 
   // Transform real history into chart points (in ₹/quintal)
   const chartData = chartHistory.map((pt) => ({
@@ -488,7 +516,7 @@ export default function PricesPage() {
                 </CardDescription>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                {crops.slice(0, 8).map((c) => (
+                {crops.slice(0, 5).map((c) => (
                   <Button
                     key={c.id}
                     size="sm"
@@ -499,6 +527,21 @@ export default function PricesPage() {
                     {lang === "ta" ? c.tamil_name || c.name : c.name}
                   </Button>
                 ))}
+                {crops.length > 5 && (
+                  <select
+                    value={activeChartCrop}
+                    onChange={(e) => handleChartCropChange(e.target.value)}
+                    className="h-7 px-2 text-xs rounded-md border border-input bg-card font-medium text-foreground cursor-pointer focus:outline-none"
+                    aria-label={lang === "ta" ? "கூடுதல் பயிர்கள்" : "More crops"}
+                  >
+                    <option value="" disabled>{lang === "ta" ? "அனைத்து 20 பயிர்கள்..." : "All 20 crops..."}</option>
+                    {crops.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {lang === "ta" && c.tamil_name ? `${c.tamil_name} (${c.name})` : c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -509,7 +552,15 @@ export default function PricesPage() {
               ) : (
                 <PriceHistoryChart
                   data={chartData}
-                  strokeColor={activeChartCrop.toLowerCase().includes("turmeric") ? "#d97706" : "#16a34a"}
+                  strokeColor={
+                    activeChartCrop.toLowerCase().includes("turmeric") || activeChartCrop.toLowerCase().includes("chilli")
+                      ? "#d97706"
+                      : activeChartCrop.toLowerCase().includes("banana") || activeChartCrop.toLowerCase().includes("mango")
+                      ? "#eab308"
+                      : activeChartCrop.toLowerCase().includes("tomato") || activeChartCrop.toLowerCase().includes("onion")
+                      ? "#ef4444"
+                      : "#16a34a"
+                  }
                 />
               )}
             </CardContent>
@@ -530,27 +581,31 @@ export default function PricesPage() {
                     : "Latest available market records and price details."}
                 </CardDescription>
               </div>
-              {/* Crop Filter Buttons */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant={selectedCrop === "all" ? "default" : "outline"}
-                  className="h-7 text-xs"
-                  onClick={() => setSelectedCrop("all")}
+              {/* Crop Filter Controls */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={cropSearch}
+                    onChange={(e) => setCropSearch(e.target.value)}
+                    placeholder={lang === "ta" ? "பயிர் / மண்டி தேடுக..." : "Search crop or mandi..."}
+                    className="h-8 pl-8 pr-2.5 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary w-36 sm:w-48 font-sans"
+                  />
+                </div>
+                <select
+                  value={selectedCrop}
+                  onChange={(e) => setSelectedCrop(e.target.value)}
+                  className="h-8 px-2 text-xs rounded-md border border-input bg-card font-medium text-foreground cursor-pointer focus:outline-none"
+                  aria-label={lang === "ta" ? "பயிர் வடிகட்டி" : "Filter crop"}
                 >
-                  {lang === "ta" ? "அனைத்தும்" : "All"}
-                </Button>
-                {crops.map((crop) => (
-                  <Button
-                    key={crop.id}
-                    size="sm"
-                    variant={selectedCrop === crop.name ? "default" : "outline"}
-                    className="h-7 text-xs"
-                    onClick={() => setSelectedCrop(crop.name)}
-                  >
-                    {lang === "ta" ? crop.tamil_name || crop.name : crop.name}
-                  </Button>
-                ))}
+                  <option value="all">{lang === "ta" ? "அனைத்துப் பயிர்களும் (Statewide)" : "All Crops (Statewide)"}</option>
+                  {crops.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {lang === "ta" && c.tamil_name ? `${c.tamil_name} (${c.name})` : c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </CardHeader>
             <CardContent>
@@ -584,13 +639,12 @@ export default function PricesPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredPrices.map((row) => {
-                      const unitLabel = row.crop_name.toLowerCase().includes("banana") || row.crop_name.toLowerCase().includes("coconut")
-                        ? "/kg"
-                        : "/qtl";
-                      const multiplier = unitLabel === "/qtl" ? 100 : 1;
+                      const unitInfo = resolveCropUnit(row.unit, row.raw_unit, lang);
+                      const unitLabel = unitInfo.shortLabel;
+                      const multiplier = unitInfo.multiplier;
 
                       return (
-                        <TableRow key={row.id}>
+                        <TableRow key={row.id} className="content-visibility-auto">
                           <TableCell className="font-medium">
                             <div>
                               <span className="font-semibold text-foreground">
@@ -777,7 +831,7 @@ export default function PricesPage() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {crops.slice(0, 8).map((c) => (
+                    {crops.slice(0, 5).map((c) => (
                       <Button
                         key={c.id}
                         size="sm"
@@ -788,6 +842,21 @@ export default function PricesPage() {
                         {lang === "ta" ? c.tamil_name || c.name : c.name}
                       </Button>
                     ))}
+                    {crops.length > 5 && (
+                      <select
+                        value={activeChartCrop}
+                        onChange={(e) => handleChartCropChange(e.target.value)}
+                        className="h-7 px-2 text-xs rounded-md border border-input bg-card font-medium text-foreground cursor-pointer focus:outline-none"
+                        aria-label={lang === "ta" ? "கூடுதல் பயிர்கள்" : "More crops"}
+                      >
+                        <option value="" disabled>{lang === "ta" ? "அனைத்து 20 பயிர்கள்..." : "All 20 crops..."}</option>
+                        {crops.map((c) => (
+                          <option key={c.id} value={c.name}>
+                            {lang === "ta" && c.tamil_name ? `${c.tamil_name} (${c.name})` : c.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -845,7 +914,7 @@ export default function PricesPage() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {crops.slice(0, 8).map((c) => (
+              {crops.slice(0, 5).map((c) => (
                 <Button
                   key={c.id}
                   size="sm"
@@ -856,6 +925,21 @@ export default function PricesPage() {
                   {lang === "ta" ? c.tamil_name || c.name : c.name}
                 </Button>
               ))}
+              {crops.length > 5 && (
+                <select
+                  value={activeChartCrop}
+                  onChange={(e) => handleChartCropChange(e.target.value)}
+                  className="h-7 px-2 text-xs rounded-md border border-input bg-card font-medium text-foreground cursor-pointer focus:outline-none"
+                  aria-label={lang === "ta" ? "கூடுதல் பயிர்கள்" : "More crops"}
+                >
+                  <option value="" disabled>{lang === "ta" ? "அனைத்து 20 பயிர்கள்..." : "All 20 crops..."}</option>
+                  {crops.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {lang === "ta" && c.tamil_name ? `${c.tamil_name} (${c.name})` : c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </CardHeader>
           {/* Controls Bar: Vehicle Profile & Cost Assumptions */}

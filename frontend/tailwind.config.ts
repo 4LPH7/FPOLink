@@ -66,14 +66,17 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          "var(--font-sans)",
+          "var(--font-jetbrains-mono)",
+          "'JetBrains Mono'",
           "'Noto Sans Tamil'",
+          "monospace",
           "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "'Segoe UI'",
-          "Roboto",
           "sans-serif",
+        ],
+        mono: [
+          "var(--font-jetbrains-mono)",
+          "'JetBrains Mono'",
+          "monospace",
         ],
         tamil: ["'Noto Sans Tamil'", "sans-serif"],
       },

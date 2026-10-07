@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useLanguage } from "@/lib/i18n/context";
+import { useDistrict } from "@/lib/district-context";
 import {
   Card,
   CardHeader,
@@ -104,10 +105,11 @@ const EMPTY_PLOT_FORM: AddPlotForm = {
 
 export default function FarmersPage() {
   const { lang } = useLanguage();
+  const { selectedDistrict, setSelectedDistrict, districts: globalDistricts } = useDistrict();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [fpos, setFpos] = useState<FPO[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
-  const [districts, setDistricts] = useState<DistrictItem[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>(globalDistricts);
   const [activeFpo, setActiveFpo] = useState<FPO | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [consentFilter, setConsentFilter] = useState<"all" | "granted" | "pending">("all");
@@ -320,11 +322,24 @@ export default function FarmersPage() {
     const cropName = (crop?.name || "").toLowerCase();
 
     let basePerAcreKg = 2500;
-    if (cropName.includes("turmeric") || cropName.includes("மஞ்சள்")) basePerAcreKg = 10000;
+    if (cropName.includes("sugarcane") || cropName.includes("கரும்பு")) basePerAcreKg = 40000;
     else if (cropName.includes("banana") || cropName.includes("வாழை")) basePerAcreKg = 18000;
+    else if (cropName.includes("tomato") || cropName.includes("தக்காளி")) basePerAcreKg = 14000;
+    else if (cropName.includes("tapioca") || cropName.includes("மரவள்ளி")) basePerAcreKg = 12000;
+    else if (cropName.includes("brinjal") || cropName.includes("கத்தரி")) basePerAcreKg = 10000;
+    else if (cropName.includes("turmeric") || cropName.includes("மஞ்சள்")) basePerAcreKg = 10000;
+    else if (cropName.includes("ginger") || cropName.includes("இஞ்சி")) basePerAcreKg = 8000;
+    else if (cropName.includes("onion") || cropName.includes("வெங்காயம்")) basePerAcreKg = 7000;
+    else if (cropName.includes("ladies finger") || cropName.includes("வெண்டை") || cropName.includes("okra")) basePerAcreKg = 6000;
     else if (cropName.includes("coconut") || cropName.includes("தென்னை")) basePerAcreKg = 6000;
-    else if (cropName.includes("tomato") || cropName.includes("தக்காளி")) basePerAcreKg = 12000;
-    else if (cropName.includes("paddy") || cropName.includes("நெல்")) basePerAcreKg = 2400;
+    else if (cropName.includes("mango") || cropName.includes("மாம்பழம்")) basePerAcreKg = 5000;
+    else if (cropName.includes("maize") || cropName.includes("மக்காச்சோளம்")) basePerAcreKg = 3200;
+    else if (cropName.includes("paddy") || cropName.includes("நெல்")) basePerAcreKg = 2500;
+    else if (cropName.includes("chilli") || cropName.includes("மிளகாய்")) basePerAcreKg = 2200;
+    else if (cropName.includes("groundnut") || cropName.includes("நிலக்கடலை")) basePerAcreKg = 1800;
+    else if (cropName.includes("cotton") || cropName.includes("பருத்தி")) basePerAcreKg = 1200;
+    else if (cropName.includes("black gram") || cropName.includes("உளுந்து")) basePerAcreKg = 650;
+    else if (cropName.includes("green gram") || cropName.includes("பாசிப்பயறு")) basePerAcreKg = 600;
 
     let irrigMult = 1.0;
     if (plotForm.irrigation_type === "Drip") irrigMult = 1.15;
@@ -340,6 +355,17 @@ export default function FarmersPage() {
   const safeFarmers = Array.isArray(farmers) ? farmers : [];
   const filteredFarmers = safeFarmers.filter((f) => {
     if (!f) return false;
+    if (selectedDistrict !== "all" && f.district && f.district.toLowerCase() !== selectedDistrict.toLowerCase()) {
+      return false;
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      const matchName = f.name?.toLowerCase().includes(q);
+      const matchPhone = f.phone?.includes(q);
+      const matchVillage = f.village?.toLowerCase().includes(q);
+      const matchTaluk = f.taluk?.toLowerCase().includes(q);
+      if (!matchName && !matchPhone && !matchVillage && !matchTaluk) return false;
+    }
     if (consentFilter === "granted") return Boolean(f.notice_sent_at || f.alerts_opt_in);
     if (consentFilter === "pending") return !f.notice_sent_at && !f.alerts_opt_in;
     return true;

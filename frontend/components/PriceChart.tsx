@@ -21,15 +21,49 @@ import { getLatestPrices, getPriceHistory, MarketPrice, PriceHistoryPoint } from
 interface PriceChartProps {
   lang: "ta" | "en";
   t: any;
+  initialCrop?: string;
 }
 
-export default function PriceChart({ lang, t }: PriceChartProps) {
-  const [selectedCrop, setSelectedCrop] = useState<"turmeric" | "banana">("turmeric");
+export default function PriceChart({ lang, t, initialCrop }: PriceChartProps) {
+  const [selectedCrop, setSelectedCrop] = useState<string>(initialCrop || "");
+  const [availableCrops, setAvailableCrops] = useState<Array<{ name: string; tamil_name?: string }>>([]);
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
   const [history, setHistory] = useState<PriceHistoryPoint[]>([]);
   const [currentPrice, setCurrentPrice] = useState<MarketPrice | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function initCrops() {
+      try {
+        const prices = await getLatestPrices();
+        if (!active) return;
+        const uniqueCropMap = new Map<string, { name: string; tamil_name?: string }>();
+        prices.forEach((p) => {
+          if (p.crop_name && !uniqueCropMap.has(p.crop_name.toLowerCase())) {
+            uniqueCropMap.set(p.crop_name.toLowerCase(), {
+              name: p.crop_name,
+              tamil_name: p.crop_tamil_name,
+            });
+          }
+        });
+        const cropList = Array.from(uniqueCropMap.values());
+        setAvailableCrops(cropList);
+        if (!selectedCrop && cropList.length > 0) {
+          setSelectedCrop(cropList[0].name);
+        }
+      } catch (e) {
+        console.warn("Failed to load available crops:", e);
+      }
+    }
+    initCrops();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const days = timeframe === "7d" ? 7 : timeframe === "90d" ? 90 : 30;
@@ -42,7 +76,11 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
       if (showLoading) setLoading(true);
       try {
         const prices = await getLatestPrices();
-        const price = prices.find((item) => item.crop_name.toLowerCase().includes(selectedCrop));
+        const effectiveCrop = selectedCrop || (prices[0]?.crop_name ?? "");
+        const price = prices.find((item) =>
+          item.crop_name.toLowerCase().includes(effectiveCrop.toLowerCase())
+        ) || prices[0];
+
         const hist = price?.crop_id && price.market_id
           ? await getPriceHistory(price.crop_id, price.market_id, days)
           : [];
@@ -115,13 +153,14 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
             <h2 className="text-lg font-bold text-gray-900 dark:text-foreground tracking-tight flex items-center">
               <TrendingUp className="w-5 h-5 text-emerald-600 mr-2" />
               {t.dashboard.market_prices} —{" "}
-              {lang === "ta"
-                ? selectedCrop === "turmeric"
-                  ? "மஞ்சள்"
-                  : "வாழை"
-                : selectedCrop === "turmeric"
-                ? "Turmeric"
-                : "Banana"}
+              {(() => {
+                const activeCropObj = availableCrops.find(
+                  (c) => c.name.toLowerCase() === selectedCrop.toLowerCase()
+                );
+                return lang === "ta" && activeCropObj?.tamil_name
+                  ? activeCropObj.tamil_name
+                  : selectedCrop || (lang === "ta" ? "பயிர்" : "Commodity");
+              })()}
               {currentPrice?.market_name ? ` (${currentPrice.market_name})` : ""}
             </h2>
             <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
@@ -146,27 +185,29 @@ export default function PriceChart({ lang, t }: PriceChartProps) {
 
         {/* Action Controls */}
         <div className="flex items-center space-x-2 self-start sm:self-auto">
-          <div className="inline-flex p-1 bg-gray-100 dark:bg-muted rounded-xl text-xs font-medium">
-            <button
-              onClick={() => setSelectedCrop("turmeric")}
-              className={`px-3 py-1 rounded-lg transition-all ${
-                selectedCrop === "turmeric"
-                  ? "bg-white dark:bg-card text-emerald-700 dark:text-emerald-400 font-bold shadow-xs"
-                  : "text-gray-500 dark:text-muted-foreground hover:text-gray-700"
-              }`}
-            >
-              {lang === "ta" ? "மஞ்சள்" : "Turmeric"}
-            </button>
-            <button
-              onClick={() => setSelectedCrop("banana")}
-              className={`px-3 py-1 rounded-lg transition-all ${
-                selectedCrop === "banana"
-                  ? "bg-white dark:bg-card text-emerald-700 dark:text-emerald-400 font-bold shadow-xs"
-                  : "text-gray-500 dark:text-muted-foreground hover:text-gray-700"
-              }`}
-            >
-              {lang === "ta" ? "வாழை" : "Banana"}
-            </button>
+          {/* Dynamic Crop Selector */}
+          <div className="inline-flex items-center p-1 bg-gray-100 dark:bg-muted rounded-xl text-xs font-medium">
+            <span className="text-[11px] text-muted-foreground px-2 hidden sm:inline">
+              {lang === "ta" ? "பயிர்:" : "Crop:"}
+            </span>
+            {availableCrops.length > 0 ? (
+              <select
+                value={selectedCrop}
+                onChange={(e) => setSelectedCrop(e.target.value)}
+                className="bg-white dark:bg-card text-emerald-700 dark:text-emerald-400 font-bold px-2.5 py-1 rounded-lg border border-transparent shadow-xs focus:outline-none cursor-pointer text-xs"
+                aria-label={lang === "ta" ? "பயிர் தேர்வு" : "Crop selector"}
+              >
+                {availableCrops.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {lang === "ta" && c.tamil_name ? `${c.tamil_name} (${c.name})` : c.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="px-3 py-1 text-xs text-muted-foreground">
+                {selectedCrop || (lang === "ta" ? "ஏற்றுகிறது..." : "Loading...")}
+              </span>
+            )}
           </div>
 
           <div className="hidden sm:inline-flex p-1 bg-gray-100 dark:bg-muted rounded-xl text-xs font-medium">

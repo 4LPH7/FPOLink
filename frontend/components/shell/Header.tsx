@@ -2,9 +2,10 @@
 
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ChevronRight, LogOut, Menu, Search } from "lucide-react";
+import { Activity, ChevronRight, LogOut, Menu, Search, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n/context";
+import { useDistrict } from "@/lib/district-context";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { apiIsHealthy, useApiStatus } from "@/components/shell/ApiStatusContext";
@@ -26,6 +27,7 @@ export function Header({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { lang } = useLanguage();
+  const { selectedDistrict, setSelectedDistrict, districts } = useDistrict();
   const health = useApiStatus();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -93,6 +95,27 @@ export function Header({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
           </span>
           <span className="sm:hidden">{health ? (healthy ? "API" : "Check") : "…"}</span>
         </div>
+
+        {/* Statewide District Selector */}
+        <div className="hidden md:flex items-center space-x-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs">
+          <MapPin className="size-3.5 text-emerald-600 shrink-0" />
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer pr-1"
+            aria-label={lang === "ta" ? "மாவட்ட தேர்வு" : "District selector"}
+          >
+            <option value="all" className="bg-background text-foreground">
+              {lang === "ta" ? "மாநிலம் முழுவதும் (38 மாவட்டங்கள்)" : "Statewide (All 38 Districts)"}
+            </option>
+            {districts.map((d) => (
+              <option key={d.id} value={d.name} className="bg-background text-foreground">
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <LanguageSwitcher />
         <Button variant="ghost" size="icon" className="size-10" aria-label={lang === "ta" ? "வெளியேறு" : "Sign out"} title={lang === "ta" ? "வெளியேறு" : "Sign out"} onClick={() => { clearTokens(); router.replace("/login"); }}>
           <LogOut className="size-4" />

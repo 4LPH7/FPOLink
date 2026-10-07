@@ -16,11 +16,43 @@ const CROP_EMOJI: Record<string, string> = {
   வாழை: "🍌",
   coconut: "🥥",
   தேங்காய்: "🥥",
+  paddy: "🌾",
+  நெல்: "🌾",
+  tomato: "🍅",
+  தக்காளி: "🍅",
+  onion: "🧅",
+  வெங்காயம்: "🧅",
+  maize: "🌽",
+  மக்காச்சோளம்: "🌽",
+  cotton: "☁️",
+  பருத்தி: "☁️",
+  sugarcane: "🎋",
+  கரும்பு: "🎋",
+  groundnut: "🥜",
+  நிலக்கடலை: "🥜",
+  chilli: "🌶️",
+  மிளகாய்: "🌶️",
+  tapioca: "🥔",
+  மரவள்ளி: "🥔",
+  mango: "🥭",
+  மாம்பழம்: "🥭",
+  brinjal: "🍆",
+  கத்தரி: "🍆",
+  "ladies finger": "🥬",
+  okra: "🥬",
+  வெண்டை: "🥬",
+  ginger: "🫚",
+  இஞ்சி: "🫚",
+  "black gram": "🫘",
+  உளுந்து: "🫘",
+  "green gram": "🫛",
+  பாசிப்பயறு: "🫛",
 };
 
 function cropEmoji(name: string): string {
+  const lower = name.toLowerCase();
   const key = Object.keys(CROP_EMOJI).find((k) =>
-    name.toLowerCase().includes(k)
+    lower.includes(k)
   );
   return key ? CROP_EMOJI[key] : "🌱";
 }

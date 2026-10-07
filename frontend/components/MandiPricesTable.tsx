@@ -47,7 +47,7 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
     };
   }, []);
 
-  const availableCrops = Array.from(new Set(prices.map((p) => p.crop_name))).slice(0, 8);
+  const availableCrops = Array.from(new Set(prices.map((p) => p.crop_name)));
 
   const filteredRows = prices.filter((row) => {
     const matchesSearch =
@@ -141,33 +141,38 @@ export default function MandiPricesTable({ lang, t }: MandiPricesTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs">
-              {filteredRows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="py-4 px-6 font-semibold text-gray-900">
-                    <div>{lang === "ta" ? row.crop_tamil_name || row.crop_name : row.crop_name}</div>
-                    <span className="text-[10px] text-gray-400 capitalize">{row.crop_name}</span>
-                  </td>
-                  <td className="py-4 px-6 text-gray-700">
-                    <div className="font-medium">{row.market_name}</div>
-                    <span className="text-[11px] text-gray-400">{row.district}</span>
-                  </td>
-                  <td className="py-4 px-4 font-mono text-gray-600">
-                    ₹{Math.round(row.min_price * 100).toLocaleString()}
-                  </td>
-                  <td className="py-4 px-4 font-mono text-gray-600">
-                    ₹{Math.round(row.max_price * 100).toLocaleString()}
-                  </td>
-                  <td className="py-4 px-6 font-mono font-bold text-gray-900">
-                    ₹{Math.round(row.modal_price * 100).toLocaleString()}
-                    <span className="text-[10px] font-normal text-gray-400 ml-1">/qtl</span>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
-                      {row.source}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {filteredRows.map((row) => {
+                const u = (row.unit || row.raw_unit || "").toLowerCase();
+                const mult = u === "kg" || u.includes("kilo") || u.includes("கிலோ") ? 1 : 100;
+                const unitLabel = u === "kg" || u.includes("kilo") || u.includes("கிலோ") ? "/kg" : "/qtl";
+                return (
+                  <tr key={row.id} className="content-visibility-auto hover:bg-gray-50/60 transition-colors">
+                    <td className="py-4 px-6 font-semibold text-gray-900">
+                      <div>{lang === "ta" ? row.crop_tamil_name || row.crop_name : row.crop_name}</div>
+                      <span className="text-[10px] text-gray-400 capitalize">{row.crop_name}</span>
+                    </td>
+                    <td className="py-4 px-6 text-gray-700">
+                      <div className="font-medium">{row.market_name}</div>
+                      <span className="text-[11px] text-gray-400">{row.district}</span>
+                    </td>
+                    <td className="py-4 px-4 font-mono text-gray-600">
+                      ₹{Math.round(row.min_price * mult).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-4 font-mono text-gray-600">
+                      ₹{Math.round(row.max_price * mult).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-6 font-mono font-bold text-gray-900">
+                      ₹{Math.round(row.modal_price * mult).toLocaleString()}
+                      <span className="text-[10px] font-normal text-gray-400 ml-1">{unitLabel}</span>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
+                        {row.source}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
