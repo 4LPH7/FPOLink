@@ -264,9 +264,9 @@ def test_demo_data_isolation_when_demo_mode_false(client, db, monkeypatch):
     res_v1 = client.get(f"/api/v1/prices/latest?crop_id={crop.id}")
     assert res_v1.status_code == 200
     prices_v1 = res_v1.json()["prices"]
-    assert len(prices_v1) == 0, (
-        "demo_seed price leaked into v1 public price feed with DEMO_MODE=False!"
-    )
+    assert (
+        len(prices_v1) == 0
+    ), "demo_seed price leaked into v1 public price feed with DEMO_MODE=False!"
 
 
 def test_cors_origin_regex_security():

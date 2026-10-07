@@ -24,7 +24,6 @@ from app.ml.features import (
     extract_features_for_series,
     get_latest_feature_vector,
 )
-from app.models.forecast_log import ForecastLog
 from app.models.market_price import MarketPrice
 from app.models.model_version import ModelVersion
 from app.models.prediction import Prediction
@@ -376,6 +375,6 @@ class ForecastingService:
 
 def score_forecasts(db: Session) -> int:
     """M2.4: fill actual_price/error on forecast_log rows whose target date has passed."""
-    forecaster = AgriculturalForecaster(db)
+    forecaster = ForecastingService(db)
     res = forecaster.score_past_forecasts()
     return res.get("evaluated_count", 0)
