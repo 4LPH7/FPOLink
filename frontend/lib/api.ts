@@ -669,6 +669,8 @@ export interface ArbitrageOpportunity {
   transport_cost: number;
   net_spread: number;
   recommendation: "strong_arbitrage" | "profitable_dispatch" | "local_preferred";
+  variety_name?: string | null;
+  variety_match?: "exact" | "exact_modal_benchmark" | "cross_variety_approximate" | null;
   costs_breakdown?: {
     freight: number;
     handling: number;
@@ -677,6 +679,8 @@ export interface ArbitrageOpportunity {
     total_cost: number;
   };
   date_difference_days?: number;
+  uncertainty_rating?: "low" | "moderate" | "high";
+  uncertainty_reasons?: string[];
 }
 
 export interface ArbitrageResponse {
@@ -688,9 +692,13 @@ export interface ArbitrageResponse {
   origin_district: string;
   origin_price?: number;
   origin_price_date?: string;
+  origin_variety_name?: string | null;
+  vehicle_profile?: string;
   total_destinations_analyzed: number;
-  assumptions?: Record<string, number>;
+  assumptions?: Record<string, any>;
   disclaimer?: string;
+  disclaimer_ta?: string;
+  disclaimer_en?: string;
   opportunities: ArbitrageOpportunity[];
 }
 
@@ -754,13 +762,18 @@ export async function getForecast(
 export async function getArbitrage(
   cropId: string,
   originMarketId: string,
-  maxDistanceKm: number = 300
+  maxDistanceKm: number = 300,
+  vehicleProfile: string = "lcv",
+  handlingCost?: number,
+  commissionPct?: number,
+  spoilageRiskPct?: number
 ): Promise<ArbitrageResponse | null> {
   try {
-    const res = await safeFetch(
-      `${API_BASE}/api/v1/intelligence/arbitrage?crop_id=${encodeURIComponent(cropId)}&origin_market_id=${encodeURIComponent(originMarketId)}&max_distance_km=${maxDistanceKm}`,
-      { cache: "no-store" }
-    );
+    let url = `${API_BASE}/api/v1/intelligence/arbitrage?crop_id=${encodeURIComponent(cropId)}&origin_market_id=${encodeURIComponent(originMarketId)}&max_distance_km=${maxDistanceKm}&vehicle_profile=${encodeURIComponent(vehicleProfile)}`;
+    if (handlingCost !== undefined) url += `&handling_cost=${handlingCost}`;
+    if (commissionPct !== undefined) url += `&commission_pct=${commissionPct}`;
+    if (spoilageRiskPct !== undefined) url += `&spoilage_risk_pct=${spoilageRiskPct}`;
+    const res = await safeFetch(url, { cache: "no-store" });
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Failed to fetch arbitrage:", err);

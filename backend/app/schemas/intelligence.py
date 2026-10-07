@@ -1,6 +1,6 @@
 """Pydantic schemas for Agricultural Intelligence API v1."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -46,8 +46,12 @@ class ArbitrageOpportunity(BaseModel):
     transport_cost: float
     net_spread: float
     recommendation: str
+    variety_name: Optional[str] = None
+    variety_match: Optional[str] = None
     costs_breakdown: Optional[Dict[str, float]] = None
     date_difference_days: Optional[int] = None
+    uncertainty_rating: Optional[str] = "low"
+    uncertainty_reasons: Optional[List[str]] = []
 
 
 class ArbitrageResponse(BaseModel):
@@ -59,9 +63,13 @@ class ArbitrageResponse(BaseModel):
     origin_district: str
     origin_price: Optional[float] = None
     origin_price_date: Optional[str] = None
+    origin_variety_name: Optional[str] = None
+    vehicle_profile: Optional[str] = "lcv"
     total_destinations_analyzed: int
-    assumptions: Optional[Dict[str, float]] = None
+    assumptions: Optional[Dict[str, Any]] = None
     disclaimer: Optional[str] = None
+    disclaimer_ta: Optional[str] = None
+    disclaimer_en: Optional[str] = None
     opportunities: List[ArbitrageOpportunity]
 
 

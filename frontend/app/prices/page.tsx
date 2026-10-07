@@ -31,6 +31,10 @@ import {
   Navigation,
   ShieldCheck,
   MapPin,
+  Truck,
+  SlidersHorizontal,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import {
   getLatestPrices,
@@ -78,6 +82,11 @@ export default function PricesPage() {
   const [forecastData, setForecastData] = useState<ForecastResponse | null>(null);
   const [arbitrageData, setArbitrageData] = useState<ArbitrageResponse | null>(null);
   const [activeTab, setActiveTab] = useState<"rates" | "forecast" | "arbitrage">("rates");
+  const [vehicleProfile, setVehicleProfile] = useState<string>("lcv");
+  const [handlingFee, setHandlingFee] = useState<number>(15);
+  const [commissionPct, setCommissionPct] = useState<number>(1.5);
+  const [spoilagePct, setSpoilagePct] = useState<number>(0);
+  const [showCostSettings, setShowCostSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastPricesCheck, setLastPricesCheck] = useState<Date | null>(null);
@@ -129,13 +138,55 @@ export default function PricesPage() {
     if (marketId) {
       const [fc, arb] = await Promise.all([
         getForecast(cropObj.id, marketId, 7),
-        getArbitrage(cropObj.id, marketId, 300),
+        getArbitrage(
+          cropObj.id,
+          marketId,
+          300,
+          vehicleProfile,
+          handlingFee,
+          commissionPct,
+          spoilagePct
+        ),
       ]);
       setForecastData(fc);
       setArbitrageData(arb);
     } else {
       setForecastData(null);
       setArbitrageData(null);
+    }
+  };
+
+  const handleArbitrageParamChange = async (
+    newProfile = vehicleProfile,
+    newHandling = handlingFee,
+    newCommission = commissionPct,
+    newSpoilage = spoilagePct
+  ) => {
+    setVehicleProfile(newProfile);
+    setHandlingFee(newHandling);
+    setCommissionPct(newCommission);
+    setSpoilagePct(newSpoilage);
+
+    const cropObj = crops.find(
+      (c) => c.name.toLowerCase() === activeChartCrop.toLowerCase()
+    );
+    if (!cropObj) return;
+
+    const priceRecord = prices.find(
+      (p) => p.crop_name.toLowerCase() === activeChartCrop.toLowerCase()
+    );
+    const marketId = priceRecord ? priceRecord.market_id || priceRecord.id : null;
+    if (marketId) {
+      const arb = await getArbitrage(
+        cropObj.id,
+        marketId,
+        300,
+        newProfile,
+        newHandling,
+        newCommission,
+        newSpoilage
+      );
+      setArbitrageData(arb);
     }
   };
 
@@ -807,6 +858,114 @@ export default function PricesPage() {
               ))}
             </div>
           </CardHeader>
+          {/* Controls Bar: Vehicle Profile & Cost Assumptions */}
+          <div className="px-6 pb-2.5 pt-1.5 border-b flex flex-wrap items-center justify-between gap-3 text-xs bg-muted/20">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-muted-foreground flex items-center gap-1">
+                <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                {lang === "ta" ? "வாகனம்:" : "Vehicle Profile:"}
+              </span>
+              <div className="inline-flex rounded-md shadow-xs border bg-background p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleArbitrageParamChange("pickup")}
+                  className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                    vehicleProfile === "pickup"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang === "ta" ? "பிக்கப் (1.5T)" : "Pickup (1.5T)"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleArbitrageParamChange("lcv")}
+                  className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                    vehicleProfile === "lcv"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang === "ta" ? "LCV / 407 (3.5T)" : "LCV 407 (3.5T)"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleArbitrageParamChange("medium_truck")}
+                  className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                    vehicleProfile === "medium_truck"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang === "ta" ? "லாரி (10T)" : "Medium Truck (10T)"}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs flex items-center gap-1.5"
+              onClick={() => setShowCostSettings(!showCostSettings)}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>{lang === "ta" ? "செலவு வரம்புகள்" : "Cost Assumptions"}</span>
+            </Button>
+          </div>
+
+          {/* Collapsible Cost Assumptions Panel */}
+          {showCostSettings && (
+            <div className="px-6 py-3 border-b bg-muted/40 text-xs grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-muted-foreground mb-1 font-medium">
+                  {lang === "ta" ? "ஏற்று/இறக்கு கட்டணம் (₹/குவிண்டால்):" : "Handling & Bagging (₹/qtl):"}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={handlingFee}
+                  onChange={(e) =>
+                    handleArbitrageParamChange(vehicleProfile, Number(e.target.value), commissionPct, spoilagePct)
+                  }
+                  className="w-full bg-background border rounded px-2.5 py-1 text-foreground font-mono text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-muted-foreground mb-1 font-medium">
+                  {lang === "ta" ? "மண்டி கமிஷன் கட்டணம் (%):" : "Mandi Commission Fee (%):"}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={commissionPct}
+                  onChange={(e) =>
+                    handleArbitrageParamChange(vehicleProfile, handlingFee, Number(e.target.value), spoilagePct)
+                  }
+                  className="w-full bg-background border rounded px-2.5 py-1 text-foreground font-mono text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-muted-foreground mb-1 font-medium">
+                  {lang === "ta" ? "போக்குவரத்து சேதாரம் (%):" : "Transit Spoilage Buffer (%):"}
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="20"
+                  value={spoilagePct}
+                  onChange={(e) =>
+                    handleArbitrageParamChange(vehicleProfile, handlingFee, commissionPct, Number(e.target.value))
+                  }
+                  className="w-full bg-background border rounded px-2.5 py-1 text-foreground font-mono text-xs"
+                />
+              </div>
+            </div>
+          )}
+
           <CardContent>
             {!arbitrageData || arbitrageData.opportunities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
@@ -815,36 +974,78 @@ export default function PricesPage() {
                   {lang === "ta" ? "விலை வேறுபாட்டு வாய்ப்புகள் எதுவும் இல்லை" : "No active arbitrage opportunities detected"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {lang === "ta" ? "அருகிலுள்ள மண்டிகளிலிருந்து சமீபத்திய விலைகள் எதுவும் பதிவாகவில்லை." : "No reporting mandis found within search radius for this commodity."}
+                  {lang === "ta"
+                    ? "அருகிலுள்ள மண்டிகளிலிருந்து சமீபத்திய விலைகள் எதுவும் பதிவாகவில்லை."
+                    : "No reporting mandis found within search radius for this commodity."}
                 </p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{lang === "ta" ? "இலக்கு மண்டி & மாவட்டம்" : "Target Mandi & District"}</TableHead>
+                    <TableHead>{lang === "ta" ? "இலக்கு மண்டி & தரம்" : "Target Mandi & Variety"}</TableHead>
                     <TableHead>{lang === "ta" ? "தொலைவு" : "Distance"}</TableHead>
                     <TableHead>{lang === "ta" ? "இலக்கு விலை" : "Target Rate"}</TableHead>
                     <TableHead>{lang === "ta" ? "மொத்த வித்தியாசம்" : "Gross Spread"}</TableHead>
-                    <TableHead>{lang === "ta" ? "சரக்குச் செலவு" : "Transport Cost"}</TableHead>
+                    <TableHead>{lang === "ta" ? "கட்டணங்கள் விவரம்" : "Itemized Deductions"}</TableHead>
                     <TableHead>{lang === "ta" ? "நிகர லாபம்" : "Net Advantage"}</TableHead>
-                    <TableHead className="text-right">{lang === "ta" ? "முடிவு" : "Decision"}</TableHead>
+                    <TableHead className="text-right">{lang === "ta" ? "நம்பகத்தன்மை & முடிவு" : "Uncertainty & Decision"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {arbitrageData.opportunities.map((opp) => (
                     <TableRow key={opp.target_market_id}>
                       <TableCell className="font-medium">
-                        <span>{opp.target_market_name}</span>
-                        <span className="block text-xs text-muted-foreground">{opp.district}</span>
+                        <div>
+                          <span className="font-semibold text-foreground">{opp.target_market_name}</span>
+                          <span className="block text-xs text-muted-foreground">{opp.district}</span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {opp.variety_match === "exact" ? (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300">
+                                {lang === "ta" ? "சரியான ரகம்" : "Exact Variety"}
+                              </Badge>
+                            ) : opp.variety_match === "cross_variety_approximate" ? (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
+                                {lang === "ta" ? "சுத்தமான ரகமல்ல" : "Cross-Variety"}
+                              </Badge>
+                            ) : null}
+                            {opp.variety_name && (
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                {opp.variety_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs">{opp.distance_km} km</TableCell>
-                      <TableCell className="font-mono text-xs font-semibold">₹{opp.target_price.toLocaleString()}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <div className="font-semibold">₹{opp.target_price.toLocaleString()}</div>
+                        <div className="text-[10px] text-muted-foreground font-sans">
+                          {opp.date_difference_days === 0
+                            ? (lang === "ta" ? "இன்றைய பதிவு" : "Same day")
+                            : (lang === "ta" ? `${opp.date_difference_days} நாள் தாமதம்` : `${opp.date_difference_days}d lag`)}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-mono text-xs">
                         {opp.gross_spread > 0 ? `+₹${opp.gross_spread.toLocaleString()}` : `₹${opp.gross_spread.toLocaleString()}`}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        -₹{opp.transport_cost.toLocaleString()}
+                      <TableCell className="text-xs">
+                        {opp.costs_breakdown ? (
+                          <div className="space-y-0.5 font-mono text-[11px]">
+                            <div className="text-foreground font-semibold">
+                              -₹{opp.costs_breakdown.total_cost.toLocaleString()}{" "}
+                              <span className="text-[9px] text-muted-foreground font-sans">/ qtl</span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              சரக்கு: ₹{opp.costs_breakdown.freight} | கையாளுதல்: ₹{opp.costs_breakdown.handling}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              கமிஷன்: ₹{opp.costs_breakdown.commission} | சேதாரம்: ₹{opp.costs_breakdown.spoilage_risk}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="font-mono text-muted-foreground">-₹{opp.transport_cost.toLocaleString()}</span>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-xs font-bold">
                         {opp.net_spread > 0 ? (
@@ -855,21 +1056,39 @@ export default function PricesPage() {
                         <span className="text-[10px] text-muted-foreground block">/ quintal</span>
                       </TableCell>
                       <TableCell className="text-right">
-                        {opp.recommendation === "strong_arbitrage" && (
-                          <Badge variant="success" className="text-[10px]">
-                            STRONG ARBITRAGE
-                          </Badge>
-                        )}
-                        {opp.recommendation === "profitable_dispatch" && (
-                          <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600">
-                            PROFITABLE
-                          </Badge>
-                        )}
-                        {opp.recommendation === "local_preferred" && (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                            LOCAL PREFERRED
-                          </Badge>
-                        )}
+                        <div className="flex flex-col items-end gap-1">
+                          {opp.recommendation === "strong_arbitrage" && (
+                            <Badge variant="success" className="text-[10px]">
+                              STRONG ARBITRAGE
+                            </Badge>
+                          )}
+                          {opp.recommendation === "profitable_dispatch" && (
+                            <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600">
+                              PROFITABLE
+                            </Badge>
+                          )}
+                          {opp.recommendation === "local_preferred" && (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                              LOCAL PREFERRED
+                            </Badge>
+                          )}
+                          {/* Uncertainty Rating Badge */}
+                          {opp.uncertainty_rating && (
+                            <Badge
+                              variant="outline"
+                              className={`text-[9px] px-1 py-0 ${
+                                opp.uncertainty_rating === "low"
+                                  ? "border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-300"
+                                  : opp.uncertainty_rating === "moderate"
+                                  ? "border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950 dark:text-amber-300"
+                                  : "border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950 dark:text-rose-300"
+                              }`}
+                              title={opp.uncertainty_reasons?.join("; ") || ""}
+                            >
+                              {opp.uncertainty_rating.toUpperCase()} RISK
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -877,6 +1096,23 @@ export default function PricesPage() {
               </Table>
             )}
           </CardContent>
+
+          {/* Bilingual Defensibility Disclaimer Notice */}
+          <div className="p-4 border-t bg-amber-50/50 dark:bg-amber-950/20 text-xs text-muted-foreground">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium text-amber-900 dark:text-amber-200">
+                  {arbitrageData?.disclaimer_ta ||
+                    "இது மதிப்பிடப்பட்ட சாத்தியக்கூறு மட்டுமே; போக்குவரத்து கட்டணம், தரம் மற்றும் சந்தை கட்டணங்களின் அடிப்படையில் மாறுபடலாம்."}
+                </p>
+                <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+                  {arbitrageData?.disclaimer_en ||
+                    "Estimated net opportunities based on reported mandi modal prices. Does not guarantee realized trading profit; actual outcomes depend on vehicle capacity, live arrival volumes, transporter quotes, and quality grading."}
+                </p>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
     </div>

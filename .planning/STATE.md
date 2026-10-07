@@ -7,9 +7,9 @@ Live project state tracker for GSD workflow operations.
 ## 1. Project Overview
 
 - **Project**: FPOLink TN
-- **Active Milestone**: `v0.9 — Cloud Hosting & Field Pilot`
-- **Active Phase**: `Phase 18 — Frontend Cloud Deployment & Field Verification`
-- **Current Branch**: `main` (clean, pushed to `origin/main`)
+- **Active Milestone**: `M-Series MVP Sprint`
+- **Active Phase**: `Phase M3 — Defensible Arbitrage & Transport Realization`
+- **Current Branch**: `main`
 - **Git Commit**: `a93a3d4`
 
 ---

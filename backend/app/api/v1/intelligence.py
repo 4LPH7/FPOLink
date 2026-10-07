@@ -128,31 +128,73 @@ def get_crop_forecast(
 
 @router.get("/arbitrage", response_model=ArbitrageResponse)
 def get_arbitrage_opportunities(
-    crop_id: UUID = Query(..., description="Canonical Crop UUID"),
-    origin_market_id: UUID = Query(..., description="Origin Market UUID"),
+    crop_id: Optional[UUID] = Query(None, description="Canonical Crop UUID"),
+    origin_market_id: Optional[UUID] = Query(None, description="Origin Market UUID"),
+    crop: Optional[str] = Query(None, description="Crop commodity name (e.g. turmeric)"),
+    market: Optional[str] = Query(None, description="Origin market name (e.g. erode)"),
+    vehicle_profile: str = Query(
+        default="lcv", description="Vehicle profile: pickup, lcv, medium_truck, custom"
+    ),
     max_distance_km: float = Query(
         default=300.0, ge=10.0, le=1000.0, description="Search radius in km"
     ),
-    base_cost: float = Query(default=50.0, ge=0.0, description="Base loading cost per quintal (₹)"),
-    rate_per_km: float = Query(default=1.20, ge=0.1, description="Freight cost ₹/km/quintal"),
-    handling_cost: float = Query(default=0.0, ge=0.0, description="Handling cost per quintal (₹)"),
-    commission_pct: float = Query(
-        default=0.0, ge=0.0, le=10.0, description="Mandi commission percentage (%)"
+    base_cost: Optional[float] = Query(
+        default=None, ge=0.0, description="Base loading cost per quintal (₹)"
     ),
-    spoilage_risk_pct: float = Query(
-        default=0.0, ge=0.0, le=20.0, description="Transit shrinkage / spoilage risk (%)"
+    rate_per_km: Optional[float] = Query(
+        default=None, ge=0.1, description="Freight cost ₹/km/quintal"
     ),
-    min_shipment_qtl: float = Query(
-        default=10.0, ge=1.0, description="Minimum economic shipment size (qtl)"
+    handling_cost: Optional[float] = Query(
+        default=None, ge=0.0, description="Handling cost per quintal (₹)"
+    ),
+    commission_pct: Optional[float] = Query(
+        default=None, ge=0.0, le=10.0, description="Mandi commission percentage (%)"
+    ),
+    spoilage_risk_pct: Optional[float] = Query(
+        default=None, ge=0.0, le=20.0, description="Transit shrinkage / spoilage risk (%)"
+    ),
+    min_shipment_qtl: Optional[float] = Query(
+        default=None, ge=1.0, description="Minimum economic shipment size (qtl)"
     ),
     db: Session = Depends(get_db),
 ):
     """Evaluate inter-district market arbitrage deducting estimated freight, handling, and commission costs."""
+    if not crop_id and crop:
+        c_obj = (
+            db.query(Crop)
+            .filter(
+                (func.lower(Crop.name) == crop.lower().strip())
+                | (Crop.name.ilike(f"%{crop.strip()}%"))
+                | (Crop.tamil_name == crop.strip())
+            )
+            .first()
+        )
+        if c_obj:
+            crop_id = c_obj.id
+
+    if not origin_market_id and market:
+        m_obj = (
+            db.query(Market)
+            .filter(
+                (func.lower(Market.name) == market.lower().strip())
+                | (Market.name.ilike(f"%{market.strip()}%"))
+            )
+            .first()
+        )
+        if m_obj:
+            origin_market_id = m_obj.id
+
+    if not crop_id:
+        raise HTTPException(status_code=400, detail="crop_id or crop name is required")
+    if not origin_market_id:
+        raise HTTPException(status_code=400, detail="origin_market_id or market name is required")
+
     result = find_market_arbitrage(
         db,
         crop_id=crop_id,
         origin_market_id=origin_market_id,
         max_distance_km=max_distance_km,
+        vehicle_profile=vehicle_profile,
         base_transport_cost=base_cost,
         rate_per_km_quintal=rate_per_km,
         handling_cost_per_qtl=handling_cost,
