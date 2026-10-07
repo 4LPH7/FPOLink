@@ -1,22 +1,15 @@
 """Tests for Data Health endpoint, CSV upload, query filters, and variety resolution."""
 
 import io
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.database import get_db
-from app.main import app
 from app.models.crop import Crop
 from app.models.data_quality import DataQualityEvent
 from app.models.market import Market
 from app.models.market_price import MarketPrice
-from app.models.user import User
-from app.models.variety import Variety
-from app.services.jwt import create_access_token
 
 
 @pytest.fixture

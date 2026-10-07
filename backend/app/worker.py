@@ -83,8 +83,11 @@ def run_predictions():
             except Exception as e:
                 logger.warning(f"Error forecasting for {crop_id}/{market_id}: {e}")
 
+        # Score previously logged predictions whose target dates have passed
+        score_res = service.score_past_forecasts()
         logger.info(
-            f"Predictions complete. Generated {total_forecasted} forecast points across {len(pairs)} markets."
+            f"Predictions complete. Generated {total_forecasted} forecast points across {len(pairs)} markets. "
+            f"Evaluated {score_res['evaluated_count']} past predictions (MAE: ₹{score_res['mean_absolute_error']}/kg)."
         )
     finally:
         db.close()

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -26,7 +26,11 @@ def latest_prices(
     db: Session = Depends(get_db),
 ):
     """Get latest prices for all crops in a district with optional crop and market filters."""
-    return {"prices": get_latest_prices(db, district=district, crop_id=crop_id, crop=crop, market=market)}
+    return {
+        "prices": get_latest_prices(
+            db, district=district, crop_id=crop_id, crop=crop, market=market
+        )
+    }
 
 
 @router.get("/history")

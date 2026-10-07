@@ -35,6 +35,7 @@ class ManualProvider(MarketDataProvider):
         import csv
         import io
         from datetime import datetime
+
         from app.utils.units import convert_to_per_kg
 
         records: List[PriceRecord] = []

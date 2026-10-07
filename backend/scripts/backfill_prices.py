@@ -21,7 +21,6 @@ if hasattr(sys.stdout, "reconfigure"):
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.config import settings  # noqa: E402
 from app.data_sources.base import PriceRecord  # noqa: E402
 from app.data_sources.manual import ManualProvider  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
@@ -78,11 +77,17 @@ def generate_gap_report(
         missing = sorted(set(trading_days) - observed)
 
         print(f"\nSeries: {crop.capitalize()} @ {market.capitalize()}")
-        print(f"  - Observed Trading Days: {len(obs_trading)} / {len(trading_days)} ({coverage_pct:.1f}% coverage)")
-        print(f"  - Total Observations   : {len(observed)} (incl. {len(observed - set(trading_days))} weekend records)")
+        print(
+            f"  - Observed Trading Days: {len(obs_trading)} / {len(trading_days)} ({coverage_pct:.1f}% coverage)"
+        )
+        print(
+            f"  - Total Observations   : {len(observed)} (incl. {len(observed - set(trading_days))} weekend records)"
+        )
         if missing:
             if len(missing) <= 10:
-                print(f"  - Missing Dates ({len(missing)}): {', '.join(d.isoformat() for d in missing)}")
+                print(
+                    f"  - Missing Dates ({len(missing)}): {', '.join(d.isoformat() for d in missing)}"
+                )
             else:
                 first_few = ", ".join(d.isoformat() for d in missing[:6])
                 last_few = ", ".join(d.isoformat() for d in missing[-2:])
@@ -121,7 +126,9 @@ def run_backfill(
         all_csv_records = ManualProvider.load_csv_file(file_to_load, default_district=district)
         # Filter by requested crops and dates
         for r in all_csv_records:
-            if r.crop_name.lower() in target_crops or any(c in r.crop_name.lower() for c in target_crops):
+            if r.crop_name.lower() in target_crops or any(
+                c in r.crop_name.lower() for c in target_crops
+            ):
                 if start_date and r.price_date < start_date:
                     continue
                 if end_date and r.price_date > end_date:
@@ -181,7 +188,9 @@ def run_backfill(
     try:
         service = IngestionService(db)
         stored_count = service._store_records(records)
-        print(f"Database Ingestion: Successfully stored/updated {stored_count} records through 8-stage pipeline.")
+        print(
+            f"Database Ingestion: Successfully stored/updated {stored_count} records through 8-stage pipeline."
+        )
     finally:
         db.close()
 
@@ -190,13 +199,23 @@ def run_backfill(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="FPOLink Mandi Price Backfill & Gap Analysis CLI")
-    parser.add_argument("--source", default="csv", choices=["csv", "ceda", "ogd"], help="Data source provider")
-    parser.add_argument("--csv-file", default=None, help="Path to CSV file (defaults to erode historical dataset)")
-    parser.add_argument("--crops", default="turmeric,banana", help="Comma-separated crops (default: turmeric,banana)")
+    parser.add_argument(
+        "--source", default="csv", choices=["csv", "ceda", "ogd"], help="Data source provider"
+    )
+    parser.add_argument(
+        "--csv-file", default=None, help="Path to CSV file (defaults to erode historical dataset)"
+    )
+    parser.add_argument(
+        "--crops",
+        default="turmeric,banana",
+        help="Comma-separated crops (default: turmeric,banana)",
+    )
     parser.add_argument("--district", default="Erode", help="District name (default: Erode)")
     parser.add_argument("--start-date", default=None, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", default=None, help="End date (YYYY-MM-DD)")
-    parser.add_argument("--dry-run", action="store_true", help="Parse and analyze gaps without persisting to DB")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Parse and analyze gaps without persisting to DB"
+    )
 
     args = parser.parse_args()
 

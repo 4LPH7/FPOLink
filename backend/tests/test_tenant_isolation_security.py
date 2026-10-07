@@ -5,17 +5,16 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
+import jwt
 
 from app.config import settings
+from app.models.crop import Crop
 from app.models.farmer import Farmer
 from app.models.fpo import FPO
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.task import Task
 from app.models.user import User, UserRole
-from app.models.crop import Crop
-import jwt
 from app.services.auth import hash_password
 from app.services.jwt import create_access_token
 
@@ -230,7 +229,11 @@ def test_demo_data_isolation_when_demo_mode_false(client, db, monkeypatch):
     """demo_seed records must NEVER leak to prices API when DEMO_MODE=False."""
     monkeypatch.setattr(settings, "DEMO_MODE", False)
 
-    crop = Crop(name=f"IsoCrop-{uuid.uuid4().hex[:4]}", canonical_name=f"isocrop-{uuid.uuid4().hex[:4]}", tamil_name="பயிர்")
+    crop = Crop(
+        name=f"IsoCrop-{uuid.uuid4().hex[:4]}",
+        canonical_name=f"isocrop-{uuid.uuid4().hex[:4]}",
+        tamil_name="பயிர்",
+    )
     market = Market(name=f"IsoMarket-{uuid.uuid4().hex[:4]}", district="Erode", state="Tamil Nadu")
     db.add_all([crop, market])
     db.commit()
@@ -259,7 +262,9 @@ def test_demo_data_isolation_when_demo_mode_false(client, db, monkeypatch):
     res_v1 = client.get(f"/api/v1/prices/latest?crop_id={crop.id}")
     assert res_v1.status_code == 200
     prices_v1 = res_v1.json()["prices"]
-    assert len(prices_v1) == 0, "demo_seed price leaked into v1 public price feed with DEMO_MODE=False!"
+    assert len(prices_v1) == 0, (
+        "demo_seed price leaked into v1 public price feed with DEMO_MODE=False!"
+    )
 
 
 def test_cors_origin_regex_security():

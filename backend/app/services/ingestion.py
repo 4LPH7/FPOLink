@@ -48,8 +48,9 @@ class IngestionService:
         crops = crops or settings.default_crops_list
         if not districts:
             district_rows = self.db.query(District.name).order_by(District.name).all()
-            districts = [d[0] for d in district_rows] if district_rows else [settings.DEFAULT_DISTRICT]
-
+            districts = (
+                [d[0] for d in district_rows] if district_rows else [settings.DEFAULT_DISTRICT]
+            )
 
         start_time = datetime.now(timezone.utc)
         total_fetched = 0
@@ -247,7 +248,9 @@ class IngestionService:
                         self.db.query(Variety)
                         .filter(
                             Variety.crop_id == crop.id,
-                            Variety.name.in_(["Other/Unspecified", "Other", "Common", "Standard", "General"]),
+                            Variety.name.in_(
+                                ["Other/Unspecified", "Other", "Common", "Standard", "General"]
+                            ),
                         )
                         .first()
                     )

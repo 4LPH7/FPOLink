@@ -28,18 +28,53 @@ router = APIRouter(prefix="/intelligence", tags=["intelligence-v1"])
 
 @router.get("/forecast", response_model=ForecastResponse)
 def get_crop_forecast(
-    crop_id: UUID = Query(..., description="Canonical Crop UUID"),
-    market_id: UUID = Query(..., description="Canonical Market UUID"),
+    crop_id: Optional[UUID] = Query(None, description="Canonical Crop UUID"),
+    market_id: Optional[UUID] = Query(None, description="Canonical Market UUID"),
+    crop: Optional[str] = Query(None, description="Crop commodity name (e.g. turmeric)"),
+    market: Optional[str] = Query(None, description="Market mandi name (e.g. erode)"),
     days: int = Query(default=7, ge=1, le=30, description="Forecast horizon in days"),
+    model_type: str = Query(
+        default="auto", description="Model engine: auto, baseline, seasonal_naive, lightgbm"
+    ),
     db: Session = Depends(get_db),
 ):
     """Generate forward price forecasts with p10/p50/p90 intervals, input freshness & actionable signals."""
-    crop = db.query(Crop).filter(Crop.id == crop_id).first()
-    if not crop:
+    if not crop_id and crop:
+        c_obj = (
+            db.query(Crop)
+            .filter(
+                (func.lower(Crop.name) == crop.lower().strip())
+                | (Crop.name.ilike(f"%{crop.strip()}%"))
+                | (Crop.tamil_name == crop.strip())
+            )
+            .first()
+        )
+        if c_obj:
+            crop_id = c_obj.id
+
+    if not market_id and market:
+        m_obj = (
+            db.query(Market)
+            .filter(
+                (func.lower(Market.name) == market.lower().strip())
+                | (Market.name.ilike(f"%{market.strip()}%"))
+            )
+            .first()
+        )
+        if m_obj:
+            market_id = m_obj.id
+
+    if not crop_id:
+        raise HTTPException(status_code=400, detail="crop_id or crop name is required")
+    if not market_id:
+        raise HTTPException(status_code=400, detail="market_id or market name is required")
+
+    crop_obj = db.query(Crop).filter(Crop.id == crop_id).first()
+    if not crop_obj:
         raise HTTPException(status_code=404, detail="Crop not found")
 
-    market = db.query(Market).filter(Market.id == market_id).first()
-    if not market:
+    market_obj = db.query(Market).filter(Market.id == market_id).first()
+    if not market_obj:
         raise HTTPException(status_code=404, detail="Market not found")
 
     # Fetch latest known price
@@ -67,16 +102,20 @@ def get_crop_forecast(
     service = ForecastingService(db)
     # Read-only endpoint: do not persist a new Prediction row on every page view.
     points = service.generate_forecast(
-        crop_id=crop_id, market_id=market_id, horizon_days=days, persist=False
+        crop_id=crop_id,
+        market_id=market_id,
+        horizon_days=days,
+        model_type=model_type,
+        persist=False,
     )
 
     return ForecastResponse(
-        crop_id=str(crop.id),
-        crop_name=crop.name,
-        crop_tamil_name=crop.tamil_name,
-        market_name=market.name,
-        market_id=str(market.id),
-        district=market.district,
+        crop_id=str(crop_obj.id),
+        crop_name=crop_obj.name,
+        crop_tamil_name=crop_obj.tamil_name,
+        market_name=market_obj.name,
+        market_id=str(market_obj.id),
+        district=market_obj.district,
         current_modal_price=current_modal,
         horizon_days=days,
         input_freshness_date=input_date.isoformat() if input_date else None,
@@ -97,9 +136,15 @@ def get_arbitrage_opportunities(
     base_cost: float = Query(default=50.0, ge=0.0, description="Base loading cost per quintal (₹)"),
     rate_per_km: float = Query(default=1.20, ge=0.1, description="Freight cost ₹/km/quintal"),
     handling_cost: float = Query(default=0.0, ge=0.0, description="Handling cost per quintal (₹)"),
-    commission_pct: float = Query(default=0.0, ge=0.0, le=10.0, description="Mandi commission percentage (%)"),
-    spoilage_risk_pct: float = Query(default=0.0, ge=0.0, le=20.0, description="Transit shrinkage / spoilage risk (%)"),
-    min_shipment_qtl: float = Query(default=10.0, ge=1.0, description="Minimum economic shipment size (qtl)"),
+    commission_pct: float = Query(
+        default=0.0, ge=0.0, le=10.0, description="Mandi commission percentage (%)"
+    ),
+    spoilage_risk_pct: float = Query(
+        default=0.0, ge=0.0, le=20.0, description="Transit shrinkage / spoilage risk (%)"
+    ),
+    min_shipment_qtl: float = Query(
+        default=10.0, ge=1.0, description="Minimum economic shipment size (qtl)"
+    ),
     db: Session = Depends(get_db),
 ):
     """Evaluate inter-district market arbitrage deducting estimated freight, handling, and commission costs."""

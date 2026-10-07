@@ -30,6 +30,8 @@ class ForecastResponse(BaseModel):
     days_since_last_observation: Optional[int] = None
     is_stale: Optional[bool] = None
     stale_warning: Optional[str] = None
+    disclaimer_ta: str = "இது மதிப்பீடு மட்டுமே, கொள்முதல் அல்லது விற்பனை ஆலோசனை அல்ல."
+    disclaimer_en: str = "Estimate only, not financial or trading advice."
     forecast: List[ForecastPoint]
 
 

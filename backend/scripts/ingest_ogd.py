@@ -54,7 +54,9 @@ def check_status(api_key: Optional[str] = None, resource_id: Optional[str] = Non
         print("\nNote: OGD API key is missing. You can:")
         print("1. Obtain a free API key at: https://data.gov.in")
         print("2. Set OGD_API_KEY in your .env or pass via --api-key")
-        print("3. Test ingestion using synthetic fixture with --fixture tests/fixtures/ogd_turmeric_response_synthetic.json")
+        print(
+            "3. Test ingestion using synthetic fixture with --fixture tests/fixtures/ogd_turmeric_response_synthetic.json"
+        )
         return False
 
     return True
@@ -100,7 +102,9 @@ def run_ingest(
     else:
         provider = OGDProvider(api_key=api_key, resource_id=resource_id)
         if not provider.is_available():
-            print("Error: OGD_API_KEY is not set. Use --fixture to ingest synthetic data or set OGD_API_KEY.")
+            print(
+                "Error: OGD_API_KEY is not set. Use --fixture to ingest synthetic data or set OGD_API_KEY."
+            )
             return 1
         records = provider.fetch_prices(
             crop=crop,
@@ -139,13 +143,21 @@ def run_ingest(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="OGD Mandi Ingestion CLI Harness")
-    parser.add_argument("--check-status", action="store_true", help="Check OGD API key and endpoint status")
-    parser.add_argument("--crop", default="Turmeric", help="Crop commodity name (default: Turmeric)")
+    parser.add_argument(
+        "--check-status", action="store_true", help="Check OGD API key and endpoint status"
+    )
+    parser.add_argument(
+        "--crop", default="Turmeric", help="Crop commodity name (default: Turmeric)"
+    )
     parser.add_argument("--district", default="Erode", help="District name (default: Erode)")
     parser.add_argument("--api-key", default=None, help="Override OGD API key")
     parser.add_argument("--resource-id", default=None, help="Override OGD resource ID")
-    parser.add_argument("--fixture", default=None, help="Path to JSON fixture file for offline ingestion")
-    parser.add_argument("--dry-run", action="store_true", help="Parse records without saving to database")
+    parser.add_argument(
+        "--fixture", default=None, help="Path to JSON fixture file for offline ingestion"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Parse records without saving to database"
+    )
     parser.add_argument("--start-date", default=None, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", default=None, help="End date (YYYY-MM-DD)")
 

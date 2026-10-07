@@ -4,11 +4,10 @@ import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 import respx
-import httpx
 
 from app.config import settings
 from app.data_sources.ogd import OGD_BASE_URL, OGDProvider

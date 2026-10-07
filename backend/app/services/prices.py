@@ -27,7 +27,6 @@ def get_latest_prices(
     market: Optional[str] = None,
 ) -> List[dict]:
     """Get the most recent verified price for each crop in each market with provenance & freshness."""
-    from app.config import settings
 
     real_sources = get_real_price_sources()
 
@@ -44,7 +43,11 @@ def get_latest_prices(
             )
             .all()
         )
-        target_crop_ids = [str(r[0]) for r in c_matches] if c_matches else ["00000000-0000-0000-0000-000000000000"]
+        target_crop_ids = (
+            [str(r[0]) for r in c_matches]
+            if c_matches
+            else ["00000000-0000-0000-0000-000000000000"]
+        )
 
     target_market_ids = None
     if market:
@@ -56,7 +59,11 @@ def get_latest_prices(
             )
             .all()
         )
-        target_market_ids = [str(r[0]) for r in m_matches] if m_matches else ["00000000-0000-0000-0000-000000000000"]
+        target_market_ids = (
+            [str(r[0]) for r in m_matches]
+            if m_matches
+            else ["00000000-0000-0000-0000-000000000000"]
+        )
 
     # Subquery for max date per crop/market — whitelisting real sources only
     subq_filters = [MarketPrice.source.in_(real_sources)]
@@ -118,7 +125,9 @@ def get_latest_prices(
     # Batch fetch previous prices for all pairs to compute trends without N+1 queries
     previous_prices_by_pair: dict = {}
     if winner_per_pair:
-        min_date = min(mp.price_date for mp, _, _, _ in winner_per_pair.values()) - timedelta(days=4)
+        min_date = min(mp.price_date for mp, _, _, _ in winner_per_pair.values()) - timedelta(
+            days=4
+        )
         max_date = max(mp.price_date for mp, _, _, _ in winner_per_pair.values())
         crop_ids = {mp.crop_id for mp, _, _, _ in winner_per_pair.values()}
         market_ids = {mp.market_id for mp, _, _, _ in winner_per_pair.values()}
@@ -181,7 +190,12 @@ def get_latest_prices(
             freshness_category = "outdated"
             is_stale = True
 
-        unit = mp.raw_unit or (crop.market_unit if hasattr(crop, "market_unit") and crop.market_unit else None) or (crop.default_unit if hasattr(crop, "default_unit") and crop.default_unit else None) or "quintal"
+        unit = (
+            mp.raw_unit
+            or (crop.market_unit if hasattr(crop, "market_unit") and crop.market_unit else None)
+            or (crop.default_unit if hasattr(crop, "default_unit") and crop.default_unit else None)
+            or "quintal"
+        )
 
         prices.append(
             {
@@ -204,7 +218,9 @@ def get_latest_prices(
                 "quality_score": mp.quality_score,
                 "quality_breakdown": mp.quality_breakdown,
                 "ingested_at": mp.created_at.isoformat() if mp.created_at else None,
-                "last_updated": mp.created_at.isoformat() if mp.created_at else (mp.price_date.isoformat() if mp.price_date else None),
+                "last_updated": mp.created_at.isoformat()
+                if mp.created_at
+                else (mp.price_date.isoformat() if mp.price_date else None),
                 "raw_ingest_id": str(mp.raw_ingest_id) if mp.raw_ingest_id else None,
                 "is_stale": is_stale,
                 "stale_days": stale_days,

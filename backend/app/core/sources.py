@@ -15,9 +15,10 @@ VERIFIED_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet", "mandipri
 # so a fresh test deployment has something to show; every response carries source="demo_seed".
 DEMO_PRICE_SOURCE = "demo_seed"
 
+
 def get_real_price_sources() -> Tuple[str, ...]:
     """Dynamically return verified price sources based on environment and DEMO_MODE.
-    
+
     Guarantees that DEMO_PRICE_SOURCE is never included in production environments.
     """
     from app.config import settings
@@ -31,7 +32,9 @@ def get_real_price_sources() -> Tuple[str, ...]:
 
 # Default tuple for static references
 REAL_PRICE_SOURCES: Tuple[str, ...] = VERIFIED_PRICE_SOURCES + (
-    (DEMO_PRICE_SOURCE,) if (settings.DEMO_MODE and settings.ENVIRONMENT.lower() != "production") else ()
+    (DEMO_PRICE_SOURCE,)
+    if (settings.DEMO_MODE and settings.ENVIRONMENT.lower() != "production")
+    else ()
 )
 REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
 
@@ -74,9 +77,6 @@ def get_source_priority(source: str) -> int:
     if not source:
         return 99
     base = dict(SOURCE_PRIORITY)
-    if (
-        getattr(settings, "DEMO_MODE", False)
-        and settings.ENVIRONMENT.lower() != "production"
-    ):
+    if getattr(settings, "DEMO_MODE", False) and settings.ENVIRONMENT.lower() != "production":
         base[DEMO_PRICE_SOURCE] = 50
     return base.get(source.lower().strip(), 99)

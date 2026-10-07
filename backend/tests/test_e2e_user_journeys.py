@@ -4,23 +4,15 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
-
-from app.config import settings
+from app.models.buyer import Buyer, BuyerRequirement
 from app.models.crop import Crop
-from app.models.farmer import Farmer
+from app.models.data_quality import IngestionRun
 from app.models.fpo import FPO
-from app.models.harvest import Harvest, HarvestGrade
-from app.models.data_quality import DataSource, IngestionRun
+from app.models.harvest import HarvestGrade
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.raw_ingest import RawIngest
-from app.models.task import Task
-from app.models.user import User, UserRole
 from app.models.variety import Variety
-from app.models.buyer import Buyer, BuyerRequirement
-from app.models.supply_match import SupplyMatch
-from app.services.matching_service import find_candidate_matches_for_requirement
 from scripts.create_admin import create_or_update_admin
 
 
@@ -107,7 +99,11 @@ def test_journey_farmer_registration_consent_and_harvest(client, db, admin_heade
     assert farmer_data["alerts_opt_in"] is True
 
     # 3. Log harvest for this farmer
-    crop = Crop(name=f"Turmeric-{uuid.uuid4().hex[:4]}", canonical_name=f"turmeric-{uuid.uuid4().hex[:4]}", tamil_name="மஞ்சள்")
+    crop = Crop(
+        name=f"Turmeric-{uuid.uuid4().hex[:4]}",
+        canonical_name=f"turmeric-{uuid.uuid4().hex[:4]}",
+        tamil_name="மஞ்சள்",
+    )
     db.add(crop)
     db.commit()
 
@@ -129,9 +125,15 @@ def test_journey_farmer_registration_consent_and_harvest(client, db, admin_heade
 
 def test_journey_raw_ingestion_to_displayed_price_lineage(client, db):
     """Journey 3: Raw ingestion -> canonical mapping -> quality scoring -> displayed price with lineage."""
-    crop = Crop(name=f"Paddy-{uuid.uuid4().hex[:4]}", canonical_name=f"paddy-{uuid.uuid4().hex[:4]}", tamil_name="நெல்")
+    crop = Crop(
+        name=f"Paddy-{uuid.uuid4().hex[:4]}",
+        canonical_name=f"paddy-{uuid.uuid4().hex[:4]}",
+        tamil_name="நெல்",
+    )
     variety = Variety(crop=crop, name="Ponni", grade="FAQ")
-    market = Market(name=f"Erode Mandi-{uuid.uuid4().hex[:4]}", district="Erode", state="Tamil Nadu")
+    market = Market(
+        name=f"Erode Mandi-{uuid.uuid4().hex[:4]}", district="Erode", state="Tamil Nadu"
+    )
     db.add_all([crop, variety, market])
     db.commit()
 
@@ -178,7 +180,7 @@ def test_journey_raw_ingestion_to_displayed_price_lineage(client, db):
     db.commit()
 
     # Query latest prices
-    res = client.get(f"/api/prices/latest?district=Erode")
+    res = client.get("/api/prices/latest?district=Erode")
     assert res.status_code == 200
     prices = res.json()["prices"]
     match = next((p for p in prices if p["crop_name"] == crop.name), None)
@@ -206,7 +208,11 @@ def test_journey_buyer_requirement_supply_match_and_task(client, db, admin_heade
         village="Perundurai",
         contact_phone=_random_phone("91"),
     )
-    crop = Crop(name=f"Banana-{uuid.uuid4().hex[:4]}", canonical_name=f"banana-{uuid.uuid4().hex[:4]}", tamil_name="வாழை")
+    crop = Crop(
+        name=f"Banana-{uuid.uuid4().hex[:4]}",
+        canonical_name=f"banana-{uuid.uuid4().hex[:4]}",
+        tamil_name="வாழை",
+    )
     db.add_all([fpo, crop])
     db.commit()
 
@@ -263,8 +269,14 @@ def test_journey_buyer_requirement_supply_match_and_task(client, db, admin_heade
 
 def test_journey_stale_data_warning_on_outage(client, db):
     """Journey 5: Mandi provider outage / stale data displays explicit stale warning."""
-    crop = Crop(name=f"StaleCrop-{uuid.uuid4().hex[:4]}", canonical_name=f"stalecrop-{uuid.uuid4().hex[:4]}", tamil_name="பயிர்")
-    market = Market(name=f"StaleMarket-{uuid.uuid4().hex[:4]}", district="Dharmapuri", state="Tamil Nadu")
+    crop = Crop(
+        name=f"StaleCrop-{uuid.uuid4().hex[:4]}",
+        canonical_name=f"stalecrop-{uuid.uuid4().hex[:4]}",
+        tamil_name="பயிர்",
+    )
+    market = Market(
+        name=f"StaleMarket-{uuid.uuid4().hex[:4]}", district="Dharmapuri", state="Tamil Nadu"
+    )
     db.add_all([crop, market])
     db.commit()
 

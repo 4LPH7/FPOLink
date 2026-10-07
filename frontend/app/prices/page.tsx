@@ -743,6 +743,21 @@ export default function PricesPage() {
                   <ForecastAreaChart data={forecastChartData} />
                 </CardContent>
               </Card>
+
+              {/* Bilingual Disclaimer */}
+              <div className="rounded-lg border border-amber-200/60 bg-amber-50/50 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div className="space-y-0.5">
+                    <p className="font-medium text-amber-900 dark:text-amber-200">
+                      {forecastData.disclaimer_ta || "இது மதிப்பீடு மட்டுமே, கொள்முதல் அல்லது விற்பனை ஆலோசனை அல்ல."}
+                    </p>
+                    <p className="text-amber-700/80 dark:text-amber-400/80 text-[11px]">
+                      {forecastData.disclaimer_en || "Estimate only, not financial or trading advice."}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </>
           ) : (
             <Card>

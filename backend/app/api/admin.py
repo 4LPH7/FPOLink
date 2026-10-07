@@ -130,7 +130,9 @@ def get_data_health(
     """System-wide data health report: rows/market/day, calendar gaps, and outlier detections."""
     from collections import defaultdict
     from datetime import date, datetime, timedelta, timezone
+
     from sqlalchemy import desc, func
+
     from app.models.data_quality import DataQualityEvent
     from app.models.market import Market
     from app.models.market_price import MarketPrice

@@ -653,6 +653,8 @@ export interface ForecastResponse {
   days_since_last_observation?: number | null;
   is_stale?: boolean;
   stale_warning?: string | null;
+  disclaimer_ta?: string;
+  disclaimer_en?: string;
   forecast: ForecastPoint[];
 }
 

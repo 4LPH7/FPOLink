@@ -175,9 +175,10 @@ class ForecastingService:
         crop_id: UUID,
         market_id: UUID,
         horizon_days: int = 7,
+        model_type: str = "auto",
         persist: bool = True,
     ) -> List[Dict]:
-        """Generate N-day price forecast with p10/p50/p90 intervals and actionable signals."""
+        """Generate N-day price forecast with p10/p50/p90 intervals, baseline selection & logging."""
         df = load_price_series(self.db, crop_id, market_id)
         if df.empty:
             return []
@@ -197,7 +198,13 @@ class ForecastingService:
         )
 
         models = None
-        if active_model and active_model.file_path and os.path.exists(active_model.file_path):
+        # Only attempt to load ML model if model_type is auto or lightgbm
+        if (
+            model_type in ("auto", "lightgbm")
+            and active_model
+            and active_model.file_path
+            and os.path.exists(active_model.file_path)
+        ):
             try:
                 models = joblib.load(active_model.file_path)
             except Exception as e:
@@ -210,7 +217,7 @@ class ForecastingService:
         for step in range(1, horizon_days + 1):
             target_date = last_date + timedelta(days=step)
 
-            if models is not None:
+            if models is not None and model_type in ("auto", "lightgbm") and len(df) >= 30:
                 # Use trained LightGBM Quantile Models
                 X_latest = get_latest_feature_vector(running_df)
                 p10 = float(models["p10"].predict(X_latest)[0])
@@ -226,10 +233,27 @@ class ForecastingService:
                         1.0 - (upper_bound - lower_bound) / max(predicted_price, 1.0), 0.5, 0.95
                     )
                 )
-                model_type = "lightgbm_quantile"
+                out_model_type = "lightgbm_quantile"
                 model_version_id = active_model.id
+            elif model_type == "seasonal_naive":
+                # Seasonal Naive baseline (7-day lag or previous observation)
+                lag_idx = -7 if len(running_df) >= 7 else -1
+                predicted_price = round(float(running_df["modal_price"].iloc[lag_idx]), 2)
+                recent_window = running_df["modal_price"].tail(14)
+                volatility = (
+                    float(recent_window.std()) if len(recent_window) > 1 else predicted_price * 0.05
+                )
+                volatility = max(volatility, predicted_price * 0.03)
+                spread_expansion = 1.0 + (step - 1) * 0.08
+                lower_bound = round(
+                    max(0.0, predicted_price - 1.645 * volatility * spread_expansion), 2
+                )
+                upper_bound = round(predicted_price + 1.645 * volatility * spread_expansion, 2)
+                confidence = round(min(0.80, max(0.50, len(running_df) / 35.0)), 2)
+                out_model_type = "seasonal_naive_baseline"
+                model_version_id = None
             else:
-                # Robust Baseline: Rolling Median + Interquartile / Empirical Spread
+                # Moving-Average & Rolling Median Baseline
                 recent_window = running_df["modal_price"].tail(14)
                 predicted_price = round(float(recent_window.median()), 2)
                 volatility = (
@@ -244,7 +268,7 @@ class ForecastingService:
                 )
                 upper_bound = round(predicted_price + 1.645 * volatility * spread_expansion, 2)
                 confidence = round(min(0.80, max(0.50, len(running_df) / 35.0)), 2)
-                model_type = "seasonal_median_baseline"
+                out_model_type = "seasonal_median_baseline"
                 model_version_id = None
 
             signal = compute_forecast_signal(current_price, predicted_price)
@@ -258,7 +282,7 @@ class ForecastingService:
                 "upper_bound": upper_bound,
                 "confidence": round(confidence, 2),
                 "signal": signal,
-                "model_type": model_type,
+                "model_type": out_model_type,
             }
             forecast_points.append(point)
 
@@ -276,6 +300,12 @@ class ForecastingService:
                     signal=signal,
                 )
                 self.db.add(pred_record)
+                self.db.flush()
+
+                # Log for automated continuous accuracy tracking
+                from app.models.forecast_log import ForecastLog
+
+                self.db.add(ForecastLog(prediction_id=pred_record.id))
 
             # Append synthetic prediction into running_df for autoregressive rolling steps
             new_row = pd.DataFrame(
@@ -296,3 +326,48 @@ class ForecastingService:
             self.db.commit()
 
         return forecast_points
+
+    def score_past_forecasts(self) -> Dict:
+        """Evaluate un-scored past predictions against ground truth actual observations."""
+        from app.core.sources import get_real_price_sources
+        from app.models.forecast_log import ForecastLog
+
+        pending = (
+            self.db.query(ForecastLog, Prediction)
+            .join(Prediction, ForecastLog.prediction_id == Prediction.id)
+            .filter(ForecastLog.evaluated_at.is_(None))
+            .filter(Prediction.target_date <= date.today())
+            .all()
+        )
+
+        evaluated_count = 0
+        total_error = 0.0
+
+        for f_log, pred in pending:
+            actual_mp = (
+                self.db.query(MarketPrice)
+                .filter(
+                    MarketPrice.crop_id == pred.crop_id,
+                    MarketPrice.market_id == pred.market_id,
+                    MarketPrice.price_date == pred.target_date,
+                    MarketPrice.source.in_(get_real_price_sources()),
+                )
+                .first()
+            )
+            if actual_mp and actual_mp.modal_price is not None:
+                act_val = float(actual_mp.modal_price)
+                err_val = abs(float(pred.predicted_price) - act_val)
+                f_log.actual_price = Decimal(str(round(act_val, 2)))
+                f_log.error = Decimal(str(round(err_val, 2)))
+                f_log.evaluated_at = func.now()
+                evaluated_count += 1
+                total_error += err_val
+
+        if evaluated_count > 0:
+            self.db.commit()
+
+        mean_err = (total_error / evaluated_count) if evaluated_count > 0 else 0.0
+        return {
+            "evaluated_count": evaluated_count,
+            "mean_absolute_error": round(mean_err, 2),
+        }

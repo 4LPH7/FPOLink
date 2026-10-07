@@ -124,7 +124,9 @@ class Settings(BaseSettings):
     # External Services
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
     OGD_API_KEY: str = ""  # data.gov.in Open Government Data API key
-    OGD_RESOURCE_ID: str = "9ef84268-d588-465a-a308-a864a43d0070"  # Resource ID for mandi daily prices on data.gov.in
+    OGD_RESOURCE_ID: str = (
+        "9ef84268-d588-465a-a308-a864a43d0070"  # Resource ID for mandi daily prices on data.gov.in
+    )
     CEDA_API_KEY: str = ""  # Centre for Economic Data & Analysis API key
 
     # Scheduler Ingestion Times (IST)
