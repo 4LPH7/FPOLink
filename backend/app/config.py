@@ -126,6 +126,10 @@ class Settings(BaseSettings):
     # Auto-create a farmer profile when an unknown Telegram user shares their phone contact.
     TELEGRAM_AUTO_REGISTER: bool = True
 
+    # Daily mandi price ingest time (IST)
+    PRICE_INGEST_HOUR_IST: int = 6
+    PRICE_INGEST_MINUTE_IST: int = 0
+
     # External Services
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
     OGD_API_KEY: str = ""  # data.gov.in Open Government Data API key
@@ -180,7 +184,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: Optional[str] = None
 
     # Admin Phone & Seed Password
-    ADMIN_PHONE: str = "8072845239"
+    ADMIN_PHONE: str = ""
     SEED_ADMIN_PASSWORD: Optional[str] = None
 
     model_config = SettingsConfigDict(

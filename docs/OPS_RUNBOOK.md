@@ -8,7 +8,7 @@
 
 ## 1. Emergency Messaging Kill Switches
 
-FPOLink supports channel-level emergency kill switches governed by `WHATSAPP_ENABLED` and `TELEGRAM_ENABLED` in `backend/app/config.py`.
+FPOLink supports channel-level emergency kill switches governed by `WHATSAPP_ENABLED` and `TELEGRAM_ENABLED` in `backend/app/config.py`. When deactivated, ingress endpoints, bot processing, and scheduled outbound broadcast jobs are halted immediately.
 
 ### 1.1 Emergency WhatsApp Kill Switch (Dormant by default in MVP)
 
@@ -221,5 +221,14 @@ If `/api/health` reports `"db": "error"`:
 
 - [Meta Production Setup Checklist](file:///d:/PROJECTS/FPOLink/docs/META_PRODUCTION_CHECKLIST.md)
 - [WhatsApp Cloud API Routing Code](file:///d:/PROJECTS/FPOLink/backend/app/api/whatsapp.py)
-- [Application Settings & Kill Switch Definition](file:///d:/PROJECTS/FPOLink/backend/app/config.py)
+- [Application Settings & Kill Switch Definition](../backend/app/config.py)
 - [Example Environment File](file:///d:/PROJECTS/FPOLink/.env.example)
+
+## Telegram kill switch (live channel)
+
+Telegram is the live farmer channel; WhatsApp is dormant (`WHATSAPP_ENABLED=false`).
+To halt the Telegram bot immediately:
+
+1. In the Render dashboard set `TELEGRAM_ENABLED=false` on the API service.
+2. Restart (redeploy) the service. Webhook updates are then ignored and no Telegram replies are sent.
+3. To restore, set `TELEGRAM_ENABLED=true` and restart again.

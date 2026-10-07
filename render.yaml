@@ -41,7 +41,7 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: ADMIN_PHONE
-        value: "8072845239"
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: OGD_API_KEY

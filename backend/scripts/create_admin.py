@@ -126,15 +126,11 @@ def main() -> None:
     password = os.environ.get("ADMIN_PASSWORD")
     name = os.environ.get("ADMIN_NAME", "Admin")
     fpo_name = os.environ.get("ADMIN_FPO_NAME", "Erode Farmers Collective")
-    is_prod = os.environ.get("ENVIRONMENT", "").lower() == "production"
-    if "ADMIN_MUST_CHANGE_PASSWORD" in os.environ:
-        must_change = os.environ.get("ADMIN_MUST_CHANGE_PASSWORD", "").lower() in (
-            "true",
-            "1",
-            "yes",
-        )
-    else:
-        must_change = True if is_prod else False
+    must_change = os.environ.get("ADMIN_MUST_CHANGE_PASSWORD", "true").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
 
     if not phone or not phone.strip():
         print("ERROR: ADMIN_PHONE environment variable is required.", file=sys.stderr)

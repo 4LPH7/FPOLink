@@ -33,6 +33,10 @@ class ForecastResponse(BaseModel):
     disclaimer_ta: str = "இது மதிப்பீடு மட்டுமே, கொள்முதல் அல்லது விற்பனை ஆலோசனை அல்ல."
     disclaimer_en: str = "Estimate only, not financial or trading advice."
     forecast: List[ForecastPoint]
+    disclaimer: Dict[str, str] = {
+        "ta": "இது மதிப்பீடு மட்டுமே, ஆலோசனை அல்ல.",
+        "en": "Estimate only, not advice.",
+    }
 
 
 class ArbitrageOpportunity(BaseModel):

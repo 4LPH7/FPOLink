@@ -188,8 +188,8 @@ def register_jobs(scheduler) -> None:
     scheduler.add_job(
         run_price_ingestion,
         "cron",
-        hour=getattr(settings, "PRICE_INGEST_HOUR_IST", 6),
-        minute=getattr(settings, "PRICE_INGEST_MINUTE_IST", 0),
+        hour=settings.PRICE_INGEST_HOUR_IST,
+        minute=settings.PRICE_INGEST_MINUTE_IST,
         id="price_ingestion",
     )
 
@@ -213,6 +213,7 @@ def register_jobs(scheduler) -> None:
 
     # Daily at 7 AM IST — predictions (after fresh prices)
     scheduler.add_job(run_predictions, "cron", hour=7, minute=0, id="predictions")
+    scheduler.add_job(run_forecast_scoring, "cron", hour=23, minute=30, id="forecast_scoring")
 
     if settings.WHATSAPP_ENABLED:
         # Daily at 7:30 AM IST — WhatsApp price digest (T4.2)
@@ -227,3 +228,17 @@ def register_jobs(scheduler) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def run_forecast_scoring():
+    """M2.4: nightly scoring of past forecasts against actual mandi prices."""
+    from app.database import SessionLocal
+    from app.ml.forecasting import score_forecasts
+
+    db = SessionLocal()
+    try:
+        logger.info("Scored %s forecasts", score_forecasts(db))
+    except Exception:
+        logger.exception("Forecast scoring failed")
+    finally:
+        db.close()
