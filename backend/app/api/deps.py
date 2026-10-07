@@ -128,8 +128,17 @@ def require_role(allowed_roles: List[str]):
     return role_checker
 
 
-def verify_fpo_access(target_fpo_id: UUID, current_user: User) -> bool:
-    """Check if current user has authorization to access/modify a specific FPO tenant."""
+def verify_fpo_access(
+    target_fpo_id: UUID,
+    current_user: User,
+    db: Optional[Session] = None,
+) -> bool:
+    """Check if current user has authorization to access/modify a specific FPO tenant.
+
+    - Super-admin and statewide roles have access across all FPOs.
+    - FPO-scoped users (fpo_admin, fpo_staff, field_agent) can only access their assigned FPO.
+    - District administrators (district_admin) can access any FPO located within their assigned district.
+    """
     user_role = (
         current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     )
@@ -140,5 +149,23 @@ def verify_fpo_access(target_fpo_id: UUID, current_user: User) -> bool:
     # FPO-scoped users can only access their assigned FPO
     if current_user.fpo_id and str(current_user.fpo_id) == str(target_fpo_id):
         return True
+
+    # District administrators can access FPOs within their assigned district
+    if user_role == "district_admin":
+        if not current_user.district_id:
+            return False
+        if db is not None:
+            from app.models.fpo import FPO
+            from app.models.geography import District
+
+            fpo = db.query(FPO).filter(FPO.id == target_fpo_id).first()
+            if not fpo:
+                return False
+            if fpo.district_id and fpo.district_id == current_user.district_id:
+                return True
+            dist = db.query(District).filter(District.id == current_user.district_id).first()
+            if dist and fpo.district and fpo.district.lower() == dist.name.lower():
+                return True
+        return False
 
     return False

@@ -16,7 +16,15 @@ from app.schemas.task import TaskCreate, TaskResponse, TaskSummary, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
-STAFF_ROLES = ["admin", "fpo_admin", "fpo_staff", "field_agent", "data_operator"]
+STAFF_ROLES = [
+    "admin",
+    "state_admin",
+    "district_admin",
+    "fpo_admin",
+    "fpo_staff",
+    "field_agent",
+    "data_operator",
+]
 GLOBAL_ROLES = ("admin", "state_admin", "data_operator", "analyst")
 
 
@@ -28,11 +36,29 @@ def _scoped(db: Session, user: User):
     q = db.query(Task).options(
         joinedload(Task.farmer).joinedload(Farmer.user), joinedload(Task.assigned_to)
     )
-    if _role(user) not in GLOBAL_ROLES:
-        if user.fpo_id is None:
-            return q.filter(Task.created_by_id == user.id)
-        q = q.filter(Task.fpo_id == user.fpo_id)
-    return q
+    role = _role(user)
+    if role in GLOBAL_ROLES:
+        return q
+    if role == "district_admin":
+        if not user.district_id:
+            return q.filter(Task.id.is_(None))
+        from app.models.fpo import FPO
+        from app.models.geography import District
+
+        dist_name = db.query(District.name).filter(District.id == user.district_id).scalar()
+        fpo_ids = [
+            row[0]
+            for row in db.query(FPO.id)
+            .filter(
+                (FPO.district_id == user.district_id)
+                | (FPO.district == dist_name if dist_name else False)
+            )
+            .all()
+        ]
+        return q.filter(Task.fpo_id.in_(fpo_ids))
+    if user.fpo_id is None:
+        return q.filter(Task.created_by_id == user.id)
+    return q.filter(Task.fpo_id == user.fpo_id)
 
 
 def _to_response(t: Task) -> TaskResponse:
@@ -87,9 +113,9 @@ def create_task(
         if farmer is None:
             raise HTTPException(status_code=404, detail="Farmer not found")
         fpo_id = fpo_id or farmer.fpo_id
-        if not verify_fpo_access(farmer.fpo_id, user):
+        if not verify_fpo_access(farmer.fpo_id, user, db=db):
             raise HTTPException(status_code=403, detail="Farmer belongs to another FPO")
-    if fpo_id and not verify_fpo_access(fpo_id, user):
+    if fpo_id and not verify_fpo_access(fpo_id, user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized for this FPO")
 
     data = payload.model_dump(exclude={"fpo_id"})
@@ -116,7 +142,7 @@ def update_task(
             raise HTTPException(status_code=404, detail="Farmer not found")
         if task.fpo_id and farmer.fpo_id != task.fpo_id:
             raise HTTPException(status_code=403, detail="Farmer belongs to another FPO")
-        if not verify_fpo_access(farmer.fpo_id, user):
+        if not verify_fpo_access(farmer.fpo_id, user, db=db):
             raise HTTPException(status_code=403, detail="Farmer belongs to another FPO")
     for key, value in changes.items():
         setattr(task, key, value)

@@ -97,10 +97,12 @@ def _req_to_response(r) -> BuyerRequirementResponse:
 def post_requirement(
     data: BuyerRequirementCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Post a commercial crop procurement requirement."""
-    if data.fpo_id and not verify_fpo_access(data.fpo_id, current_user):
+    if data.fpo_id and not verify_fpo_access(data.fpo_id, current_user, db=db):
         raise HTTPException(
             status_code=403, detail="Not authorized to post requirement for this FPO"
         )
@@ -110,7 +112,7 @@ def post_requirement(
         buyer = get_buyer(db, data.buyer_id)
         if not buyer:
             raise HTTPException(status_code=404, detail="Buyer not found")
-        if buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user):
+        if buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user, db=db):
             raise HTTPException(status_code=403, detail="Not authorized to use this buyer")
         data = data.model_copy(update={"fpo_id": current_user.fpo_id})
 
@@ -131,7 +133,9 @@ def list_requirements(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """List procurement requirements with demand metrics."""
     if current_user.role.value in ("fpo_admin", "fpo_staff"):
@@ -140,6 +144,9 @@ def list_requirements(
         if fpo_id and fpo_id != current_user.fpo_id:
             raise HTTPException(status_code=403, detail="Not authorized for this FPO")
         fpo_id = current_user.fpo_id
+    elif current_user.role.value == "district_admin":
+        if fpo_id and not verify_fpo_access(fpo_id, current_user, db=db):
+            raise HTTPException(status_code=403, detail="Not authorized for this FPO")
     skip = (page - 1) * page_size
     reqs, total_count, total_qty = list_buyer_requirements(
         db=db,
@@ -161,13 +168,15 @@ def list_requirements(
 def get_requirement(
     req_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Retrieve details of a single procurement requirement."""
     req = get_buyer_requirement(db, req_id)
     if not req:
         raise HTTPException(status_code=404, detail="Requirement not found")
-    if req.fpo_id and not verify_fpo_access(req.fpo_id, current_user):
+    if req.fpo_id and not verify_fpo_access(req.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized to access this requirement")
     return _req_to_response(req)
 
@@ -177,14 +186,16 @@ def update_requirement(
     req_id: UUID,
     data: BuyerRequirementUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Update procurement requirement details."""
     req = get_buyer_requirement(db, req_id)
     if not req:
         raise HTTPException(status_code=404, detail="Requirement not found")
 
-    if (req.fpo_id and not verify_fpo_access(req.fpo_id, current_user)) or (
+    if (req.fpo_id and not verify_fpo_access(req.fpo_id, current_user, db=db)) or (
         req.fpo_id is None and current_user.role.value not in ("admin", "state_admin")
     ):
         raise HTTPException(
@@ -201,18 +212,29 @@ def import_csv(
     fpo_id: Optional[UUID] = Query(None),
     csv_text: str = Body(..., media_type="text/plain"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Bulk import commercial buyers and procurement requirements via CSV."""
     if current_user.role.value in ("fpo_admin", "fpo_staff"):
         if not current_user.fpo_id:
             raise HTTPException(status_code=403, detail="FPO assignment required")
-        if fpo_id and not verify_fpo_access(fpo_id, current_user):
+        if fpo_id and not verify_fpo_access(fpo_id, current_user, db=db):
             raise HTTPException(
                 status_code=403, detail="Not authorized to import buyers for this FPO"
             )
         fpo_id = current_user.fpo_id
-    elif fpo_id and not verify_fpo_access(fpo_id, current_user):
+    elif current_user.role.value == "district_admin":
+        if not fpo_id:
+            raise HTTPException(
+                status_code=400, detail="Target FPO ID required for district administrator import"
+            )
+        if not verify_fpo_access(fpo_id, current_user, db=db):
+            raise HTTPException(
+                status_code=403, detail="Not authorized to import buyers for this FPO"
+            )
+    elif fpo_id and not verify_fpo_access(fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized to import buyers for this FPO")
 
     res = import_buyers_csv(db, fpo_id, csv_text, created_by_user_id=current_user.id)
@@ -228,10 +250,12 @@ def import_csv(
 def create(
     data: BuyerCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Register a new commercial buyer (staff-mediated)."""
-    if data.fpo_id and not verify_fpo_access(data.fpo_id, current_user):
+    if data.fpo_id and not verify_fpo_access(data.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized to register buyer for this FPO")
 
     if current_user.role.value in ("fpo_admin", "fpo_staff"):
@@ -251,7 +275,9 @@ def list_all(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """List commercial buyers with pagination and filters."""
     if current_user.role.value in ("fpo_admin", "fpo_staff"):
@@ -260,6 +286,9 @@ def list_all(
         if fpo_id and fpo_id != current_user.fpo_id:
             raise HTTPException(status_code=403, detail="Not authorized for this FPO")
         fpo_id = current_user.fpo_id
+    elif current_user.role.value == "district_admin":
+        if fpo_id and not verify_fpo_access(fpo_id, current_user, db=db):
+            raise HTTPException(status_code=403, detail="Not authorized for this FPO")
     skip = (page - 1) * page_size
     buyers, total = list_buyers(
         db=db,
@@ -279,13 +308,15 @@ def list_all(
 def get_one(
     buyer_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Retrieve details of a commercial buyer."""
     buyer = get_buyer(db, buyer_id)
     if not buyer:
         raise HTTPException(status_code=404, detail="Buyer not found")
-    if buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user):
+    if buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized to access this buyer")
     return _buyer_to_response(buyer)
 
@@ -295,14 +326,16 @@ def update(
     buyer_id: UUID,
     data: BuyerUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Update commercial buyer profile."""
     buyer = get_buyer(db, buyer_id)
     if not buyer:
         raise HTTPException(status_code=404, detail="Buyer not found")
 
-    if (buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user)) or (
+    if (buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user, db=db)) or (
         buyer.fpo_id is None and current_user.role.value not in ("admin", "state_admin")
     ):
         raise HTTPException(status_code=403, detail="Not authorized to modify buyer for this FPO")
@@ -315,14 +348,16 @@ def update(
 def remove(
     buyer_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin"])
+    ),
 ):
     """Delete a commercial buyer profile."""
     buyer = get_buyer(db, buyer_id)
     if not buyer:
         raise HTTPException(status_code=404, detail="Buyer not found")
 
-    if buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user):
+    if buyer.fpo_id and not verify_fpo_access(buyer.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized to delete buyer for this FPO")
 
     delete_buyer(db, buyer_id)

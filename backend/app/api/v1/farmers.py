@@ -38,6 +38,27 @@ def _enforce_farmer_fpo_scope(db: Session, current_user: User, fpo_id: UUID) -> 
     if role_val in ("admin", "state_admin"):
         return
 
+    if role_val == "district_admin":
+        if not current_user.district_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="District administrator lacks assigned district",
+            )
+        from app.models.geography import District
+
+        fpo = db.query(FPO).filter(FPO.id == fpo_id).first()
+        if not fpo:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FPO not found")
+        if fpo.district_id and fpo.district_id == current_user.district_id:
+            return
+        dist = db.query(District).filter(District.id == current_user.district_id).first()
+        if dist and fpo.district and fpo.district.lower() == dist.name.lower():
+            return
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="District administrator cannot access records outside assigned district",
+        )
+
     permitted_fpos = {
         row[0] for row in db.query(FPO.id).filter(FPO.contact_phone == current_user.phone).all()
     }
@@ -57,7 +78,9 @@ def create(
     fpo_id: str,
     data: FarmerCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Register a new farmer under an FPO with normalised phone."""
     try:
@@ -111,7 +134,9 @@ def list_all(
     page_size: int = Query(default=20, ge=1, le=100),
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """List farmers for an FPO with pagination and search."""
     try:
@@ -154,7 +179,9 @@ def list_all(
 def get_one(
     farmer_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Get single farmer details."""
     try:
@@ -193,7 +220,9 @@ def update(
     farmer_id: str,
     data: FarmerUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Update farmer details."""
     try:
@@ -232,7 +261,9 @@ def update(
 def get_whatsapp_invite(
     farmer_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Generate wa.me click-to-chat invite link for a farmer."""
     try:

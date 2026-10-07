@@ -144,7 +144,10 @@ WHATSAPP_BOT_PHONE=919876543210
 # Cloudflare Tunnel Token
 CLOUDFLARE_TUNNEL_TOKEN=<token_copied_from_cloudflare_dashboard>
 
-# Browser API calls use the same-origin Next.js proxy. The tunnel routes the app to frontend:3000.
+# CORS Configuration (Production Security)
+# Explicit comma-separated production origins (wildcard '*' is strictly prohibited in production)
+CORS_ORIGINS=https://app.yourfpo.org,https://fpolink.vercel.app
+CORS_ORIGIN_REGEX=^https://fpolink(-[a-z0-9-]+)?\.vercel\.app$
 
 # Optional Sentry Error Monitoring
 SENTRY_DSN=https://<key>@sentry.io/<project>

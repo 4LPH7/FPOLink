@@ -50,11 +50,35 @@ def list_all(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """List all FPOs."""
-    if current_user.role.value in ("admin", "state_admin"):
+    role_val = (
+        current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    )
+    if role_val in ("admin", "state_admin"):
         fpos = list_fpos(db, skip, limit)
+    elif role_val == "district_admin":
+        if not current_user.district_id:
+            fpos = []
+        else:
+            from app.models.geography import District
+
+            dist_name = (
+                db.query(District.name).filter(District.id == current_user.district_id).scalar()
+            )
+            fpos = (
+                db.query(FPO)
+                .filter(
+                    (FPO.district_id == current_user.district_id)
+                    | (FPO.district == dist_name if dist_name else False)
+                )
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
     else:
         fpos = (
             db.query(FPO).filter(FPO.id == current_user.fpo_id).offset(skip).limit(limit).all()
@@ -84,13 +108,15 @@ def list_all(
 def get_one(
     fpo_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Get FPO by ID."""
     fpo = get_fpo(db, UUID(fpo_id))
     if not fpo:
         raise HTTPException(status_code=404, detail="FPO not found")
-    if not verify_fpo_access(fpo.id, current_user):
+    if not verify_fpo_access(fpo.id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized to access this FPO")
     return FPOResponse(
         id=str(fpo.id),

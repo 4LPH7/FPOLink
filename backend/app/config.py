@@ -54,6 +54,11 @@ class Settings(BaseSettings):
                     "FATAL SECURITY ERROR: DEMO_MODE cannot be enabled in production. "
                     "Production environments must only serve verified market price data."
                 )
+            if "*" in self.cors_origins_list or self.CORS_ORIGINS.strip() == "*":
+                raise ValueError(
+                    "FATAL SECURITY ERROR: wildcard CORS origin ('*') is prohibited in production. "
+                    "Configure explicit trusted domains via CORS_ORIGINS."
+                )
             if self.WHATSAPP_ENABLED:
                 missing_wa = []
                 if not self.WHATSAPP_VERIFY_TOKEN:

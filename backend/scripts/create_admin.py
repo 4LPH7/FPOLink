@@ -35,15 +35,38 @@ def create_or_update_admin(
     fpo_name: str = "Erode Farmers Collective",
     must_change_password: bool = False,
 ) -> User:
-    """Create or update admin account idempotently."""
+    """Create or update admin account idempotently with production password hardening."""
     phone = phone.strip()
     if not re.fullmatch(r"\+?\d{10,15}", phone):
         raise ValueError(
             "Invalid phone number format: must be 10-15 digits with optional leading +"
         )
 
-    if len(password) < 8:
-        raise ValueError("Password must be at least 8 characters")
+    is_production = os.environ.get("ENVIRONMENT", "").lower() == "production"
+
+    if is_production:
+        if len(password) < 12:
+            raise ValueError(
+                "Production security requirement: admin password must be at least 12 characters"
+            )
+        common_defaults = {
+            "admin",
+            "password",
+            "fpolink",
+            "changeme",
+            "admin123",
+            "admin@123",
+            "password123",
+            "password123456",
+            "12345678",
+        }
+        if password.lower() in common_defaults or password.lower().startswith(
+            ("admin123", "password123")
+        ):
+            raise ValueError("Production security error: admin password cannot be a common default")
+    else:
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters")
 
     db = SessionLocal()
     try:
@@ -103,11 +126,15 @@ def main() -> None:
     password = os.environ.get("ADMIN_PASSWORD")
     name = os.environ.get("ADMIN_NAME", "Admin")
     fpo_name = os.environ.get("ADMIN_FPO_NAME", "Erode Farmers Collective")
-    must_change = os.environ.get("ADMIN_MUST_CHANGE_PASSWORD", "false").lower() in (
-        "true",
-        "1",
-        "yes",
-    )
+    is_prod = os.environ.get("ENVIRONMENT", "").lower() == "production"
+    if "ADMIN_MUST_CHANGE_PASSWORD" in os.environ:
+        must_change = os.environ.get("ADMIN_MUST_CHANGE_PASSWORD", "").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+    else:
+        must_change = True if is_prod else False
 
     if not phone or not phone.strip():
         print("ERROR: ADMIN_PHONE environment variable is required.", file=sys.stderr)

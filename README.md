@@ -96,6 +96,7 @@ A self-hostable, open-source platform for Farmer Producer Organizations (FPOs), 
 - [**Quickstart Guide**](docs/QUICKSTART.md) — Step-by-step setup from git clone to first API call.
 - [**Forecast Backtest & Validation Report**](docs/FORECAST_BACKTEST.md) — Rolling-origin walk-forward evaluation, LightGBM vs. baseline benchmark tables, and promotion decisions.
 - [**Arbitrage & Transport Realization Spec**](docs/ARBITRAGE_SPEC.md) — Mathematical cost equations, commercial vehicle presets, and uncertainty scoring rubrics.
+- [**Security & Tenant Isolation Audit**](docs/SECURITY_AUDIT.md) — Comprehensive backend authorization, role boundaries, cross-FPO/cross-district isolation verification, and penetration test matrix.
 - [**Statewide Foundation (v0.5 Architecture)**](docs/STATEWIDE_FOUNDATION.md) — Detailed architecture for statewide multi-tenancy, ontology, and quality scoring.
 - [**Production Hosting Runbook**](docs/HOSTING.md) — Free-tier deployment on Oracle Cloud VM with Cloudflare Tunnel.
 - [**Operations Runbook**](docs/OPS_RUNBOOK.md) — Incident response, kill-switch procedures, and log inspection.
@@ -244,13 +245,17 @@ docker compose exec backend alembic check
 
 ## What Works Today
 
-FPOLink has verified end-to-end user workflows tested via automated integration and regression suites (264+ automated tests):
+FPOLink has verified end-to-end user workflows tested via automated integration and regression suites (269+ automated tests):
 
 ### 1. Verified Workflows
-- **Administrator Bootstrap & Security Governance**:
-  - Secure CLI admin bootstrapping via `python backend/scripts/create_admin.py` with Argon2id password hashing.
-  - Strict JWT authentication boundary requiring immediate password rotation (`/change-password`) on first login before privileged tokens are issued.
-  - Strict tenant isolation verified across all 9 roles: cross-FPO data mutation, unauthorized farmer access, and cross-district administrative leakage are completely blocked at the database layer.
+- **Tenant Isolation & Security Governance (Phase M4)**:
+  - Strict server-side authorization enforcement independent of UI controls across all 9 user roles.
+  - Hardened cross-tenant boundaries: cross-FPO data reads, writes, and deletes on farmers, tasks, harvests, buyer requirements, and match candidates are rejected with HTTP 403 Forbidden.
+  - Strict District Administrator (`district_admin`) tenancy scoping: read and action privileges are strictly confined to FPOs and operations within the user's assigned revenue district.
+  - Bulk operation protection: CSV buyer imports (`/api/v1/buyers/import-csv`) and task assignments reject foreign tenant injections.
+  - Required password rotation enforcement: restricted access tokens block all operational business endpoints until password rotation is completed (`/change-password`).
+  - Production bootstrap security: `python backend/scripts/create_admin.py` enforces OWASP-compliant $\ge 12$-character password complexity, rejects common defaults, and mandates password rotation on first login.
+  - Production CORS protection: wildcard `*` origins are rejected in production configurations, with explicit origin allowlisting and regex matching for Vercel/production environments. See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md).
 - **Farmer Onboarding & DPDP Consent Ledger**:
   - Farmer enrollment capturing phone, acreages, language preference, and explicit DPDP Act 2023 consent records (`/farmers`).
 - **Mandi Price Ingestion & Explainable Quality Scoring**:
@@ -313,7 +318,7 @@ docker compose exec backend pytest -v --tb=short
 pytest -v backend/tests
 ```
 
-The CI workflow applies migrations, seeds required reference data, runs the PostgreSQL-backed suite (264+ tests), checks Ruff lint and formatting, builds the Next.js frontend, and exercises Docker health and authentication.
+The CI workflow applies migrations, seeds required reference data, runs the PostgreSQL-backed suite (269+ tests), checks Ruff lint and formatting, builds the Next.js frontend, and exercises Docker health and authentication.
 
 ---
 

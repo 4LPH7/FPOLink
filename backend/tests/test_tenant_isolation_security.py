@@ -1,22 +1,24 @@
-"""Automated tests for tenant isolation, authorization boundaries, and production security."""
-
 import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import jwt
+import pytest
 
-from app.config import settings
+from app.config import Settings, settings
+from app.models.buyer import Buyer, BuyerRequirement
 from app.models.crop import Crop
 from app.models.farmer import Farmer
 from app.models.fpo import FPO
+from app.models.geography import District, State
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.task import Task
 from app.models.user import User, UserRole
 from app.services.auth import hash_password
 from app.services.jwt import create_access_token
+from scripts.create_admin import create_or_update_admin
 
 
 def _create_test_fpo(db, name_prefix: str) -> FPO:
@@ -282,3 +284,172 @@ def test_cors_origin_regex_security():
     assert pattern.match("https://random-app.vercel.app") is None
     assert pattern.match("http://fpolink.vercel.app") is None  # Insecure HTTP
     assert pattern.match("https://fpolink.vercel.app.attacker.com") is None
+
+
+def test_district_admin_boundary_isolation(client, db):
+    """District administrators can access FPOs/farmers in their district but are blocked outside."""
+    state = State(name=f"TN-Sec-{uuid.uuid4().hex[:4]}", code=f"S{uuid.uuid4().hex[:2].upper()}")
+    db.add(state)
+    db.commit()
+
+    district_erode = District(
+        state_id=state.id, name=f"Erode-{uuid.uuid4().hex[:4]}", code=f"ER-{uuid.uuid4().hex[:3]}"
+    )
+    district_salem = District(
+        state_id=state.id, name=f"Salem-{uuid.uuid4().hex[:4]}", code=f"SL-{uuid.uuid4().hex[:3]}"
+    )
+    db.add_all([district_erode, district_salem])
+    db.commit()
+
+    # FPO A in Erode
+    fpo_erode = FPO(
+        name=f"Erode FPO {uuid.uuid4().hex[:6]}",
+        registration_number=f"REG-ER-{uuid.uuid4().hex[:6]}",
+        district=district_erode.name,
+        district_id=district_erode.id,
+        village="Erode Central",
+        contact_phone=f"91{uuid.uuid4().hex[:8]}",
+    )
+    # FPO B in Salem
+    fpo_salem = FPO(
+        name=f"Salem FPO {uuid.uuid4().hex[:6]}",
+        registration_number=f"REG-SL-{uuid.uuid4().hex[:6]}",
+        district=district_salem.name,
+        district_id=district_salem.id,
+        village="Salem Central",
+        contact_phone=f"92{uuid.uuid4().hex[:8]}",
+    )
+    db.add_all([fpo_erode, fpo_salem])
+    db.commit()
+
+    # District Admin assigned to Erode
+    dist_admin_erode = User(
+        name="Erode District Director",
+        phone=f"93{uuid.uuid4().hex[:8]}",
+        role=UserRole.DISTRICT_ADMIN,
+        district_id=district_erode.id,
+        hashed_password=hash_password("Pass@1234"),
+        is_active=True,
+    )
+    db.add(dist_admin_erode)
+    db.commit()
+
+    token_erode_admin = create_access_token(dist_admin_erode.id, dist_admin_erode.role.value)
+    headers = {"Authorization": f"Bearer {token_erode_admin}"}
+
+    # 1. District Admin Erode accessing FPO A (in Erode) -> 200 OK
+    res_a = client.get(f"/api/fpos/{fpo_erode.id}", headers=headers)
+    assert res_a.status_code == 200
+
+    # 2. District Admin Erode accessing FPO B (in Salem) -> 403 Forbidden
+    res_b = client.get(f"/api/fpos/{fpo_salem.id}", headers=headers)
+    assert res_b.status_code == 403
+    assert "not authorized" in res_b.json()["detail"].lower()
+
+    # 3. v1 endpoint: GET /api/v1/fpos/{fpo_salem.id} -> 403 Forbidden
+    res_v1_b = client.get(f"/api/v1/fpos/{fpo_salem.id}", headers=headers)
+    assert res_v1_b.status_code == 403
+
+    # 4. District Admin listing farmers for FPO A (in Erode) -> 200 OK
+    res_farm_a = client.get(f"/api/farmers/{fpo_erode.id}", headers=headers)
+    assert res_farm_a.status_code == 200
+
+    # 5. District Admin listing farmers for FPO B (in Salem) -> 403 Forbidden
+    res_farm_b = client.get(f"/api/farmers/{fpo_salem.id}", headers=headers)
+    assert res_farm_b.status_code == 403
+
+
+def test_cross_tenant_bulk_csv_import_blocked(client, db):
+    """FPO staff cannot import buyers or requirements for another FPO."""
+    fpo_a = _create_test_fpo(db, "AlphaImport")
+    fpo_b = _create_test_fpo(db, "BetaImport")
+
+    _, token_a = _create_test_user(db, fpo_a, UserRole.FPO_STAFF)
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    csv_data = "Company,Contact,Phone,Location,District,Crop,Qty\nBuyer1,John,9876543210,Erode,Erode,turmeric,500\n"
+
+    # Staff A attempts to bulk import for FPO B
+    res = client.post(
+        f"/api/v1/buyers/import-csv?fpo_id={fpo_b.id}",
+        content=csv_data,
+        headers={**headers_a, "Content-Type": "text/plain"},
+    )
+    assert res.status_code == 403
+    assert "not authorized" in res.json()["detail"].lower()
+
+
+def test_cross_tenant_matching_candidates_blocked(client, db):
+    """Staff cannot inspect candidate matches for a buyer requirement belonging to another FPO."""
+    fpo_a = _create_test_fpo(db, "MatchAlpha")
+    fpo_b = _create_test_fpo(db, "MatchBeta")
+
+    _, token_a = _create_test_user(db, fpo_a, UserRole.FPO_STAFF)
+    user_b, _ = _create_test_user(db, fpo_b, UserRole.FPO_STAFF)
+
+    crop = Crop(
+        name=f"MatchCrop-{uuid.uuid4().hex[:4]}",
+        canonical_name=f"mcrop-{uuid.uuid4().hex[:4]}",
+        tamil_name="பயிர்",
+    )
+    buyer = Buyer(
+        company_name=f"Buyer B {uuid.uuid4().hex[:4]}",
+        fpo_id=fpo_b.id,
+        contact_phone="9988776655",
+        location="Erode Central",
+        district="Erode",
+    )
+    db.add_all([crop, buyer])
+    db.commit()
+
+    req_b = BuyerRequirement(
+        buyer_id=buyer.id,
+        fpo_id=fpo_b.id,
+        crop_id=crop.id,
+        quantity_kg=1000.0,
+        min_grade="A",
+        required_date=date.today(),
+        created_by_user_id=user_b.id,
+    )
+    db.add(req_b)
+    db.commit()
+
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    # Staff A attempts to inspect matching candidates for requirement of FPO B
+    res = client.get(f"/api/v1/matching/candidates/{req_b.id}", headers=headers_a)
+    assert res.status_code == 403
+    assert "not authorized" in res.json()["detail"].lower()
+
+
+def test_wildcard_cors_rejected_in_production():
+    """Verify that wildcard '*' CORS origin is strictly forbidden in production."""
+    with pytest.raises(ValueError, match="wildcard CORS origin"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="A" * 32,
+            DATABASE_URL="postgresql+psycopg://user:verysecurepassword12345@localhost/db",
+            DEMO_MODE=False,
+            CORS_ORIGINS="*",
+        ).validate_production_secrets()
+
+
+def test_production_bootstrap_password_hardening(monkeypatch):
+    """create_admin script enforces complexity in production and defaults must_change=True."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    # 1. Less than 12 chars in production
+    with pytest.raises(ValueError, match="at least 12 characters"):
+        create_or_update_admin(phone="8072845239", password="ShortPass@1")
+
+    # 2. Common default password rejected in production
+    with pytest.raises(ValueError, match="cannot be a common default"):
+        create_or_update_admin(phone="8072845239", password="password123456")
+
+    # 3. Valid strong password passes
+    user = create_or_update_admin(
+        phone="8072845239",
+        password="SuperStrongProductionPassword#2026",
+        must_change_password=True,
+    )
+    assert user.password_change_required is True

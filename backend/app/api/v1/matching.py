@@ -83,7 +83,9 @@ def get_candidates(
     requirement_id: UUID,
     max_candidates: int = Query(default=15, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Search and score available standing plots and verified harvests for a buyer requirement."""
     req = (
@@ -94,6 +96,9 @@ def get_candidates(
     )
     if not req:
         raise HTTPException(status_code=404, detail="Buyer requirement not found")
+
+    if req.fpo_id and not verify_fpo_access(req.fpo_id, current_user, db=db):
+        raise HTTPException(status_code=403, detail="Not authorized for this FPO requirement")
 
     candidates_raw = find_candidate_matches_for_requirement(
         db, requirement_id, max_candidates=max_candidates
@@ -116,10 +121,12 @@ def get_candidates(
 def suggest_match(
     data: MatchCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Record a suggested demand-supply match."""
-    if not verify_fpo_access(data.fpo_id, current_user):
+    if not verify_fpo_access(data.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized for this FPO")
 
     try:
@@ -157,14 +164,16 @@ def confirm_match(
     match_id: UUID,
     data: MatchConfirmRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Staff confirmation of a candidate match."""
     match = db.query(SupplyMatch).filter(SupplyMatch.id == match_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Supply match not found")
 
-    if not verify_fpo_access(match.fpo_id, current_user):
+    if not verify_fpo_access(match.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized for this FPO")
 
     confirmed = confirm_match_by_staff(
@@ -196,14 +205,16 @@ def reject_match(
     match_id: UUID,
     notes: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "state_admin", "fpo_admin", "fpo_staff"])),
+    current_user: User = Depends(
+        require_role(["admin", "state_admin", "district_admin", "fpo_admin", "fpo_staff"])
+    ),
 ):
     """Reject or dismiss a suggested or confirmed match."""
     match = db.query(SupplyMatch).filter(SupplyMatch.id == match_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Supply match not found")
 
-    if not verify_fpo_access(match.fpo_id, current_user):
+    if not verify_fpo_access(match.fpo_id, current_user, db=db):
         raise HTTPException(status_code=403, detail="Not authorized for this FPO")
 
     rejected = reject_match_by_staff(
