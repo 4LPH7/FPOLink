@@ -27,6 +27,10 @@ class ForecastResponse(BaseModel):
     current_modal_price: Optional[float] = None
     horizon_days: int
     forecast: List[ForecastPoint]
+    disclaimer: Dict[str, str] = {
+        "ta": "இது மதிப்பீடு மட்டுமே, ஆலோசனை அல்ல.",
+        "en": "Estimate only, not advice.",
+    }
 
 
 class ArbitrageOpportunity(BaseModel):
