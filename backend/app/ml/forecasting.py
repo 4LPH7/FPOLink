@@ -24,6 +24,7 @@ from app.ml.features import (
     extract_features_for_series,
     get_latest_feature_vector,
 )
+from app.models.forecast_log import ForecastLog
 from app.models.market_price import MarketPrice
 from app.models.model_version import ModelVersion
 from app.models.prediction import Prediction
@@ -276,6 +277,8 @@ class ForecastingService:
                     signal=signal,
                 )
                 self.db.add(pred_record)
+                self.db.flush()
+                self.db.add(ForecastLog(prediction_id=pred_record.id))
 
             # Append synthetic prediction into running_df for autoregressive rolling steps
             new_row = pd.DataFrame(
@@ -296,3 +299,34 @@ class ForecastingService:
             self.db.commit()
 
         return forecast_points
+
+
+def score_forecasts(db: Session) -> int:
+    """M2.4: fill actual_price/error on forecast_log rows whose target date has passed."""
+    from datetime import datetime, timezone
+
+    rows = (
+        db.query(ForecastLog, Prediction)
+        .join(Prediction, ForecastLog.prediction_id == Prediction.id)
+        .filter(ForecastLog.evaluated_at.is_(None), Prediction.target_date <= date.today())
+        .all()
+    )
+    scored = 0
+    for log, pred in rows:
+        actual = (
+            db.query(MarketPrice.modal_price)
+            .filter(
+                MarketPrice.crop_id == pred.crop_id,
+                MarketPrice.market_id == pred.market_id,
+                MarketPrice.price_date == pred.target_date,
+            )
+            .first()
+        )
+        if not actual or actual[0] is None:
+            continue
+        log.actual_price = actual[0]
+        log.error = Decimal(str(actual[0])) - Decimal(str(pred.predicted_price))
+        log.evaluated_at = datetime.now(timezone.utc)
+        scored += 1
+    db.commit()
+    return scored

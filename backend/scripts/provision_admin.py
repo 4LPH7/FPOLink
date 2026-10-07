@@ -50,7 +50,7 @@ def main() -> None:
             existing.name = name or existing.name
             existing.role = UserRole.ADMIN
             existing.hashed_password = hash_password(password)
-            existing.password_change_required = False
+            existing.password_change_required = True
             existing.is_active = True
             db.commit()
             print(f"Administrator {phone} ({name}) updated successfully.")
@@ -61,7 +61,7 @@ def main() -> None:
             phone=phone,
             role=UserRole.ADMIN,
             hashed_password=hash_password(password),
-            password_change_required=False,
+            password_change_required=True,
             is_active=True,
             language_preference="ta",
         )

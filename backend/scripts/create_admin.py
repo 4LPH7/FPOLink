@@ -103,7 +103,7 @@ def main() -> None:
     password = os.environ.get("ADMIN_PASSWORD")
     name = os.environ.get("ADMIN_NAME", "Admin")
     fpo_name = os.environ.get("ADMIN_FPO_NAME", "Erode Farmers Collective")
-    must_change = os.environ.get("ADMIN_MUST_CHANGE_PASSWORD", "false").lower() in (
+    must_change = os.environ.get("ADMIN_MUST_CHANGE_PASSWORD", "true").lower() in (
         "true",
         "1",
         "yes",
