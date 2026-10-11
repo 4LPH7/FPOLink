@@ -47,5 +47,5 @@ httpx  # already listed, used for TestClient
 sentry-sdk[fastapi]==2.19.2
 
 # HTML parsing (mandiprices ingestion)
-beautifulsoup4==4.12.3
+beautifulsoup4==4.15.0
 lxml==6.1.3
