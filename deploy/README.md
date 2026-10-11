@@ -1,5 +1,13 @@
 # FPOLink TN — Production Deployment Guide
 
+> The `render.yaml` blueprint provisions a **staging** service on Render's free plan. It is useful for pilot validation, but it is not the durable production deployment described below. Choose a hosting and database plan with persistence, backups, and availability appropriate for production before relying on it for live operations.
+
+## Render staging administrator bootstrap
+
+The API startup command applies database migrations only. It does not create or reset an administrator account during deploys. After the first successful deploy, set `ADMIN_PHONE` and a strong `ADMIN_PASSWORD` in the Render service environment, then run `python scripts/create_admin.py` once from the service's Shell. This script is idempotent but updates the password for an existing account, so do not run it as a startup command or during routine deploys. Store the credentials in the organization's password manager and rotate them through the documented account flow.
+
+For durable production, use the persistent Docker/VM deployment below, configure backups and restore checks, and keep the initial administrator provisioning as an explicit one-time operation.
+
 This guide covers deploying the FPOLink backend, scheduled background worker, database, and WhatsApp webhook using **Docker Compose** and **Cloudflare Tunnel (`cloudflared`)**.
 
 ---

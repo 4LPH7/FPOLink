@@ -1,4 +1,5 @@
-# Render Blueprint: FastAPI backend + free PostgreSQL.
+# Render Blueprint: staging API + free PostgreSQL.
+# This free-tier blueprint is for staging and pilot validation, not durable production.
 # Secrets marked sync:false are entered in the Render dashboard (never committed).
 databases:
   - name: fpolink-db
@@ -13,7 +14,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && (python scripts/create_admin.py || true) && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
