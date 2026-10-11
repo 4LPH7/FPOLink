@@ -69,7 +69,7 @@ Every morning during the pilot (08:00 IST), the technical operator performs a 3-
 
 2. **Verify Data Ingestion and Farmer Channel**:
    ```bash
-   docker compose exec backend python -c "
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml exec -T backend python -c "
    from app.database import SessionLocal
    from app.models.market_price import MarketPrice
    db = SessionLocal()

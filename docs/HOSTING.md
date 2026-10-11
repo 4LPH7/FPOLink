@@ -22,7 +22,7 @@ This guide provides a complete, step-by-step procedure for deploying FPOLink TN 
 - **Compute**: Oracle Cloud Always Free Tier (Up to 4 OCPU / 24 GB RAM on Ampere A1 ARM64, or 1 OCPU / 1 GB RAM on AMD Micro) — **₹0.00/month**.
 - **Ingress & SSL**: Cloudflare Zero Trust Tunnel (50 free users, DDoS protection, automatic managed SSL certificates) — **₹0.00/month**.
 - **Database**: Self-hosted PostgreSQL 16 container with local persistent volume — **₹0.00/month**.
-- **Inbound Ports Open**: **Zero**. No public IP required, no firewall ports opened to the public internet.
+- **Public application ports**: None. Use an OCI Bastion/private access for administration, or restrict SSH ingress to the operator's fixed IP; never expose PostgreSQL, API, or frontend ports publicly.
 
 ---
 
@@ -39,7 +39,7 @@ This guide provides a complete, step-by-step procedure for deploying FPOLink TN 
 4. **Shape**:
    - Recommended: **Ampere ARM (VM.Standard.A1.Flex)** with 2 OCPU, 12 GB RAM (Always Free Eligible).
    - Alternatively: **AMD (VM.Standard.E2.1.Micro)** with 1 OCPU, 1 GB RAM.
-5. **Networking**: Select your default VCN and public subnet (or private subnet with NAT gateway).
+5. **Networking**: Prefer a private subnet with NAT and OCI Bastion. If you use a public subnet for SSH, restrict TCP 22 to your operator IP. Do not open ports 5432, 8000, or 3000; Cloudflare Tunnel connects outbound.
 6. **SSH Keys**: Download and save your private SSH key (`id_rsa_oci`).
 7. Click **Create** and wait for the instance state to change to `RUNNING`.
 
@@ -197,7 +197,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 ```
-All containers should be `Up` and healthy:
+Postgres and backend should be `healthy`; the other services should be `Up`:
 - `fpolink-postgres-1`
 - `fpolink-backend-1`
 - `fpolink-worker-1`
@@ -210,7 +210,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend pyt
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -it backend python scripts/provision_admin.py
 ```
 
-The production entrypoint runs Alembic migrations before the backend becomes healthy; the worker waits for that healthcheck before starting. Provision the admin only after the API is healthy.
+The production entrypoint runs Alembic migrations before the backend becomes healthy; the worker waits for that healthcheck before starting. Provision the admin only after the API is healthy. The interactive bootstrap requires a 12-character production password, rejects common defaults, creates or attaches the FPO, and requires a password change at first sign-in.
 
 The `seed.py` and `seed_supply_demand.py` scripts contain demo farmer accounts and synthetic prices; they refuse to run when `ENVIRONMENT=production`.
 
@@ -282,9 +282,10 @@ Add a daily cron job on the host:
 ```bash
 sudo crontab -e
 ```
-Add the following line (runs at 02:00 UTC daily):
+Add the following to the root crontab (runs at 02:00 UTC daily, retains 30 days locally, and creates files readable only by root):
 ```cron
-0 2 * * * mkdir -p /opt/backups && docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml exec -T postgres pg_dump -U fpolink_prod fpolink_prod | gzip > /opt/backups/fpolink_$(date +\%Y\%m\%d).sql.gz
+SHELL=/bin/bash
+0 2 * * * set -o pipefail && umask 077 && mkdir -p /opt/backups && docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml exec -T postgres pg_dump -U fpolink_prod fpolink_prod | gzip > /opt/backups/.fpolink_$(date +\%Y\%m\%d).tmp && mv /opt/backups/.fpolink_$(date +\%Y\%m\%d).tmp /opt/backups/fpolink_$(date +\%Y\%m\%d).sql.gz && find /opt/backups -type f -name 'fpolink_*.sql.gz' -mtime +30 -delete
 ```
 
 This stores backups on the same VM as the database; production launch still requires encrypted offsite copies, a retention policy, and a successful restore drill.
@@ -294,6 +295,6 @@ If you need to halt the bot immediately without downtime on the dashboard:
 ```bash
 # In /opt/FPOLink/.env, set:
 TELEGRAM_ENABLED=false
-# Then restart backend and worker:
-docker compose -f docker-compose.yml -f docker-compose.prod.yml restart backend worker
+# Recreate backend and worker so they load the changed environment:
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate backend worker
 ```

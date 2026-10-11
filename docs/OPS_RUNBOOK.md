@@ -32,9 +32,9 @@ To immediately disable WhatsApp functionality across the platform:
 
 1. Open the production environment configuration file (`.env`) on the host:
    ```bash
-   nano .env
+   nano /opt/FPOLink/.env
    # or
-   sed -i 's/^WHATSAPP_ENABLED=.*/WHATSAPP_ENABLED=false/' .env
+   sed -i 's/^WHATSAPP_ENABLED=.*/WHATSAPP_ENABLED=false/' /opt/FPOLink/.env
    ```
 
 2. Set the kill switch flag:
@@ -44,10 +44,10 @@ To immediately disable WhatsApp functionality across the platform:
 
 3. Restart both the API backend and background worker containers:
    ```bash
-   docker compose restart backend worker
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml up -d --force-recreate backend worker
    ```
 
-*(Alternatively, if running without editing the `.env` file directly, inject the variable directly into the docker-compose environment: `WHATSAPP_ENABLED=false docker compose up -d backend worker`)*.
+Recreate the containers after changing `.env`; `docker compose restart` does not reload environment values.
 
 ---
 
@@ -71,12 +71,7 @@ Verify that the kill switch is actively rejecting webhook requests:
 
 #### Verification Command (Remote / Public Endpoint):
 ```bash
-curl -s -i "https://api.yourdomain.com/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=test"
-```
-
-#### Verification Command (Local Docker Host):
-```bash
-curl -s -i "http://localhost:8000/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=test&hub.challenge=test"
+   curl -s -i "https://api.yourfpo.org/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=test"
 ```
 
 #### Expected Output:
@@ -95,19 +90,19 @@ If you receive HTTP 503, the kill switch is confirmed active.
 
 Once the underlying issue (credential rotation, Meta ticket resolution, rate-limit reset, bugfix) has been resolved:
 
-1. Edit `.env` and set:
+1. Edit `/opt/FPOLink/.env` and set:
    ```dotenv
    WHATSAPP_ENABLED=true
    ```
 
 2. Restart the backend and worker containers to pick up the updated configuration:
    ```bash
-   docker compose restart backend worker
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml up -d --force-recreate backend worker
    ```
 
 3. Test webhook reachability using curl:
    ```bash
-   curl -s -i "http://localhost:8000/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=test"
+   curl -s -i "https://api.yourfpo.org/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=test"
    # Should return HTTP 200 with the challenge string "test"
    ```
 
@@ -118,7 +113,7 @@ Once the underlying issue (credential rotation, Meta ticket resolution, rate-lim
 
 5. Monitor live container logs for the first incoming and outgoing messages:
    ```bash
-   docker compose logs -f --tail=100 backend worker
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml logs -f --tail=100 backend worker
    ```
 
 6. Execute a sanity check from a test mobile number:
@@ -139,27 +134,24 @@ Telegram is the live farmer channel in the MVP. It is governed by `TELEGRAM_ENAB
 
 ### How to Disable Telegram
 
-1. Set the flag in `.env` (or environment):
+1. Set the flag in `/opt/FPOLink/.env`:
    ```dotenv
    TELEGRAM_ENABLED=false
    ```
-2. Stop the polling process or restart the service:
+2. Recreate API and worker containers to load the setting:
    ```bash
-   # If running webhook / service:
-   docker compose restart backend
-   # If running polling runner:
-   pkill -f telegram_poll.py
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml up -d --force-recreate backend worker
    ```
 
 ### What Disabling Affects
 
 - `POST /api/telegram/webhook` returns **HTTP 503 Service Unavailable** with `{"detail": "Telegram bot is disabled"}`.
-- Long-polling runner `scripts/telegram_poll.py` exits gracefully immediately.
+- No Telegram replies are sent while the webhook endpoint returns 503.
 
 ### Re-Enabling Telegram
 
-1. Set `TELEGRAM_ENABLED=true` in `.env`.
-2. Restart backend and restart the polling worker (`python scripts/telegram_poll.py`).
+1. Set `TELEGRAM_ENABLED=true` in `/opt/FPOLink/.env`.
+2. Recreate API and worker containers with the production Compose files.
 
 ---
 
@@ -170,7 +162,7 @@ FPOLink provides an automated health check endpoint at `GET /api/health` for upt
 ### Health Endpoint Usage
 
 ```bash
-curl -s https://api.yourdomain.com/api/health
+curl -s https://api.yourfpo.org/api/health
 ```
 
 ### Response Statuses
@@ -199,36 +191,27 @@ If `/api/health` reports `"db": "error"`:
 
 1. Check if the PostgreSQL container is running:
    ```bash
-   docker compose ps postgres
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml ps postgres
    ```
 2. Inspect PostgreSQL database logs:
    ```bash
-   docker compose logs --tail=100 postgres
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml logs --tail=100 postgres
    ```
 3. Test direct PostgreSQL connectivity from the host:
    ```bash
-   docker compose exec backend python -c "from app.database import SessionLocal; from sqlalchemy import text; db=SessionLocal(); print(db.execute(text('SELECT 1')).scalar())"
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml exec -T backend python -c "from app.database import SessionLocal; from sqlalchemy import text; db=SessionLocal(); print(db.execute(text('SELECT 1')).scalar())"
    ```
 4. If Postgres is stopped or crashed:
    ```bash
-   docker compose restart postgres
-   docker compose restart backend worker
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml restart postgres
+   docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml up -d --force-recreate backend worker
    ```
 
 ---
 
 ## Quick Reference Links
 
-- [Meta Production Setup Checklist](file:///d:/PROJECTS/FPOLink/docs/META_PRODUCTION_CHECKLIST.md)
-- [WhatsApp Cloud API Routing Code](file:///d:/PROJECTS/FPOLink/backend/app/api/whatsapp.py)
+- [Meta Production Setup Checklist](META_PRODUCTION_CHECKLIST.md)
+- [WhatsApp Cloud API Routing Code](../backend/app/api/whatsapp.py)
 - [Application Settings & Kill Switch Definition](../backend/app/config.py)
-- [Example Environment File](file:///d:/PROJECTS/FPOLink/.env.example)
-
-## Telegram kill switch (live channel)
-
-Telegram is the live farmer channel; WhatsApp is dormant (`WHATSAPP_ENABLED=false`).
-To halt the Telegram bot immediately:
-
-1. In the Render dashboard set `TELEGRAM_ENABLED=false` on the API service.
-2. Restart (redeploy) the service. Webhook updates are then ignored and no Telegram replies are sent.
-3. To restore, set `TELEGRAM_ENABLED=true` and restart again.
+- [Example Environment File](../.env.example)
