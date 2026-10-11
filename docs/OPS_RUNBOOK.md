@@ -2,7 +2,7 @@
 
 > **Target Audience:** DevOps on-call engineers, system administrators, and technical operators.  
 > **Project:** FPOLink (FastAPI + PostgreSQL + Docker).  
-> **Scope:** Emergency procedures and operational health monitoring, focused on the WhatsApp bot integration and system availability.
+> **Scope:** Emergency procedures and operational health monitoring for FPOLink's active Telegram farmer channel and system availability. WhatsApp procedures apply only when that optional channel is enabled.
 
 ---
 

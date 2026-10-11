@@ -7,7 +7,7 @@ This guide provides a complete, step-by-step procedure for deploying FPOLink TN 
 ## 1. Architecture & Cost Model
 
 ```text
-[ Meta WhatsApp Webhook / Farmers / Staff ]
+[ Telegram Webhook / Farmers / Staff (optional WhatsApp) ]
                      │
                      ▼ (HTTPS: 443)
             [ Cloudflare Edge ]
@@ -133,13 +133,21 @@ POSTGRES_DB=fpolink_prod
 POSTGRES_PORT=5432
 DATABASE_URL=postgresql+psycopg://fpolink_prod:<generate_strong_db_password>@postgres:5432/fpolink_prod
 
-# WhatsApp Cloud API
-WHATSAPP_ENABLED=true
-WHATSAPP_VERIFY_TOKEN=<secure_random_string_for_webhook_verify>
-WHATSAPP_APP_SECRET=<from_meta_app_dashboard>
-WHATSAPP_ACCESS_TOKEN=<from_meta_system_user_permanent_token>
-WHATSAPP_PHONE_NUMBER_ID=<from_meta_whatsapp_manager>
-WHATSAPP_BOT_PHONE=919876543210
+# Telegram is the active farmer channel
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=<from_botfather>
+TELEGRAM_WEBHOOK_SECRET=<optional_random_secret; otherwise derived from bot token>
+PUBLIC_API_URL=https://api.yourfpo.org
+TELEGRAM_AUTO_SET_WEBHOOK=true
+
+# WhatsApp is optional and remains disabled until Meta setup is complete
+WHATSAPP_ENABLED=false
+# If enabling WhatsApp, complete docs/META_PRODUCTION_CHECKLIST.md and set:
+# WHATSAPP_VERIFY_TOKEN=<secure_random_string_for_webhook_verify>
+# WHATSAPP_APP_SECRET=<from_meta_app_dashboard>
+# WHATSAPP_ACCESS_TOKEN=<from_meta_system_user_permanent_token>
+# WHATSAPP_PHONE_NUMBER_ID=<from_whatsapp_manager>
+# WHATSAPP_BOT_PHONE=<registered_number_with_country_code>
 
 # Cloudflare Tunnel Token
 CLOUDFLARE_TUNNEL_TOKEN=<token_copied_from_cloudflare_dashboard>
@@ -200,7 +208,7 @@ The `seed.py` and `seed_supply_demand.py` scripts contain demo farmer accounts a
 
 ---
 
-## 7. Verification & Meta Webhook Wiring
+## 7. Verification & Farmer Channel Wiring
 
 ### Step 1: Test External Health
 From your local machine or terminal:
@@ -215,7 +223,11 @@ content-type: application/json
 {"status":"ok","service":"fpolink-api","version":"0.1.0","db":"ok"}
 ```
 
-### Step 2: Configure Meta WhatsApp Webhook
+### Step 2: Verify Telegram Webhook
+`PUBLIC_API_URL` must be the public HTTPS API origin. On startup, the backend registers `https://api.yourfpo.org/api/telegram/webhook` with Telegram. In the staff dashboard, open `/telegram`, confirm the webhook status, and use **Register webhook** if a re-registration is needed. Send `/start`, `/price turmeric`, and a harvest submission from a test account; confirm each response and the resulting harvest record in the dashboard.
+
+### Optional: Configure Meta WhatsApp Webhook
+Only do this after enabling WhatsApp and completing [`META_PRODUCTION_CHECKLIST.md`](../docs/META_PRODUCTION_CHECKLIST.md).
 1. Go to [developers.facebook.com](https://developers.facebook.com/apps/) > Your App > **WhatsApp** > **Configuration**.
 2. **Callback URL**: `https://api.yourfpo.org/api/whatsapp/webhook`
 3. **Verify Token**: paste your `WHATSAPP_VERIFY_TOKEN` from `.env`.

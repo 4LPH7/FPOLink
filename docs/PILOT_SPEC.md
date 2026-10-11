@@ -1,5 +1,7 @@
 # FPOLink TN: Pilot Specification & Open Decisions Resolution (T0.1)
 
+> This specification records the optional WhatsApp channel's Meta setup and compliance decisions. The current MVP's active farmer channel and Erode pilot runbook use Telegram; treat WhatsApp-only steps here as future launch gates for WhatsApp, not prerequisites for the Telegram pilot.
+
 This specification resolves the open architectural, operational, and organizational decisions required prior to launching the WhatsApp Cloud API integration and field pilot for FPOLink TN.
 
 ---

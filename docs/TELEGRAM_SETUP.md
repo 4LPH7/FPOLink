@@ -8,6 +8,17 @@ WhatsApp is disabled (`WHATSAPP_ENABLED=false`); Telegram is the farmer channel.
    (or `PUBLIC_API_URL`) with a secret derived from the token, and registers commands.
 3. Admins can re-register via `POST /api/telegram/set-webhook`; staff can inspect `GET /api/telegram/status`.
 
+## Production (Docker / Cloudflare Tunnel)
+1. Set `TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, and
+   `PUBLIC_API_URL=https://api.yourfpo.org` in the server's `.env` file. The URL must
+   be the public HTTPS origin routed to the backend by Cloudflare Tunnel.
+2. `TELEGRAM_AUTO_SET_WEBHOOK=true` is the default. On API startup, the app registers
+   `https://api.yourfpo.org/api/telegram/webhook`; set `TELEGRAM_WEBHOOK_SECRET` to a
+   random secret if you want an independently managed secret instead of the token-derived
+   default.
+3. Confirm `GET /api/telegram/status` reports the expected bot and webhook details, then
+   exercise `/start`, a price query, and a harvest submission from a test account.
+
 ## Local dev (long polling)
 ```bash
 cd backend && TELEGRAM_BOT_TOKEN=... python scripts/telegram_poll.py

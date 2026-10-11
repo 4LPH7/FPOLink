@@ -8,14 +8,14 @@ The API startup command applies database migrations only. It does not create or 
 
 For durable production, use the persistent Docker/VM deployment below, configure backups and restore checks, and keep the initial administrator provisioning as an explicit one-time operation.
 
-This guide covers deploying the FPOLink backend, scheduled background worker, database, and WhatsApp webhook using **Docker Compose** and **Cloudflare Tunnel (`cloudflared`)**.
+This guide covers deploying the FPOLink backend, scheduled background worker, database, and active Telegram webhook using **Docker Compose** and **Cloudflare Tunnel (`cloudflared`)**. WhatsApp is an optional channel with separate Meta prerequisites.
 
 ---
 
 ## 1. Architecture
 
 ```text
-[ Meta WhatsApp Webhook / Mobile Users ]
+[ Telegram Webhook / Farmers / Staff (optional WhatsApp) ]
                    │
                    ▼ (HTTPS on standard 443)
         [ Cloudflare Edge ]
@@ -43,7 +43,7 @@ This guide covers deploying the FPOLink backend, scheduled background worker, da
 
 1. **Docker Engine 24+** and **Docker Compose v2+** installed on the host machine/VM.
 2. A domain name active on Cloudflare (e.g. `yourfpo.org`).
-3. Meta Developer WhatsApp App with App Secret, Access Token, and Phone Number ID (see [`docs/META_PRODUCTION_CHECKLIST.md`](../docs/META_PRODUCTION_CHECKLIST.md)).
+3. Telegram bot token from BotFather. Meta Developer WhatsApp credentials are only needed if you choose to enable WhatsApp (see [`docs/META_PRODUCTION_CHECKLIST.md`](../docs/META_PRODUCTION_CHECKLIST.md)).
 
 ---
 
@@ -85,13 +85,15 @@ This guide covers deploying the FPOLink backend, scheduled background worker, da
    POSTGRES_DB=fpolink_prod
    DATABASE_URL=postgresql+psycopg://fpolink_prod:<strong-database-password>@postgres:5432/fpolink_prod
 
-   # WhatsApp Cloud API
-   WHATSAPP_ENABLED=true
-   WHATSAPP_VERIFY_TOKEN=<secure-random-verify-token>
-   WHATSAPP_APP_SECRET=<from-meta-app-basic-settings>
-   WHATSAPP_ACCESS_TOKEN=<system-user-permanent-token>
-   WHATSAPP_PHONE_NUMBER_ID=<from-whatsapp-manager>
-   WHATSAPP_BOT_PHONE=<registered-waba-phone-e.g.-919876543210>
+   # Active farmer channel: Telegram
+   TELEGRAM_ENABLED=true
+   TELEGRAM_BOT_TOKEN=<from-botfather>
+   TELEGRAM_WEBHOOK_SECRET=<optional-random-secret>
+   PUBLIC_API_URL=https://api.yourfpo.org
+   TELEGRAM_AUTO_SET_WEBHOOK=true
+
+   # WhatsApp stays disabled unless Meta setup is complete
+   WHATSAPP_ENABLED=false
 
    # Cloudflare Tunnel
    CLOUDFLARE_TUNNEL_TOKEN=<token-copied-from-step-3>
@@ -138,7 +140,11 @@ content-type: application/json
 {"status":"ok","service":"fpolink-api","version":"0.1.0","db":"ok"}
 ```
 
-### Step 3: Configure Meta Webhook
+### Step 3: Verify Telegram Webhook
+Set `PUBLIC_API_URL` to the public HTTPS API origin. The backend registers `/api/telegram/webhook` at startup. In the dashboard's `/telegram` page, confirm the webhook is present; then test `/start`, a price query, and harvest submission from a Telegram account.
+
+### Optional: Configure Meta WhatsApp Webhook
+Only enable this after completing the Meta business, number, token, template, billing, and webhook prerequisites in [`docs/META_PRODUCTION_CHECKLIST.md`](../docs/META_PRODUCTION_CHECKLIST.md).
 In the [Meta App Dashboard](https://developers.facebook.com/apps/):
 1. Navigate to **WhatsApp** > **Configuration**.
 2. **Callback URL**: `https://api.yourfpo.org/api/whatsapp/webhook`
