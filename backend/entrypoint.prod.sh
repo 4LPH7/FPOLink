@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [[ -z "${OGD_API_KEY:-}" && -z "${CEDA_API_KEY:-}" ]]; then
+    echo "[FPOLink Production] FATAL: Set OGD_API_KEY or CEDA_API_KEY to enable live mandi price ingestion."
+    exit 1
+fi
+
 echo "[FPOLink Production] Waiting for database..."
 while ! python -c "from app.database import engine; from sqlalchemy import text; conn = engine.connect(); conn.execute(text('SELECT 1')); conn.close()" 2>/dev/null; do
     echo "[FPOLink Production] Database not ready, retrying in 2s..."

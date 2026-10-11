@@ -147,6 +147,10 @@ TELEGRAM_WEBHOOK_SECRET=<optional_random_secret; otherwise derived from bot toke
 PUBLIC_API_URL=https://api.yourfpo.org
 TELEGRAM_AUTO_SET_WEBHOOK=true
 
+# Live mandi prices: set at least one authorized provider key
+OGD_API_KEY=<data.gov.in_api_key>
+# CEDA_API_KEY=<ceda_api_key>
+
 # WhatsApp is optional and remains disabled until Meta setup is complete
 WHATSAPP_ENABLED=false
 # If enabling WhatsApp, complete docs/META_PRODUCTION_CHECKLIST.md and set:
@@ -231,7 +235,9 @@ content-type: application/json
 {"status":"ok","service":"fpolink-api","version":"0.1.0","db":"ok"}
 ```
 
-### Step 2: Verify Telegram Webhook
+### Step 2: Verify live market data and Telegram
+The production API refuses to start without `OGD_API_KEY` or `CEDA_API_KEY`; configure at least one before the first launch. After the worker starts, confirm the ingestion run succeeded and the returned crop, market, and observation dates are valid before opening access to farmers.
+
 `PUBLIC_API_URL` must be the public HTTPS API origin. On startup, the backend registers `https://api.yourfpo.org/api/telegram/webhook` with Telegram. In the staff dashboard, open `/telegram`, confirm the webhook status, and use **Register webhook** if a re-registration is needed. Send `/start`, `/price turmeric`, and a harvest submission from a test account; confirm each response and the resulting harvest record in the dashboard.
 
 ### Optional: Configure Meta WhatsApp Webhook
