@@ -75,9 +75,13 @@ sudo usermod -aG docker ubuntu
 newgrp docker
 ```
 
+Use Docker Compose plugin **v2.24.4 or newer**; the production override uses Compose's `!reset` merge tag.
+
 ---
 
 ## 4. Cloudflare Zero Trust Tunnel Setup
+
+Before launch, register a domain and make its DNS zone active in Cloudflare. Create an API hostname (for example, `api.yourfpo.org`) and use that exact HTTPS origin for `PUBLIC_API_URL`; the example hostnames below are placeholders and will not resolve until replaced with your domain.
 
 ### Step 1: Create Tunnel in Cloudflare Dashboard
 1. Log in to [Cloudflare One Dashboard](https://one.dash.cloudflare.com/).
@@ -118,7 +122,10 @@ cd /opt/FPOLink
 ```bash
 cp .env.example .env
 nano .env
+chmod 600 .env
 ```
+
+Keep `.env` only on the VM, restrict its permissions as above, and never commit it or paste its values into logs or support requests.
 
 Set the following production values:
 ```dotenv
@@ -188,7 +195,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 ### Verify Service Status:
 ```bash
-docker compose ps
+docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 ```
 All containers should be `Up` and healthy:
 - `fpolink-postgres-1`
@@ -199,10 +206,11 @@ All containers should be `Up` and healthy:
 
 ### Run Migrations, Reference Data, and Admin Provisioning:
 ```bash
-docker compose exec backend alembic upgrade head
-docker compose exec backend python scripts/seed_statewide_foundation.py
-docker compose exec -it backend python scripts/provision_admin.py
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend python scripts/seed_statewide_foundation.py
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -it backend python scripts/provision_admin.py
 ```
+
+The production entrypoint runs Alembic migrations before the backend becomes healthy; the worker waits for that healthcheck before starting. Provision the admin only after the API is healthy.
 
 The `seed.py` and `seed_supply_demand.py` scripts contain demo farmer accounts and synthetic prices; they refuse to run when `ENVIRONMENT=production`.
 
@@ -276,14 +284,16 @@ sudo crontab -e
 ```
 Add the following line (runs at 02:00 UTC daily):
 ```cron
-0 2 * * * docker compose -f /opt/FPOLink/docker-compose.yml exec -T postgres pg_dump -U fpolink_prod fpolink_prod | gzip > /opt/backups/fpolink_$(date +\%Y\%m\%d).sql.gz
+0 2 * * * mkdir -p /opt/backups && docker compose -f /opt/FPOLink/docker-compose.yml -f /opt/FPOLink/docker-compose.prod.yml exec -T postgres pg_dump -U fpolink_prod fpolink_prod | gzip > /opt/backups/fpolink_$(date +\%Y\%m\%d).sql.gz
 ```
+
+This stores backups on the same VM as the database; production launch still requires encrypted offsite copies, a retention policy, and a successful restore drill.
 
 ### Emergency Halt
 If you need to halt the bot immediately without downtime on the dashboard:
 ```bash
 # In /opt/FPOLink/.env, set:
-WHATSAPP_ENABLED=false
+TELEGRAM_ENABLED=false
 # Then restart backend and worker:
-docker compose restart backend worker
+docker compose -f docker-compose.yml -f docker-compose.prod.yml restart backend worker
 ```
