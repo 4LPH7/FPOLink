@@ -34,7 +34,7 @@ All 7 foundational architecture specifications generated and validated:
 ### C. Live Cloud System Telemetry
 - **Render Web Service**: `https://fpolink-api.onrender.com` (Healthy, `db: ok`)
 - **Render PostgreSQL**: 43 tables migrated, seeded with 38 districts, 46 markets, 20 crops, 4 buyers, 1 FPO.
-- **Admin Account**: `8072845239` / `Admin@123` verified live with JWT access token.
+- **Admin Account**: verified live with JWT access token.
 - **Telegram Bot**: `@Fpo_Link_Bot` linked to Render webhook with 0 pending errors.
 
 ---

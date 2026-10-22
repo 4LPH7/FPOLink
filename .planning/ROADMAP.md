@@ -60,7 +60,7 @@ Milestone v1.0 (Statewide Expansion & Voice)   ───► [PLANNED]
 - **Goal**: Complete live cloud staging deployment and execute 14-day field pilot in Erode district.
 - **Phases**:
   - [x] **Phase 15**: Render Cloud Backend Deployment & PostgreSQL Provisioning (Live at `https://fpolink-api.onrender.com`).
-  - [x] **Phase 16**: Remote Database Seeding & Production Admin Setup (Admin `8072845239` / `Admin@123` verified).
+  - [x] **Phase 16**: Remote Database Seeding & Production Admin Setup (admin account verified).
   - [x] **Phase 17**: Live Telegram Bot Webhook Integration (`@Fpo_Link_Bot` linked to Render).
   - [ ] **Phase 18**: Frontend Cloud Deployment (Link Next.js frontend to Vercel/Netlify pointing to Render API).
   - [ ] **Phase 19**: 14-Day Erode Field Pilot (Onboard 1 coordinator and 10 farmers per `docs/PILOT_RUNBOOK.md`).
