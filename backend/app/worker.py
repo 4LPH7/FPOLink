@@ -5,11 +5,14 @@ Does NOT run inside the API process to avoid duplicate jobs with multiple worker
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+IST = timezone(timedelta(hours=5, minutes=30))  # India has no DST
 
 
 def run_price_ingestion():
@@ -33,6 +36,47 @@ def run_price_ingestion():
             raise err
     finally:
         db.close()
+
+
+def price_run_missed(db=None, now=None) -> bool:
+    """True when the latest daily price slot passed without a completed statewide run.
+
+    Free hosts (Render) sleep through the cron time, so the API checks this on wake-up.
+    A run cut off by the host sleeping never completes, so it does not count.
+    """
+    from app.config import settings
+    from app.database import SessionLocal
+    from app.models.data_quality import IngestionRun
+
+    now = (now or datetime.now(IST)).astimezone(IST)
+    slot = now.replace(
+        hour=settings.PRICE_INGEST_HOUR_IST,
+        minute=settings.PRICE_INGEST_MINUTE_IST,
+        second=0,
+        microsecond=0,
+    )
+    if slot > now:
+        slot -= timedelta(days=1)
+
+    session = db or SessionLocal()
+    try:
+        completed = (
+            session.query(IngestionRun.id)
+            .filter(
+                IngestionRun.source_code == "auto",
+                IngestionRun.district == "statewide",
+                IngestionRun.started_at >= slot,
+                IngestionRun.completed_at.isnot(None),
+            )
+            .first()
+        )
+        return completed is None
+    except Exception:
+        logger.exception("Could not check for a missed price ingestion")
+        return False
+    finally:
+        if db is None:
+            session.close()
 
 
 def run_weather_ingestion():

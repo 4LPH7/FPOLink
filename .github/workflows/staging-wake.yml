@@ -1,0 +1,22 @@
+name: Wake staging for daily prices
+
+# Render's free plan sleeps after 15 idle minutes, so the staging API's 06:00 IST price
+# job can't fire on its own. The first ping wakes the API, which runs the missed
+# ingestion on startup (app/main.py); the later pings keep it awake while that run works.
+on:
+  schedule:
+    - cron: "40 0 * * *" # 06:10 IST
+  workflow_dispatch:
+
+jobs:
+  wake:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      URL: https://fpolink-api.onrender.com/api/health
+    steps:
+      - name: Wake the API and keep it up for 35 minutes
+        run: |
+          ping() { curl -fsS --retry 2 --retry-all-errors --max-time 120 -o /dev/null -w "HTTP %{http_code}\n" "$URL"; }
+          ping # a failure here marks the run red: staging is down
+          for i in $(seq 7); do sleep 300; ping || true; done

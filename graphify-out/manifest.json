@@ -174,9 +174,9 @@
     "semantic_hash": "ed3a0da0991e93352abc649946fe65ce"
   },
   "backend/app/data_sources/ogd.py": {
-    "mtime": 1791358561.8751788,
-    "seen": 1792667855.9518447,
-    "ast_hash": "b9bd4280e0f64df33ee5a13ae9f4e220",
+    "mtime": 1792669756.592998,
+    "seen": 1792670059.6720195,
+    "ast_hash": "0bdbf7b3b19cefdf4fe609bd7eb3f356",
     "semantic_hash": ""
   },
   "backend/app/data_sources/registry.py": {
@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "backend/app/main.py": {
-    "mtime": 1791168149.3246748,
-    "seen": 1792667855.9520621,
-    "ast_hash": "b9f963480312aa22e6fb93351a8486ee",
+    "mtime": 1792669770.9958577,
+    "seen": 1792670059.6727016,
+    "ast_hash": "190dbea59862af3e9613ffbeca391f25",
     "semantic_hash": ""
   },
   "backend/app/messaging/__init__.py": {
@@ -492,9 +492,9 @@
     "semantic_hash": "16d6424d36031a536d8f6510892197d9"
   },
   "backend/app/worker.py": {
-    "mtime": 1791704815.3338025,
-    "seen": 1792667855.9649734,
-    "ast_hash": "75627f7b54460f6d60c34414db999df7",
+    "mtime": 1792669764.8630803,
+    "seen": 1792670059.6925185,
+    "ast_hash": "32cc7e0804df17470849338d6416d332",
     "semantic_hash": ""
   },
   "backend/entrypoint.sh": {
@@ -1674,9 +1674,9 @@
     "semantic_hash": ""
   },
   "backend/app/data_sources/mandiprices.py": {
-    "mtime": 1791163023.5623026,
-    "seen": 1792667855.9516215,
-    "ast_hash": "fb98501d987bd64d628aa9c5acec7eb2",
+    "mtime": 1792669750.0572083,
+    "seen": 1792670059.6715684,
+    "ast_hash": "f8424769c8d2f767bd831d5ec963b657",
     "semantic_hash": ""
   },
   "backend/app/messaging/telegram.py": {
@@ -2229,6 +2229,18 @@
     "mtime": 1791704815.4065032,
     "seen": 1792667855.9807222,
     "ast_hash": "c5c8e9987459cb75c650d99d2850dc77",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_price_catchup.py": {
+    "mtime": 1792669816.2408605,
+    "seen": 1792670059.7074513,
+    "ast_hash": "fa166430bb379e3faa9636963a52e31c",
+    "semantic_hash": ""
+  },
+  ".github/workflows/staging-wake.yml": {
+    "mtime": 1792669803.7076511,
+    "seen": 1792670059.7277083,
+    "ast_hash": "5cf495b6e270ffdb5b961c03a87442db",
     "semantic_hash": ""
   }
 }

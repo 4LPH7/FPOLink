@@ -2,7 +2,8 @@
 
 Parses daily wholesale mandi prices for Tamil Nadu from mandiprices.co.in,
 which aggregates official Government of India Agmarknet data across 461 markets.
-Supports loading from local cache (backend/data/mandiprices/) or live HTTP requests.
+Fetches live pages, falling back to the committed snapshot in backend/data/mandiprices/
+when the site is unreachable.
 """
 
 import logging
@@ -47,8 +48,9 @@ class MandiPricesProvider(MarketDataProvider):
 
     source_name = "agmarknet"
 
-    def __init__(self, use_cache_first: bool = True):
+    def __init__(self, use_cache_first: bool = False):
         self.use_cache_first = use_cache_first
+        self._pages: Dict[str, Optional[str]] = {}
 
     def is_available(self) -> bool:
         return True
@@ -86,7 +88,16 @@ class MandiPricesProvider(MarketDataProvider):
         return filtered
 
     def _get_html(self, slug: str) -> Optional[str]:
-        """Load HTML from cache or live HTTP request."""
+        """Return a crop's page, fetched once per provider instance (one ingestion run).
+
+        Each page covers every Tamil Nadu district, so the per-district calls share it.
+        """
+        if slug not in self._pages:
+            self._pages[slug] = self._load_html(slug)
+        return self._pages[slug]
+
+    def _load_html(self, slug: str) -> Optional[str]:
+        """Load HTML live, falling back to the committed snapshot."""
         # 1. Try local cache file
         cache_name = f"{slug.replace('-', '_')}.html"
         cache_file = CACHE_DIR / cache_name
@@ -110,14 +121,8 @@ class MandiPricesProvider(MarketDataProvider):
             with httpx.Client(timeout=15.0, follow_redirects=True) as client:
                 resp = client.get(url, headers=headers)
                 if resp.status_code == 200:
-                    text = resp.text
-                    # Save to cache
-                    try:
-                        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-                        cache_file.write_text(text, encoding="utf-8")
-                    except Exception:
-                        pass
-                    return text
+                    return resp.text
+                logger.warning(f"Live request to {url} returned HTTP {resp.status_code}")
         except Exception as e:
             logger.warning(f"Live request to {url} failed: {e}")
 

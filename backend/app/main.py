@@ -50,12 +50,19 @@ async def lifespan(app: FastAPI):
         # Free hosts (Render free tier) have no background workers: run jobs in-process.
         from apscheduler.schedulers.background import BackgroundScheduler
 
-        from app.worker import register_jobs
+        from app.worker import price_run_missed, register_jobs, run_price_ingestion
 
         scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
         register_jobs(scheduler)
         scheduler.start()
         logger.info("In-process scheduler started with %d jobs", len(scheduler.get_jobs()))
+        if price_run_missed():
+            # The host slept through the daily price slot; run it now. No misfire limit:
+            # a cold start on a tiny CPU share can delay the scheduler past the 1s default.
+            logger.info("Daily price ingestion was missed; running it now")
+            scheduler.add_job(
+                run_price_ingestion, id="price_ingestion_catchup", misfire_grace_time=None
+            )
 
     if (
         settings.TELEGRAM_ENABLED

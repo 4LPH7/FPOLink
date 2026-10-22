@@ -33,9 +33,10 @@ class OGDProvider(MarketDataProvider):
     def __init__(self, api_key: Optional[str] = None, resource_id: Optional[str] = None):
         self.api_key = api_key or settings.OGD_API_KEY
         self.resource_id = resource_id or getattr(settings, "OGD_RESOURCE_ID", OGD_RESOURCE_ID)
+        self._failed = False
 
     def is_available(self) -> bool:
-        return bool(self.api_key)
+        return bool(self.api_key) and not self._failed
 
     def fetch_prices(
         self,
@@ -81,7 +82,12 @@ class OGDProvider(MarketDataProvider):
             logger.info(f"Fetched {len(records)} records from OGD for {crop} in {district}")
 
         except httpx.HTTPError as e:
-            logger.error(f"OGD API error: {e}")
+            # A run calls OGD once per crop and district, so a dead API would cost a
+            # 30s timeout each time (hours per run). Providers are rebuilt per run.
+            # ponytail: one failure skips OGD for the rest of the run; count failures
+            # instead if OGD becomes flaky but mostly up.
+            self._failed = True
+            logger.error(f"OGD API error: {e}; skipping OGD for the rest of this run")
         except Exception as e:
             logger.error(f"Error fetching from OGD: {e}")
 
