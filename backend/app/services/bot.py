@@ -41,12 +41,14 @@ INTENT_KEYWORDS = {
 # Tamil copy is a first draft: have a native speaker (ideally a farmer) review it.
 T = {
     "en": {
-        "menu": "Hello {name}! What would you like?\nYou can also type: PRICE, FORECAST, BUYERS, WEATHER, HARVEST.",
+        "menu": "Hello {name}! What would you like?\nSend a crop name for today's price, e.g. TOMATO.\nYou can also type: PRICE, FORECAST, BUYERS, WEATHER, HARVEST.",
         "not_registered": "This number is not registered. Please contact your FPO to register.",
         "unknown": "Sorry, I didn't understand. Send MENU to see the options.",
         "no_buyers": "No open buyer demands currently matching your crops. We will notify you when buyers post new requirements!",
         "no_price": "No recent price available for {crop}.",
         "price_line": "{crop}: ₹{quintal}/quintal (min ₹{lo}, max ₹{hi}) - {market}, {date}",
+        "sell_there": "Better deal: {market} ({district}, ~{km} km) pays about ₹{gain}/quintal more after transport (estimate).",
+        "sell_local": "Nearby markets don't pay more after transport today.",
         "ask_crop": "Which crop did you harvest?",
         "ask_qty": "How many kg? (send a number, e.g. 250)",
         "bad_qty": "Please send a valid number of kg, e.g. 250.",
@@ -74,12 +76,14 @@ T = {
         "b_no": "No",
     },
     "ta": {
-        "menu": "வணக்கம் {name}! உங்களுக்கு என்ன வேண்டும்?\nவிருப்பங்கள்: விலை (PRICE), கணிப்பு (FORECAST), கொள்முதல் (BUYERS), வானிலை (WEATHER), அறுவடை (HARVEST).",
+        "menu": "வணக்கம் {name}! உங்களுக்கு என்ன வேண்டும்?\nஇன்றைய விலைக்கு பயிரின் பெயரை அனுப்பவும், எ.கா. தக்காளி.\nவிருப்பங்கள்: விலை (PRICE), கணிப்பு (FORECAST), கொள்முதல் (BUYERS), வானிலை (WEATHER), அறுவடை (HARVEST).",
         "not_registered": "இந்த எண் பதிவு செய்யப்படவில்லை. பதிவு செய்ய உங்கள் FPO-வைத் தொடர்பு கொள்ளவும்.",
         "unknown": "மன்னிக்கவும், புரியவில்லை. விருப்பங்களுக்கு MENU என்று அனுப்பவும்.",
         "no_buyers": "உங்கள் பயிர்களுக்கான கொள்முதல் தேவைகள் தற்போது இல்லை. புதிய தேவைகள் வரும்போது தெரிவிக்கப்படும்!",
         "no_price": "{crop} க்கு சமீபத்திய விலை இல்லை.",
         "price_line": "{crop}: ₹{quintal}/குவிண்டால் (குறைந்தது ₹{lo}, அதிகபட்சம் ₹{hi}) - {market}, {date}",
+        "sell_there": "சிறந்த வாய்ப்பு: {market} ({district}, ~{km} கி.மீ) — போக்குவரத்து செலவு போக குவிண்டாலுக்கு சுமார் ₹{gain} கூடுதல் (மதிப்பீடு).",
+        "sell_local": "இன்று போக்குவரத்து செலவு போக, அருகிலுள்ள சந்தைகளில் கூடுதல் விலை இல்லை.",
         "ask_crop": "எந்தப் பயிரை அறுவடை செய்தீர்கள்?",
         "ask_qty": "எத்தனை கிலோ? (எண்ணை அனுப்பவும், எ.கா. 250)",
         "bad_qty": "சரியான கிலோ எண்ணை அனுப்பவும், எ.கா. 250.",
@@ -156,6 +160,12 @@ class BotServices(Protocol):
     async def get_buyer_matches_text(self, farmer_id: str, lang: str) -> str | None:
         """Fetch open confirmed or candidate buyer requirements for farmer's crops/FPO."""
 
+    async def crop_vocab(self) -> dict[str, tuple[str, str, list[str]]]:
+        """Optional: {crop: (English name, Tamil name, words farmers use)} beyond the built-ins."""
+
+    async def best_market_text(self, crop: str, district: str, lang: str) -> str | None:
+        """Optional: one line on where the crop sells better after transport costs."""
+
     async def submit_harvest(
         self,
         farmer_id: str,
@@ -222,10 +232,19 @@ def detect_intent(text: str) -> str | None:
     return None
 
 
-def detect_crop(text: str) -> str | None:
+def detect_crop(text: str, keywords: dict[str, list[str]] = CROP_KEYWORDS) -> str | None:
     toks = _tokens(text)
-    for crop, kws in CROP_KEYWORDS.items():
-        if any(_match(t, kw) for t in toks for kw in kws):
+    joined = f" {' '.join(toks)} "
+    # Longest name first, so "small onion" wins over "onion".
+    pairs = sorted(
+        ((" ".join(_tokens(kw)), crop) for crop, kws in keywords.items() for kw in kws),
+        key=lambda pair: -len(pair[0]),
+    )
+    for kw, crop in pairs:
+        if " " in kw:
+            if f" {kw} " in joined:
+                return crop
+        elif kw and any(_match(t, kw) for t in toks):
             return crop
     return None
 
@@ -241,15 +260,15 @@ def parse_qty(text: str) -> Decimal | None:
     return qty if 0 < qty <= 100_000 else None
 
 
-def crop_name(crop: str, lang: str) -> str:
-    return CROP_NAMES.get(crop, {}).get(lang, crop)
+def crop_name(crop: str, lang: str, names: dict[str, dict[str, str]] = CROP_NAMES) -> str:
+    return names.get(crop, {}).get(lang, crop)
 
 
-def format_price(p: PriceInfo, lang: str) -> str:
+def format_price(p: PriceInfo, lang: str, names: dict[str, dict[str, str]] = CROP_NAMES) -> str:
     # Mandi prices are quoted per quintal (100 kg); we store Rs/kg.
     q = lambda v: f"{v * 100:,.0f}"  # noqa: E731
     return T[lang]["price_line"].format(
-        crop=crop_name(p.crop, lang),
+        crop=crop_name(p.crop, lang, names),
         quintal=q(p.modal_per_kg),
         lo=q(p.min_per_kg),
         hi=q(p.max_per_kg),
@@ -274,6 +293,23 @@ class BotEngine:
         self.rate_limit_max = rate_limit_max
         self.rate_limit_window_seconds = rate_limit_window_seconds
         self._rate_limits: dict[str, list[float]] = {}
+        self._vocab: tuple[dict[str, list[str]], dict[str, dict[str, str]]] | None = None
+
+    async def _crop_vocab(self) -> tuple[dict[str, list[str]], dict[str, dict[str, str]]]:
+        """(keywords, display names) for every crop the bot knows: built-ins plus services'.
+
+        ponytail: loaded once per engine (one per process); add a TTL if crops change while
+        the API runs.
+        """
+        if self._vocab is None:
+            keywords = {c: list(kws) for c, kws in CROP_KEYWORDS.items()}
+            names = {c: dict(n) for c, n in CROP_NAMES.items()}
+            load = getattr(self.svc, "crop_vocab", None)
+            for crop, (en, ta, words) in ((await load()) if load else {}).items():
+                names[crop] = {"en": en, "ta": ta}
+                keywords.setdefault(crop, []).extend(w for w in words if w)
+            self._vocab = (keywords, names)
+        return self._vocab
 
     async def handle(self, msg: InboundMessage, ch: MessageChannel) -> None:
         """Entry point for background tasks: never raises."""
@@ -331,6 +367,10 @@ class BotEngine:
         lang = farmer.lang if farmer.lang in T else "ta"
         t = T[lang]
         intent = self._intent(msg)
+        if intent is None and msg.kind == "text":
+            keywords, _ = await self._crop_vocab()
+            if detect_crop(msg.text, keywords):
+                intent = "price"  # a bare crop name asks for its price
         state = await self.svc.get_state(msg.wa_id)
 
         # First-contact notice (T2.2)
@@ -406,18 +446,25 @@ class BotEngine:
         )
 
     async def _price(self, msg, ch, t, lang, district: str = "Erode") -> None:
-        crop = detect_crop(msg.text) if msg.kind == "text" else None
+        keywords, names = await self._crop_vocab()
+        crop = detect_crop(msg.text, keywords) if msg.kind == "text" else None
         crops = (crop,) if crop else self.crops
+        best_market = getattr(self.svc, "best_market_text", None)
         lines = []
         for c in crops:
             p = await self.svc.latest_price(c, district=district)
-            lines.append(
-                format_price(p, lang) if p else t["no_price"].format(crop=crop_name(c, lang))
-            )
+            if p is None:
+                lines.append(t["no_price"].format(crop=crop_name(c, lang, names)))
+                continue
+            lines.append(format_price(p, lang, names))
+            tip = await best_market(c, district, lang) if best_market else None
+            if tip:
+                lines.append(tip)
         await ch.send_text(msg.wa_id, "\n".join(lines))
 
     async def _forecast(self, msg, ch, t, lang) -> None:
-        crop = detect_crop(msg.text) if msg.kind == "text" else None
+        keywords, _ = await self._crop_vocab()
+        crop = detect_crop(msg.text, keywords) if msg.kind == "text" else None
         crops = (crop,) if crop else self.crops
         parts = []
         for c in crops:

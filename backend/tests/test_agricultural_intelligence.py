@@ -124,30 +124,30 @@ def test_haversine_distance_and_arbitrage_calculation(db, intelligence_fixture):
     assert 80.0 <= dist <= 100.0
 
     today = date.today()
-    # Add origin price: ₹14,000/quintal in Erode
+    # Add origin price: ₹140/kg (₹14,000/quintal) in Erode; prices are stored per kg
     db.add(
         MarketPrice(
             crop_id=crop.id,
             market_id=m_erode.id,
             district="Erode",
-            modal_price=Decimal("14000.00"),
-            min_price=Decimal("13500.00"),
-            max_price=Decimal("14500.00"),
+            modal_price=Decimal("140.00"),
+            min_price=Decimal("135.00"),
+            max_price=Decimal("145.00"),
             price_date=today,
             source="ogd",
             quality_score=Decimal("95.0"),
         )
     )
 
-    # Add destination price: ₹15,500/quintal in Coimbatore
+    # Add destination price: ₹155/kg (₹15,500/quintal) in Coimbatore
     db.add(
         MarketPrice(
             crop_id=crop.id,
             market_id=m_cbe.id,
             district="Coimbatore",
-            modal_price=Decimal("15500.00"),
-            min_price=Decimal("15000.00"),
-            max_price=Decimal("16000.00"),
+            modal_price=Decimal("155.00"),
+            min_price=Decimal("150.00"),
+            max_price=Decimal("160.00"),
             price_date=today,
             source="ogd",
             quality_score=Decimal("92.0"),

@@ -414,9 +414,9 @@
     "semantic_hash": "b9c7d5481feaa2a1ad8041f2e835b3f8"
   },
   "backend/app/services/bot.py": {
-    "mtime": 1790403833.8139272,
-    "seen": 1792667855.9618828,
-    "ast_hash": "7005461da6b5a8f608a23592e1ccc65f",
+    "mtime": 1792672546.4660332,
+    "seen": 1792672860.5005333,
+    "ast_hash": "7483fe27d7eabc335db9319f240fdcf5",
     "semantic_hash": ""
   },
   "backend/app/services/data_cleaning.py": {
@@ -426,9 +426,9 @@
     "semantic_hash": "4e14a2c88dd3b65d685145ec9a2569d3"
   },
   "backend/app/services/db_bot_services.py": {
-    "mtime": 1791215144.37639,
-    "seen": 1792667855.9625583,
-    "ast_hash": "ff05ba1f3c8b8e3e97498a1777d4c776",
+    "mtime": 1792672662.6289153,
+    "seen": 1792672860.5016525,
+    "ast_hash": "6bbd148e16344d26cae9ccedfb44f2f7",
     "semantic_hash": ""
   },
   "backend/app/services/farmer_service.py": {
@@ -468,9 +468,9 @@
     "semantic_hash": ""
   },
   "backend/app/services/weather_service.py": {
-    "mtime": 1791197185.4049788,
-    "seen": 1792667855.963614,
-    "ast_hash": "b8b1dbd7a883645ecaeca82e28cdddbc",
+    "mtime": 1792672458.183429,
+    "seen": 1792672860.5042348,
+    "ast_hash": "2d7064a0625e03e7400689ec5e7e723f",
     "semantic_hash": ""
   },
   "backend/app/utils/__init__.py": {
@@ -636,9 +636,9 @@
     "semantic_hash": "f0db3c77fc56359751ef03ce034c02d3"
   },
   "backend/tests/test_whatsapp_bot.py": {
-    "mtime": 1790140474.28936,
-    "seen": 1790159587.3267977,
-    "ast_hash": "f5449b315e45ec56e80676c692b162e5",
+    "mtime": 1792672639.0401704,
+    "seen": 1792672860.5234547,
+    "ast_hash": "d6631e524b13a5474af25a0b6cf272ab",
     "semantic_hash": ""
   },
   "backend/tests/test_whatsapp_harvest_flow.py": {
@@ -1116,9 +1116,9 @@
     "semantic_hash": ""
   },
   "backend/app/services/arbitrage.py": {
-    "mtime": 1791364138.5812998,
-    "seen": 1792667855.9614573,
-    "ast_hash": "10f70e0175a54f4e89e64a919c341a77",
+    "mtime": 1792672471.1139,
+    "seen": 1792672860.5001092,
+    "ast_hash": "859356d8c8265dfad6527a6876aad500",
     "semantic_hash": ""
   },
   "backend/app/services/audit.py": {
@@ -1254,9 +1254,9 @@
     "semantic_hash": ""
   },
   "backend/tests/test_agricultural_intelligence.py": {
-    "mtime": 1790349704.6019776,
-    "seen": 1790349750.3557074,
-    "ast_hash": "e3a075ccfc3b6cce115aadb4ef8f835a",
+    "mtime": 1792672736.52776,
+    "seen": 1792672860.5135782,
+    "ast_hash": "3ca5680e710c4a9dde9f5c38895b8451",
     "semantic_hash": ""
   },
   "backend/tests/test_crop_ontology.py": {
@@ -1620,9 +1620,9 @@
     "semantic_hash": ""
   },
   ".claude/settings.local.json": {
-    "mtime": 1792668359.1667576,
-    "seen": 1792668472.3318865,
-    "ast_hash": "bc28dec3610e3ad992b591b6f02714de",
+    "mtime": 1792670998.5095785,
+    "seen": 1792672860.4737368,
+    "ast_hash": "41fa591004965e5e7d92c2fab8c69b5f",
     "semantic_hash": ""
   },
   "backend/alembic/versions/0011_supply_demand_network.py": {
@@ -1824,9 +1824,9 @@
     "semantic_hash": ""
   },
   "backend/tests/test_arbitrage_enhancements.py": {
-    "mtime": 1791364138.5822978,
-    "seen": 1792667855.9680026,
-    "ast_hash": "e85976cca691cdd3fc5525b878c2af9d",
+    "mtime": 1792672612.0090325,
+    "seen": 1792672860.5135815,
+    "ast_hash": "16b437c0ae02a4cff168dd61d8c28f86",
     "semantic_hash": ""
   },
   "backend/tests/test_create_admin.py": {

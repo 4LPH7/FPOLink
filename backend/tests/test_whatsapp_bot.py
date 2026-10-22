@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import json
@@ -9,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import whatsapp as wa
-from app.messaging.base import Button
+from app.messaging.base import Button, InboundMessage
 from app.messaging.whatsapp_cloud import parse_webhook, verify_signature
 from app.services.bot import (
     BotEngine,
@@ -293,3 +294,45 @@ def test_parse_qty_bounds():
     assert parse_qty("0") is None
     assert parse_qty("999999") is None
     assert parse_qty("no number") is None
+
+
+class CropAwareServices(InMemoryServices):
+    """InMemoryServices plus the optional crop list and selling advice."""
+
+    async def crop_vocab(self):
+        return {
+            "onion": ("Onion", "வெங்காயம்", ["onion", "வெங்காயம்"]),
+            "small onion": ("Small Onion", "சின்ன வெங்காயம்", ["small onion", "சின்ன வெங்காயம்"]),
+        }
+
+    async def best_market_text(self, crop, district, lang):
+        return f"best market for {crop} near {district}"
+
+
+def test_bare_crop_name_gets_price_and_where_to_sell():
+    svc = CropAwareServices(
+        farmers=make_services().farmers,
+        prices={
+            "small onion": PriceInfo(
+                "small onion",
+                Decimal("42"),
+                Decimal("38"),
+                Decimal("45"),
+                "Erode",
+                date(2026, 10, 22),
+            )
+        },
+    )
+    ch = FakeChannel()
+
+    asyncio.run(BotEngine(svc).handle(InboundMessage("m1", PHONE_TA, "text", "சின்ன வெங்காயம்"), ch))
+
+    body = ch.sent[-1][2]
+    assert body.startswith("சின்ன வெங்காயம்: ₹4,200/குவிண்டால்")  # not plain onion
+    assert body.endswith("best market for small onion near Erode")
+
+
+def test_multi_word_crop_names_win_over_their_last_word():
+    words = {"onion": ["onion"], "small onion": ["small onion"]}
+    assert detect_crop("small onion rate", words) == "small onion"
+    assert detect_crop("onion price", words) == "onion"

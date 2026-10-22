@@ -10,6 +10,8 @@ Verifies:
 7. Presence of bilingual defensibility disclaimers.
 """
 
+import asyncio
+from contextlib import nullcontext
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -25,7 +27,9 @@ from app.models.variety import Variety
 from app.services.arbitrage import (
     find_market_arbitrage,
     get_default_spoilage_risk,
+    haversine_distance_km,
 )
+from app.services.db_bot_services import DbBotServices
 
 client = TestClient(app)
 
@@ -131,16 +135,17 @@ def arbitrage_test_env(db):
 
     today = date.today()
 
-    # Seed Turmeric Prices: Erode ₹8,000 vs Salem ₹9,200
+    # Prices are stored per kg, as ingestion stores them.
+    # Seed Turmeric Prices: Erode ₹80/kg (₹8,000/qtl) vs Salem ₹92/kg (₹9,200/qtl)
     db.add(
         MarketPrice(
             crop_id=c_turmeric.id,
             variety_id=v_erode_local.id,
             market_id=m_erode.id,
             district="Erode",
-            modal_price=Decimal("8000.00"),
-            min_price=Decimal("7800.00"),
-            max_price=Decimal("8200.00"),
+            modal_price=Decimal("80.00"),
+            min_price=Decimal("78.00"),
+            max_price=Decimal("82.00"),
             price_date=today,
             source="agmarknet",
             quality_score=Decimal("95.0"),
@@ -152,9 +157,9 @@ def arbitrage_test_env(db):
             variety_id=v_erode_local.id,
             market_id=m_salem.id,
             district="Salem",
-            modal_price=Decimal("9200.00"),
-            min_price=Decimal("9000.00"),
-            max_price=Decimal("9400.00"),
+            modal_price=Decimal("92.00"),
+            min_price=Decimal("90.00"),
+            max_price=Decimal("94.00"),
             price_date=today - timedelta(days=1),
             source="agmarknet",
             arrival_quantity=Decimal("12.5"),
@@ -162,15 +167,15 @@ def arbitrage_test_env(db):
         )
     )
 
-    # Seed Banana Prices: Erode ₹2,500 vs Salem ₹3,200 (Observed 3 days ago at Salem)
+    # Seed Banana Prices: Erode ₹25/kg vs Salem ₹32/kg (Observed 3 days ago at Salem)
     db.add(
         MarketPrice(
             crop_id=c_banana.id,
             market_id=m_erode.id,
             district="Erode",
-            modal_price=Decimal("2500.00"),
-            min_price=Decimal("2400.00"),
-            max_price=Decimal("2600.00"),
+            modal_price=Decimal("25.00"),
+            min_price=Decimal("24.00"),
+            max_price=Decimal("26.00"),
             price_date=today,
             source="agmarknet",
             quality_score=Decimal("90.0"),
@@ -181,9 +186,9 @@ def arbitrage_test_env(db):
             crop_id=c_banana.id,
             market_id=m_salem.id,
             district="Salem",
-            modal_price=Decimal("3200.00"),
-            min_price=Decimal("3100.00"),
-            max_price=Decimal("3300.00"),
+            modal_price=Decimal("32.00"),
+            min_price=Decimal("31.00"),
+            max_price=Decimal("33.00"),
             price_date=today - timedelta(days=3),
             source="agmarknet",
             arrival_quantity=Decimal("3.0"),  # thin liquidity
@@ -306,3 +311,46 @@ def test_arbitrage_api_endpoints_with_name_resolution_and_disclaimers(arbitrage_
     # Commission on ₹9,200 @ 1.5% = ₹138.0
     assert opp["costs_breakdown"]["commission"] == 138.0
     assert opp["uncertainty_rating"] is not None
+
+
+def test_per_quintal_spread_and_district_fallback(db, arbitrage_test_env):
+    """Stored ₹/kg prices compare per quintal; markets without coordinates use their district."""
+    env = arbitrage_test_env
+    no_coords = Market(name="Salem Uzhavar Sandhai", code="TN-SLM-US-ARB", district="Salem")
+    unknown = Market(name="Nowhere Mandi", code="TN-XX-ARB", district="Atlantis")
+    db.add_all([no_coords, unknown])
+    db.flush()
+    for market in (no_coords, unknown):
+        db.add(
+            MarketPrice(
+                crop_id=env["c_turmeric"].id,
+                market_id=market.id,
+                district=market.district,
+                modal_price=Decimal("90.00"),
+                min_price=Decimal("88.00"),
+                max_price=Decimal("92.00"),
+                price_date=date.today(),
+                source="agmarknet",
+            )
+        )
+    db.flush()
+
+    result = find_market_arbitrage(db, env["c_turmeric"].id, env["m_erode"].id)
+    by_name = {o["target_market_name"]: o for o in result["opportunities"]}
+
+    assert result["origin_price"] == 8000.0  # ₹80/kg
+    assert by_name["Salem Market Committee"]["gross_spread"] == 1200.0  # (₹92 - ₹80) x 100
+    assert by_name["Salem Uzhavar Sandhai"]["distance_km"] > 50  # Salem HQ, not 0 km
+    assert "Nowhere Mandi" not in by_name  # no location, no transport estimate
+
+
+def test_bot_names_better_market_after_transport(db, arbitrage_test_env):
+    """The farmer bot's price reply points to Salem: ₹1,200/qtl more, minus ~₹120 freight."""
+    svc = DbBotServices(db_factory=lambda: nullcontext(db))
+
+    text = asyncio.run(svc.best_market_text("turmeric arbitrage", "Erode", "en"))
+
+    km = haversine_distance_km(11.3410, 77.7172, 11.6643, 78.1460)  # Erode -> Salem, ~59 km
+    net = 1200 - (50 + km * 1.2)  # LCV freight per quintal; turmeric has no spoilage buffer
+    assert text.startswith(f"Better deal: Salem Market Committee (Salem, ~{round(km)} km)")
+    assert f"₹{net:,.0f}/quintal more after transport" in text

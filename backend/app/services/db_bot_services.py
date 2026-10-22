@@ -25,7 +25,11 @@ from app.models.prediction import Prediction
 from app.models.user import User
 from app.models.weather import WeatherData
 from app.models.whatsapp import ConversationState, WhatsAppInbound
-from app.services.bot import ConvState, Farmer, PriceInfo
+from app.services.bot import ConvState, Farmer, PriceInfo, T
+
+# Farmers rarely haul a small lot further than this for a better price.
+# ponytail: one radius for every crop; tune per crop after pilot feedback.
+FARMER_RADIUS_KM = 150.0
 
 
 class DbBotServices:
@@ -153,6 +157,23 @@ class DbBotServices:
         4. If newest date is older than stale_days_threshold (default 7 days),
            the price is flagged with an advisory.
         """
+        with self.db_factory() as db:
+            row = self._latest_price_row(db, crop, district)
+            if not row:
+                return None
+            mp, market_name = row
+            return PriceInfo(
+                crop=crop,
+                modal_per_kg=mp.modal_price,
+                min_per_kg=mp.min_price,
+                max_per_kg=mp.max_price,
+                market=market_name,
+                price_date=mp.price_date,
+            )
+
+    @staticmethod
+    def _latest_price_row(db, crop: str, district: Optional[str], state_fallback: bool = True):
+        """Newest verified (MarketPrice, market name) for a crop: the district, else the state."""
         from sqlalchemy import case
 
         from app.core.sources import get_real_price_sources
@@ -162,59 +183,72 @@ class DbBotServices:
             (MarketPrice.source == "ceda", 2),
             else_=99,
         )
-
-        with self.db_factory() as db:
-            # Query with district filter first — strictly whitelisting real sources
-            query = (
-                db.query(MarketPrice, Market.name.label("market_name"))
-                .join(Crop, MarketPrice.crop_id == Crop.id)
-                .join(Market, MarketPrice.market_id == Market.id)
-                .filter(
-                    Crop.name.ilike(f"{crop}%"),
-                    MarketPrice.source.in_(get_real_price_sources()),
-                )
+        # Strictly whitelisting real sources; ties go to the official feed, then the best price.
+        query = (
+            db.query(MarketPrice, Market.name.label("market_name"))
+            .join(Crop, MarketPrice.crop_id == Crop.id)
+            .join(Market, MarketPrice.market_id == Market.id)
+            .filter(
+                Crop.name.ilike(f"{crop}%"),
+                MarketPrice.source.in_(get_real_price_sources()),
             )
-
-            if district:
-                district_prices = (
-                    query.filter(Market.district.ilike(f"{district}%"))
-                    .order_by(
-                        MarketPrice.price_date.desc(),
-                        source_precedence.asc(),
-                        MarketPrice.modal_price.desc(),
-                    )
-                    .first()
-                )
-                if district_prices:
-                    mp, market_name = district_prices
-                    return PriceInfo(
-                        crop=crop,
-                        modal_per_kg=mp.modal_price,
-                        min_per_kg=mp.min_price,
-                        max_per_kg=mp.max_price,
-                        market=market_name,
-                        price_date=mp.price_date,
-                    )
-
-            # Fallback across all districts in state
-            state_price = query.order_by(
+            .order_by(
                 MarketPrice.price_date.desc(),
                 source_precedence.asc(),
                 MarketPrice.modal_price.desc(),
-            ).first()
+            )
+        )
+        if district:
+            row = query.filter(Market.district.ilike(f"{district}%")).first()
+            if row or not state_fallback:
+                return row
+        return query.first() if state_fallback else None
 
-            if state_price:
-                mp, market_name = state_price
-                return PriceInfo(
-                    crop=crop,
-                    modal_per_kg=mp.modal_price,
-                    min_per_kg=mp.min_price,
-                    max_per_kg=mp.max_price,
-                    market=market_name,
-                    price_date=mp.price_date,
-                )
+    async def crop_vocab(self) -> dict[str, tuple[str, str, list[str]]]:
+        """Active crops as {name: (English, Tamil, words farmers may use)} for the bot."""
+        from app.models.crop_alias import CropAlias
 
+        with self.db_factory() as db:
+            aliases: dict = {}
+            for crop_id, alias in db.query(CropAlias.crop_id, CropAlias.alias).all():
+                aliases.setdefault(crop_id, []).append(alias)
+            vocab = {}
+            for c in db.query(Crop).filter(Crop.is_active.is_(True)).all():
+                en = c.name.title()
+                words = [c.name, c.canonical_name, c.tamil_name, *aliases.get(c.id, [])]
+                vocab[c.name.lower()] = (en, c.tamil_name or en, [w for w in words if w])
+            return vocab
+
+    async def best_market_text(
+        self, crop: str, district: Optional[str], lang: str = "ta"
+    ) -> Optional[str]:
+        """One line on whether a nearby market pays clearly more after transport."""
+        from app.services.arbitrage import find_market_arbitrage
+
+        with self.db_factory() as db:
+            # Compare against the farmer's own district only; a far-off origin is no advice.
+            row = self._latest_price_row(db, crop, district, state_fallback=False)
+            if not row:
+                return None
+            origin = row[0]
+            result = find_market_arbitrage(
+                db, origin.crop_id, origin.market_id, max_distance_km=FARMER_RADIUS_KM
+            )
+        if not result.get("opportunities"):
             return None
+        t = T.get(lang, T["ta"])
+        best = next(
+            (o for o in result["opportunities"] if o["recommendation"] == "strong_arbitrage"),
+            None,
+        )
+        if best is None:
+            return t["sell_local"]
+        return t["sell_there"].format(
+            market=best["target_market_name"],
+            district=best["district"],
+            km=round(best["distance_km"]),
+            gain=f"{best['net_spread']:,.0f}",
+        )
 
     def is_price_stale(self, price_info: PriceInfo) -> bool:
         """Check if price date exceeds staleness threshold."""
@@ -289,9 +323,7 @@ class DbBotServices:
         }
         lang_key = "ta" if lang == "ta" else "en"
         signal = signal_text[lang_key].get(point["signal"], signal_text[lang_key]["neutral"])
-        from app.services.bot import crop_name
-
-        name = crop_name(crop, lang_key)
+        name = (lang_key == "ta" and crop_obj.tamil_name) or crop_obj.name.title()
         if lang_key == "ta":
             return (
                 f"📈 {name} 7-நாள் கணிப்பு ({market_name}, {point['target_date']}): "

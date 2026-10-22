@@ -7,7 +7,7 @@ and defensible net arbitrage margins across Tamil Nadu regulated agricultural ma
 
 import math
 from datetime import timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import func
@@ -17,6 +17,8 @@ from app.models.crop import Crop
 from app.models.market import Market
 from app.models.market_price import MarketPrice
 from app.models.variety import Variety
+from app.services.weather_service import DEFAULT_LOCATIONS
+from app.utils.units import convert_from_per_kg
 
 # Standard commercial transport vehicle presets for Tamil Nadu agricultural corridors
 VEHICLE_PROFILES = {
@@ -67,6 +69,23 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return round(r * c, 1)
+
+
+_DISTRICT_COORDS = {
+    name.lower(): (loc["latitude"], loc["longitude"]) for name, loc in DEFAULT_LOCATIONS.items()
+}
+
+
+def market_coordinates(market: Market) -> Optional[Tuple[float, float]]:
+    """A market's own coordinates, else its district headquarters, else None.
+
+    Most markets created by ingestion have no coordinates of their own.
+    ponytail: the district HQ is a proxy, so trips within one district count as 0 km;
+    geocode markets to tighten transport estimates.
+    """
+    if market.latitude is not None and market.longitude is not None:
+        return float(market.latitude), float(market.longitude)
+    return _DISTRICT_COORDS.get((market.district or "").strip().lower())
 
 
 def get_default_spoilage_risk(crop: Crop) -> float:
@@ -211,7 +230,8 @@ def find_market_arbitrage(
             "disclaimer_en": DISCLAIMER_EN,
         }
 
-    origin_price = float(origin_price_rec.modal_price)
+    # Prices are stored per kg, while freight and fees are per quintal: work per quintal.
+    origin_price = float(convert_from_per_kg(origin_price_rec.modal_price, "quintal"))
     origin_variety_id = origin_price_rec.variety_id
     origin_variety = (
         db.query(Variety).filter(Variety.id == origin_variety_id).first()
@@ -253,23 +273,18 @@ def find_market_arbitrage(
         .all()
     )
 
-    origin_lat = float(origin_market.latitude) if origin_market.latitude is not None else 11.3410
-    origin_lon = float(origin_market.longitude) if origin_market.longitude is not None else 77.7172
+    origin_xy = market_coordinates(origin_market)
 
     opportunities = []
     for mp, target_market in candidate_prices:
-        target_lat = (
-            float(target_market.latitude) if target_market.latitude is not None else origin_lat
-        )
-        target_lon = (
-            float(target_market.longitude) if target_market.longitude is not None else origin_lon
-        )
-
-        distance_km = haversine_distance_km(origin_lat, origin_lon, target_lat, target_lon)
+        target_xy = market_coordinates(target_market)
+        if origin_xy is None or target_xy is None:
+            continue  # no location means no honest transport estimate
+        distance_km = haversine_distance_km(*origin_xy, *target_xy)
         if distance_km > max_distance_km:
             continue
 
-        target_modal = float(mp.modal_price)
+        target_modal = float(convert_from_per_kg(mp.modal_price, "quintal"))
         gross_spread = round(target_modal - origin_price, 2)
 
         # Transparent line-item cost deductions
