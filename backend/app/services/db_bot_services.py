@@ -204,6 +204,13 @@ class DbBotServices:
                 return row
         return query.first() if state_fallback else None
 
+    async def log_activity(self, farmer_id: str, intent: str, advice_shown: bool) -> None:
+        from app.models.bot_activity import BotActivity
+
+        with self.db_factory() as db:
+            db.add(BotActivity(farmer_id=UUID(farmer_id), intent=intent, advice_shown=advice_shown))
+            db.commit()
+
     async def crop_vocab(self) -> dict[str, tuple[str, str, list[str]]]:
         """Active crops as {name: (English, Tamil, words farmers may use)} for the bot."""
         from app.models.crop_alias import CropAlias

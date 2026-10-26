@@ -1,6 +1,7 @@
 from app.models.aggregation import AggregationBatch, BatchItem
 from app.models.audit_log import AuditLog
 from app.models.base import Base
+from app.models.bot_activity import BotActivity
 from app.models.buyer import Buyer, BuyerRequirement
 from app.models.crop import Crop
 from app.models.crop_alias import CropAlias
@@ -39,6 +40,7 @@ from app.models.whatsapp import (
 )
 
 __all__ = [
+    "BotActivity",
     "Base",
     "AuditLog",
     "User",

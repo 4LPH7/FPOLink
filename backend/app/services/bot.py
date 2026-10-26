@@ -166,6 +166,9 @@ class BotServices(Protocol):
     async def best_market_text(self, crop: str, district: str, lang: str) -> str | None:
         """Optional: one line on where the crop sells better after transport costs."""
 
+    async def log_activity(self, farmer_id: str, intent: str, advice_shown: bool) -> None:
+        """Optional: record one farmer request for pilot usage reporting."""
+
     async def submit_harvest(
         self,
         farmer_id: str,
@@ -406,8 +409,9 @@ class BotEngine:
             await self._continue_harvest(msg, ch, t, lang, state)
             return
 
+        advice = False
         if intent == "price":
-            await self._price(msg, ch, t, lang, district=farmer.district)
+            advice = await self._price(msg, ch, t, lang, district=farmer.district)
         elif intent == "forecast":
             await self._forecast(msg, ch, t, lang)
         elif intent == "weather":
@@ -420,6 +424,10 @@ class BotEngine:
             await self._ask_crop(msg, ch, t, lang)
         else:
             await ch.send_text(msg.wa_id, t["unknown"])
+            return
+        log = getattr(self.svc, "log_activity", None)
+        if log:
+            await log(farmer.id, intent, advice)
 
     # ---- intent routing
 
@@ -445,12 +453,14 @@ class BotEngine:
             ],
         )
 
-    async def _price(self, msg, ch, t, lang, district: str = "Erode") -> None:
+    async def _price(self, msg, ch, t, lang, district: str = "Erode") -> bool:
+        """Reply with prices; True when a better market was named."""
         keywords, names = await self._crop_vocab()
         crop = detect_crop(msg.text, keywords) if msg.kind == "text" else None
         crops = (crop,) if crop else self.crops
         best_market = getattr(self.svc, "best_market_text", None)
         lines = []
+        advice = False
         for c in crops:
             p = await self.svc.latest_price(c, district=district)
             if p is None:
@@ -460,7 +470,9 @@ class BotEngine:
             tip = await best_market(c, district, lang) if best_market else None
             if tip:
                 lines.append(tip)
+                advice = advice or tip != t["sell_local"]
         await ch.send_text(msg.wa_id, "\n".join(lines))
+        return advice
 
     async def _forecast(self, msg, ch, t, lang) -> None:
         keywords, _ = await self._crop_vocab()

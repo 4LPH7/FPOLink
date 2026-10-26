@@ -12,6 +12,7 @@ from app.api.v1.ingestion import router as ingestion_router
 from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.markets import router as markets_router
 from app.api.v1.matching import router as matching_router
+from app.api.v1.pilot import router as pilot_router
 from app.api.v1.prices import router as prices_router
 
 router = APIRouter(prefix="/api/v1")
@@ -28,3 +29,4 @@ router.include_router(buyers_router)
 router.include_router(matching_router)
 router.include_router(fpos_router)
 router.include_router(audit_router)
+router.include_router(pilot_router)
