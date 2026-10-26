@@ -74,7 +74,7 @@ class CEDAAPIProvider(MarketDataProvider):
         self.max_retries = max_retries
 
     def is_available(self) -> bool:
-        return bool(self.api_key)
+        return bool(self.api_key) and not getattr(self, "_key_rejected", False)
 
     def is_circuit_open(self) -> bool:
         """Check if circuit breaker is currently tripped."""
@@ -171,6 +171,9 @@ class CEDAAPIProvider(MarketDataProvider):
                     logger.error(
                         f"CEDA API non-transient 4xx HTTP error {e.response.status_code}: {e}"
                     )
+                    if e.response.status_code in (401, 403):
+                        # A run asks once per crop and district; a bad key won't recover mid-run.
+                        self._key_rejected = True
                     raise
                 else:
                     # Other 5xx server errors (e.g. 500) are not retried but are recorded as failures

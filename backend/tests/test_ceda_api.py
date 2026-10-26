@@ -188,3 +188,20 @@ def test_ceda_non_transient_4xx_propagates_immediately_without_circuit_failure(c
     # Circuit breaker must remain closed and not register failure
     assert ceda_provider.is_circuit_open() is False
     assert ceda_provider._failure_count == 0
+
+
+@respx.mock
+def test_rejected_key_switches_provider_off_for_the_run():
+    """A 401/403 means the key is bad: stop calling CEDA instead of failing once per crop."""
+    route = respx.route(url__startswith=CEDA_API_BASE_URL).respond(status_code=401)
+    provider = CEDAAPIProvider(api_key="revoked-key", timeout=5.0)
+    assert provider.is_available()
+
+    for _ in range(3):
+        try:
+            provider.fetch_prices("turmeric", "Erode")
+        except Exception:
+            pass
+
+    assert not provider.is_available()
+    assert route.call_count == 1
