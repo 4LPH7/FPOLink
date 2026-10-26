@@ -49,7 +49,7 @@ T = {
         "price_line": "{crop}: ₹{quintal}/quintal (min ₹{lo}, max ₹{hi}) - {market}, {date}",
         "sell_there": "Better deal: {market} ({district}, ~{km} km) pays about ₹{gain}/quintal more after transport (estimate).",
         "sell_local": "Nearby markets don't pay more after transport today.",
-        "ask_crop": "Which crop did you harvest?",
+        "ask_crop": "Which crop did you harvest? Tap one, or type the crop name.",
         "ask_qty": "How many kg? (send a number, e.g. 250)",
         "bad_qty": "Please send a valid number of kg, e.g. 250.",
         "ask_grade": "Which grade?",
@@ -84,7 +84,7 @@ T = {
         "price_line": "{crop}: ₹{quintal}/குவிண்டால் (குறைந்தது ₹{lo}, அதிகபட்சம் ₹{hi}) - {market}, {date}",
         "sell_there": "சிறந்த வாய்ப்பு: {market} ({district}, ~{km} கி.மீ) — போக்குவரத்து செலவு போக குவிண்டாலுக்கு சுமார் ₹{gain} கூடுதல் (மதிப்பீடு).",
         "sell_local": "இன்று போக்குவரத்து செலவு போக, அருகிலுள்ள சந்தைகளில் கூடுதல் விலை இல்லை.",
-        "ask_crop": "எந்தப் பயிரை அறுவடை செய்தீர்கள்?",
+        "ask_crop": "எந்தப் பயிரை அறுவடை செய்தீர்கள்? தேர்ந்தெடுக்கவும் அல்லது பயிரின் பெயரை தட்டச்சு செய்யவும்.",
         "ask_qty": "எத்தனை கிலோ? (எண்ணை அனுப்பவும், எ.கா. 250)",
         "bad_qty": "சரியான கிலோ எண்ணை அனுப்பவும், எ.கா. 250.",
         "ask_grade": "எந்தத் தரம்?",
@@ -489,10 +489,13 @@ class BotEngine:
     async def _continue_harvest(self, msg, ch, t, lang, state: ConvState) -> None:
         text = msg.text.strip()
         to = msg.wa_id
+        keywords, names = await self._crop_vocab()
 
         if state.step == "crop":
-            crop = text.split(":", 1)[1] if text.startswith("crop:") else detect_crop(text)
-            if crop not in self.crops:
+            crop = (
+                text.split(":", 1)[1] if text.startswith("crop:") else detect_crop(text, keywords)
+            )
+            if crop not in keywords:
                 retries = state.data.get("retries", 0) + 1
                 if retries >= 3:
                     await self.svc.set_state(to, None)
@@ -551,7 +554,7 @@ class BotEngine:
             await ch.send_buttons(
                 to,
                 t["confirm"].format(
-                    crop=crop_name(state.data["crop"], lang),
+                    crop=crop_name(state.data["crop"], lang, names),
                     qty=state.data["qty"],
                     grade=raw,
                 ),
@@ -572,7 +575,7 @@ class BotEngine:
                 await ch.send_text(
                     to,
                     t["saved"].format(
-                        crop=crop_name(state.data["crop"], lang),
+                        crop=crop_name(state.data["crop"], lang, names),
                         qty=state.data["qty"],
                         grade=state.data["grade"],
                     ),
@@ -584,7 +587,7 @@ class BotEngine:
                 await ch.send_buttons(
                     to,
                     t["confirm"].format(
-                        crop=crop_name(state.data["crop"], lang),
+                        crop=crop_name(state.data["crop"], lang, names),
                         qty=state.data["qty"],
                         grade=state.data["grade"],
                     ),

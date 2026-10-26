@@ -336,3 +336,20 @@ def test_multi_word_crop_names_win_over_their_last_word():
     words = {"onion": ["onion"], "small onion": ["small onion"]}
     assert detect_crop("small onion rate", words) == "small onion"
     assert detect_crop("onion price", words) == "onion"
+
+
+def test_harvest_flow_accepts_any_known_crop_typed_by_name():
+    svc = CropAwareServices(farmers=make_services().farmers)
+    ch = FakeChannel()
+    bot = BotEngine(svc)
+
+    def say(n, text):
+        asyncio.run(bot.handle(InboundMessage(f"h{n}", PHONE_TA, "text", text), ch))
+
+    say(1, "harvest")
+    say(2, "small onion")  # not one of the two buttons
+    say(3, "250")
+    say(4, "A")
+    say(5, "yes")
+
+    assert svc.harvests == [("f1", "small onion", Decimal("250"), "A")]
