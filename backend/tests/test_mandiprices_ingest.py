@@ -4,11 +4,16 @@ from datetime import date
 from decimal import Decimal
 
 from app.data_sources.base import PriceRecord
-from app.data_sources.mandiprices import MandiPricesProvider
+from app.data_sources.mandiprices import CROP_SLUG_MAP, MandiPricesProvider
 from app.data_sources.registry import DataSourceRegistry
 from app.models.crop import Crop
 from app.models.market_price import MarketPrice
 from app.services.ingestion import IngestionService
+
+
+def test_small_onion_is_not_priced_from_the_ordinary_onion_page():
+    """The site has no shallot page; mapping it to onion would store wrong prices."""
+    assert "small onion" not in CROP_SLUG_MAP
 
 
 def test_mandiprices_provider_in_registry():

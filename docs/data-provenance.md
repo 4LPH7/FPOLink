@@ -43,6 +43,19 @@ To protect ML forecasting pipelines and analytics from contamination by syntheti
 
 ## 3. Guide: Ingesting Verified Real Mandi Data
 
+### Live source status (checked 2026-11-06)
+
+"Real time" means same-day: mandis publish once a day. Re-check this table before relying on it.
+
+| Source | Status | Notes |
+|---|---|---|
+| MandiPrices (`mandiprices.co.in`, mirrors Agmarknet) | **Working; primary same-day source** | 14 of 16 mapped crops had prices dated 2026-11-06. 100-190 markets reported within 3 days for tomato, banana, coconut, onion, green chilli, ladies finger and brinjal; thin for turmeric (1), mango (4) and maize (7); cotton is off-season (115 days old). One HTML page per crop covers every district, so a run fetches each page once. `robots.txt` allows crawlers, but there is no API or written licence: ask the site before charging customers. The pages committed in `backend/data/mandiprices/` are a fallback only. The site has no small onion (shallot) page, so that crop gets no price here. It answered HTTP 403 ("Checking your browser") to requests with fewer browser headers than the provider sends, so keep the provider's header set. |
+| data.gov.in OGD (official Agmarknet feed, section A) | **Timing out** (60 s, even for 5 records) | Licensed under the Open Government License - India. Kept in the chain; skipped for the rest of a run after its first failure. |
+| CEDA Ashoka API (section B) | **Key rejected** (HTTP 401 on every request shape) | History only: CEDA lags by months. The client defaults to Erode since 2024-01-01, so it ignores the district it is given; a statewide recent-window call needs `district_id=None` and a date window. Untested without a valid key. |
+| e-NAM | No public API found | Previous-day trades are on the portal and app. Ask the e-NAM helpline about data access. |
+
+Schedule: 06:00 IST daily, which loads the previous day's prices because a day's prices appear later, plus reruns at 10:00, 13:00 and 16:00 on weekdays that bring in the same day's. The reruns need no API key. This needs an always-on worker. The production Compose has one; Render's free plan sleeps, so staging relies on `.github/workflows/staging-wake.yml` and shows the previous day's prices, because it sleeps through the reruns.
+
 ### A. Live Daily Ingestion (data.gov.in OGD Agmarknet)
 
 The Open Government Data (OGD) platform hosts live mandi prices from Agmarknet.

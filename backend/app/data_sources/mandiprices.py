@@ -29,7 +29,8 @@ CROP_SLUG_MAP: Dict[str, str] = {
     "tapioca": "tapioca",
     "maize": "maize",
     "onion": "onion",
-    "small onion": "onion",
+    # No "small onion" entry: the site has no shallot page, so mapping it to "onion" would
+    # store ordinary-onion prices as shallot prices. No source means no price, not a wrong one.
     "green chilli": "green-chilli",
     "ladies finger": "bhindi-ladies-finger",
     "brinjal": "brinjal",

@@ -237,23 +237,18 @@ def register_jobs(scheduler) -> None:
         id="price_ingestion",
     )
 
-    # OGD/CEDA publish daily mandi observations rather than exchange ticks. Recheck
-    # during market hours so the dashboard picks up new observations after publication.
-    if settings.OGD_API_KEY or settings.CEDA_API_KEY:
-        scheduler.add_job(
-            run_price_ingestion,
-            "cron",
-            hour="10,13,16",
-            minute=0,
-            day_of_week="mon-fri",
-            id="price_ingestion_market_hours",
-            max_instances=1,
-            coalesce=True,
-        )
-    else:
-        logger.warning(
-            "No live mandi API credentials configured; market-hour price refresh is disabled"
-        )
+    # Mandis publish through the day, so the 06:00 run only sees yesterday's prices. Re-run
+    # during market hours to pick up the same day's. Always on: the MandiPrices feed needs no key.
+    scheduler.add_job(
+        run_price_ingestion,
+        "cron",
+        hour="10,13,16",
+        minute=0,
+        day_of_week="mon-fri",
+        id="price_ingestion_market_hours",
+        max_instances=1,
+        coalesce=True,
+    )
 
     # Daily at 7 AM IST — predictions (after fresh prices)
     scheduler.add_job(run_predictions, "cron", hour=7, minute=0, id="predictions")

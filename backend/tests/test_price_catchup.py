@@ -3,10 +3,11 @@
 from datetime import datetime, timedelta
 
 import pytest
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 from app.config import settings
 from app.models.data_quality import IngestionRun
-from app.worker import IST, price_run_missed
+from app.worker import IST, price_run_missed, register_jobs
 
 # A far-future day keeps these rows clear of real runs other tests may leave behind.
 SEVEN_AM = datetime(2099, 1, 2, 7, 0, tzinfo=IST)
@@ -30,6 +31,17 @@ def add_run(db, started_at, completed=True, district="statewide"):
         )
     )
     db.flush()
+
+
+def test_market_hours_rerun_is_registered_without_api_keys(monkeypatch):
+    """MandiPrices needs no key, so same-day reruns must not depend on OGD or CEDA keys."""
+    monkeypatch.setattr(settings, "OGD_API_KEY", "")
+    monkeypatch.setattr(settings, "CEDA_API_KEY", "")
+    scheduler = BlockingScheduler(timezone="Asia/Kolkata")
+
+    register_jobs(scheduler)
+
+    assert "price_ingestion_market_hours" in {job.id for job in scheduler.get_jobs()}
 
 
 def test_missed_when_last_run_was_yesterday(db):
