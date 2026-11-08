@@ -44,4 +44,4 @@ ruff==0.8.4
 sentry-sdk[fastapi]==2.19.2
 
 # HTML parsing (mandiprices ingestion)
-beautifulsoup4==4.12.3
+beautifulsoup4==4.15.0
