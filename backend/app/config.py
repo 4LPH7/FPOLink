@@ -138,12 +138,7 @@ class Settings(BaseSettings):
     )
     CEDA_API_KEY: str = ""  # Centre for Economic Data & Analysis API key
 
-    # Scheduler Ingestion Times (IST)
-    PRICE_INGEST_HOUR_IST: int = 6
-    PRICE_INGEST_MINUTE_IST: int = 0
-
     # Geography & Scope
-    STATE: str = "Tamil Nadu"
     DEFAULT_DISTRICT: str = "Erode"
     DEFAULT_CROPS: str = (
         "turmeric,banana,coconut,paddy,groundnut,tomato,small onion,onion,"
@@ -184,10 +179,6 @@ class Settings(BaseSettings):
 
     # Sentry (optional error monitoring)
     SENTRY_DSN: Optional[str] = None
-
-    # Admin Phone & Seed Password
-    ADMIN_PHONE: str = ""
-    SEED_ADMIN_PASSWORD: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"

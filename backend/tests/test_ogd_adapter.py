@@ -11,7 +11,6 @@ import respx
 
 from app.config import settings
 from app.data_sources.ogd import OGD_BASE_URL, OGDProvider
-from scripts.ingest_ogd import check_status, load_fixture_records
 
 
 @pytest.fixture
@@ -61,19 +60,3 @@ def test_ogd_fetch_prices_mocked_http(ogd_synthetic_fixture):
     # 15100 quintal -> 151 per kg
     assert rec1.modal_price == Decimal("151")
     assert rec1.source == "ogd"
-
-
-def test_ogd_load_fixture_records_direct():
-    fixture_path = (
-        Path(__file__).resolve().parent / "fixtures" / "ogd_turmeric_response_synthetic.json"
-    )
-    records = load_fixture_records(fixture_path, crop="Turmeric", district="Erode")
-    assert len(records) == 3
-    markets = {r.market_name for r in records}
-    assert "Erode" in markets
-    assert "Perundurai" in markets
-
-
-def test_ogd_check_status_configured():
-    assert check_status(api_key="mock-key-123") is True
-    assert check_status(api_key="") is False

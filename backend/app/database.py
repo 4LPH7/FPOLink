@@ -51,11 +51,3 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
-
-
-def init_sqlite_schema() -> None:
-    """Create all tables directly on SQLite (Alembic migrations target PostgreSQL)."""
-    import app.models  # noqa: F401  (register every model on Base.metadata)
-    from app.models.base import Base
-
-    Base.metadata.create_all(bind=engine)

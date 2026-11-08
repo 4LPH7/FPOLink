@@ -5,7 +5,6 @@ Check terms if the FPO will pay for the service.
 """
 
 import logging
-from datetime import date
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -63,50 +62,4 @@ class WeatherProvider:
 
         except Exception as e:
             logger.error(f"Weather forecast error: {e}")
-            return []
-
-    def fetch_history(
-        self,
-        latitude: float,
-        longitude: float,
-        start_date: date,
-        end_date: date,
-    ) -> List[Dict[str, Any]]:
-        """Fetch historical weather data."""
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.get(
-                    f"{self.base_url}/archive",  # Open-Meteo historical endpoint
-                    params={
-                        "latitude": latitude,
-                        "longitude": longitude,
-                        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_mean,wind_speed_10m_max",
-                        "timezone": "Asia/Kolkata",
-                        "start_date": start_date.isoformat(),
-                        "end_date": end_date.isoformat(),
-                    },
-                )
-                response.raise_for_status()
-                data = response.json()
-
-            daily = data.get("daily", {})
-            dates = daily.get("time", [])
-            results = []
-            for i, d in enumerate(dates):
-                results.append(
-                    {
-                        "date": d,
-                        "temperature_max": daily.get("temperature_2m_max", [None])[i],
-                        "temperature_min": daily.get("temperature_2m_min", [None])[i],
-                        "rainfall_mm": daily.get("precipitation_sum", [None])[i],
-                        "humidity": daily.get("relative_humidity_2m_mean", [None])[i],
-                        "wind_speed": daily.get("wind_speed_10m_max", [None])[i],
-                    }
-                )
-
-            logger.info(f"Fetched {len(results)} days of weather history")
-            return results
-
-        except Exception as e:
-            logger.error(f"Weather history error: {e}")
             return []

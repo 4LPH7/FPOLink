@@ -15,14 +15,6 @@ class VillageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class BlockResponse(BaseModel):
-    id: UUID
-    taluk_id: UUID
-    name: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class TalukResponse(BaseModel):
     id: UUID
     district_id: UUID

@@ -6,7 +6,6 @@ import os
 import tempfile
 from datetime import date
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
 
 from app.data_sources.ceda import CEDAProvider
 from app.data_sources.holidays_tn import (
@@ -216,26 +215,6 @@ def test_ogd_parser_with_synthetic_fixture():
     assert finger_record.min_price == Decimal("142")
     assert finger_record.max_price == Decimal("158")
     assert finger_record.price_date == date(2026, 1, 15)
-
-
-def test_ogd_fetch_prices_mocked():
-    fixtures_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "ogd_turmeric_response_synthetic.json"
-    )
-    with open(fixtures_path, "r", encoding="utf-8") as f:
-        fixture_data = json.load(f)
-
-    provider = OGDProvider(api_key="real_mock_key")
-
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = fixture_data
-    mock_resp.raise_for_status.return_value = None
-
-    with patch("httpx.Client.get", return_value=mock_resp):
-        records = provider.fetch_prices("turmeric", "Erode")
-        assert len(records) == 3
-        assert all(r.district == "Erode" for r in records)
-        assert all(r.source == "ogd" for r in records)
 
 
 def test_tn_festival_features():

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,31 +41,6 @@ class QualitySummaryResponse(BaseModel):
     limited_count: int
     unreliable_count: int
     by_source: dict
-
-
-class PriceTrend(BaseModel):
-    crop_name: str
-    market_name: str
-    current_price: Decimal
-    previous_price: Decimal
-    change_amount: Decimal
-    change_percent: float
-    direction: str  # up / down / stable
-
-
-class PriceHistoryPoint(BaseModel):
-    date: date
-    min_price: Decimal
-    max_price: Decimal
-    modal_price: Decimal
-    arrival_quantity: Optional[float] = None
-
-
-class PriceHistoryResponse(BaseModel):
-    crop_name: str
-    market_name: str
-    period_days: int
-    data: List[PriceHistoryPoint]
 
 
 class ManualPriceEntry(BaseModel):

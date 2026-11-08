@@ -4,9 +4,7 @@ Guarantees that synthetic, demo, and test data cannot contaminate
 farmer-facing responses, dashboard statistics, or ML training pipelines.
 """
 
-from typing import Dict, Set, Tuple
-
-from app.config import settings
+from typing import Dict, Tuple
 
 # Whitelist of real, verified market price sources
 VERIFIED_PRICE_SOURCES: Tuple[str, ...] = ("ceda", "ogd", "agmarknet", "mandiprices_agmarknet")
@@ -30,14 +28,6 @@ def get_real_price_sources() -> Tuple[str, ...]:
     return VERIFIED_PRICE_SOURCES
 
 
-# Default tuple for static references
-REAL_PRICE_SOURCES: Tuple[str, ...] = VERIFIED_PRICE_SOURCES + (
-    (DEMO_PRICE_SOURCE,)
-    if (settings.DEMO_MODE and settings.ENVIRONMENT.lower() != "production")
-    else ()
-)
-REAL_PRICE_SOURCES_SET: Set[str] = set(REAL_PRICE_SOURCES)
-
 # Deterministic source arbitration priority (lower number = higher priority)
 # When multiple sources report for the same crop, market, variety, and date:
 # - ogd is preferred for current/recent days as the official real-time mandi observation.
@@ -49,22 +39,6 @@ SOURCE_PRIORITY: Dict[str, int] = {
     "mandiprices_agmarknet": 2,
     "ceda": 3,
 }
-
-# Synthetic or unverified sources that MUST NEVER be served to farmers
-SYNTHETIC_SOURCES: Tuple[str, ...] = (
-    "ceda_synthetic",
-    "seed",
-    "seed_demo",
-    "demo_seed",
-    "test",
-)
-
-
-def is_real_source(source: str) -> bool:
-    """Return True if source is in the real verified price sources whitelist."""
-    if not source:
-        return False
-    return source.lower().strip() in set(get_real_price_sources())
 
 
 def get_source_priority(source: str) -> int:

@@ -1,64 +1,8 @@
 """Data cleaning utilities for market price data."""
 
-import logging
 from decimal import Decimal
 from statistics import median
 from typing import List
-
-from app.data_sources.base import PriceRecord
-
-logger = logging.getLogger(__name__)
-
-
-def clean_price_records(records: List[PriceRecord]) -> List[PriceRecord]:
-    """Clean and validate a list of price records."""
-    cleaned = []
-    for record in records:
-        if _validate_record(record):
-            record = _normalize_record(record)
-            cleaned.append(record)
-
-    logger.info(f"Cleaned {len(cleaned)}/{len(records)} records")
-    return cleaned
-
-
-def _validate_record(record: PriceRecord) -> bool:
-    """Validate a price record."""
-    # Must have positive modal price
-    if not record.modal_price or record.modal_price <= 0:
-        return False
-
-    # Must have a valid date
-    if not record.price_date:
-        return False
-
-    # Must have crop and market
-    if not record.crop_name or not record.market_name:
-        return False
-
-    # Min should not exceed max
-    if record.min_price and record.max_price:
-        if record.min_price > record.max_price:
-            return False
-
-    return True
-
-
-def _normalize_record(record: PriceRecord) -> PriceRecord:
-    """Normalize a price record."""
-    # Ensure min <= modal <= max
-    if record.min_price > record.modal_price:
-        record.min_price = record.modal_price
-    if record.max_price < record.modal_price:
-        record.max_price = record.modal_price
-
-    # Normalize crop name
-    record.crop_name = record.crop_name.lower().strip()
-
-    # Normalize market name
-    record.market_name = record.market_name.strip()
-
-    return record
 
 
 def detect_anomaly_mad(

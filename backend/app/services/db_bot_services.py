@@ -139,10 +139,6 @@ class DbBotServices:
         async with self._claims_lock:
             self._notice_claims.pop(farmer_id, None)
 
-    async def mark_notice_sent(self, farmer_id: str) -> None:
-        """Record timestamp when first-contact DPDP notice was sent (alias to mark_notice_delivered)."""
-        await self.mark_notice_delivered(farmer_id)
-
     async def latest_price(
         self, crop: str, district: Optional[str] = "Erode"
     ) -> Optional[PriceInfo]:

@@ -190,9 +190,6 @@ class BotServices(Protocol):
     async def release_notice_claim(self, farmer_id: str) -> None:
         """Release leased claim after send failure so future inbound messages can retry."""
 
-    async def mark_notice_sent(self, farmer_id: str) -> None:
-        """Record timestamp when first-contact DPDP notice was sent."""
-
     async def get_state(self, wa_id: str) -> ConvState | None: ...
 
     async def set_state(self, wa_id: str, state: ConvState | None) -> None: ...

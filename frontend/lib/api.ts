@@ -703,30 +703,6 @@ export interface ArbitrageResponse {
   opportunities: ArbitrageOpportunity[];
 }
 
-export interface SpreadPoint {
-  market_id: string;
-  market_name: string;
-  district: string;
-  modal_price: number;
-  min_price: number;
-  max_price: number;
-  price_date: string;
-  quality_score?: number;
-}
-
-export interface SpreadsResponse {
-  crop_id: string;
-  crop_name: string;
-  crop_tamil_name?: string;
-  district_filter?: string;
-  min_price: number;
-  max_price: number;
-  median_price: number;
-  price_spread: number;
-  reporting_markets_count: number;
-  markets: SpreadPoint[];
-}
-
 export interface DistrictItem {
   id: string;
   name: string;
@@ -779,22 +755,6 @@ export async function getArbitrage(
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Failed to fetch arbitrage:", err);
-  }
-  return null;
-}
-
-export async function getSpreads(
-  cropId: string,
-  district?: string
-): Promise<SpreadsResponse | null> {
-  try {
-    const url = district && district !== "all"
-      ? `${API_BASE}/api/v1/intelligence/spreads?crop_id=${encodeURIComponent(cropId)}&district=${encodeURIComponent(district)}`
-      : `${API_BASE}/api/v1/intelligence/spreads?crop_id=${encodeURIComponent(cropId)}`;
-    const res = await safeFetch(url, { cache: "no-store" });
-    if (res.ok) return await res.json();
-  } catch (err) {
-    console.warn("Failed to fetch spreads:", err);
   }
   return null;
 }

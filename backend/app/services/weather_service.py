@@ -6,7 +6,6 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.data_sources.nasa_power import NASAPowerProvider
 from app.data_sources.weather import WeatherProvider
 from app.models.geography import District
 from app.models.weather import WeatherData
@@ -67,7 +66,6 @@ class WeatherService:
     def __init__(self, db: Session):
         self.db = db
         self.open_meteo = WeatherProvider()
-        self.nasa_power = NASAPowerProvider()
 
     def _resolve_coordinates(self, district: str) -> Optional[dict]:
         """Resolve coordinates from dictionary or database."""
@@ -131,55 +129,4 @@ class WeatherService:
 
         self.db.commit()
         logger.info(f"Stored/updated {stored} weather entries for {district}")
-        return stored
-
-    def backfill_history(
-        self,
-        district: str = "Erode",
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-    ) -> int:
-        """Backfill weather history from NASA POWER."""
-        coords = DEFAULT_LOCATIONS.get(district)
-        if not coords:
-            return 0
-
-        start = start_date or date(2020, 1, 1)
-        end = end_date or date.today()
-
-        data = self.nasa_power.fetch_history(
-            latitude=coords["latitude"],
-            longitude=coords["longitude"],
-            start_date=start,
-            end_date=end,
-        )
-
-        stored = 0
-        for entry in data:
-            d = date.fromisoformat(entry["date"])
-            existing = (
-                self.db.query(WeatherData)
-                .filter(
-                    WeatherData.district == district,
-                    WeatherData.date == d,
-                )
-                .first()
-            )
-
-            if not existing:
-                w = WeatherData(
-                    district=district,
-                    date=d,
-                    temperature_max=entry["temperature_max"],
-                    temperature_min=entry["temperature_min"],
-                    rainfall_mm=entry["rainfall_mm"] or 0,
-                    humidity=entry.get("humidity"),
-                    wind_speed=entry.get("wind_speed"),
-                    source="nasa_power",
-                )
-                self.db.add(w)
-                stored += 1
-
-        self.db.commit()
-        logger.info(f"Backfilled {stored} weather entries for {district}")
         return stored
