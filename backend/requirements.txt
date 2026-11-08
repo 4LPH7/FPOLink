@@ -26,7 +26,7 @@ apscheduler==3.11.0
 
 # ML
 scikit-learn==1.6.1
-lightgbm==4.5.0
+lightgbm==4.7.0
 joblib==1.4.2
 pandas==2.2.3
 numpy==2.2.1
