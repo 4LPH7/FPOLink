@@ -30,6 +30,9 @@ For FPO coordinators and the promoters who fund them. Detailed schedule and go/n
 5. **Consent.** Farmers see the data-protection notice on first contact; `STOP` turns alerts off at any time (DPDP Act).
 6. **Support.** Problems go to the pilot contact (add name and number here before the pilot starts).
 
+## Before the first visit
+- Use `docs/FPO_VISIT_CHECKLIST.md`: what to ask, what to show, and how to choose the pilot FPO.
+
 ## Before sending this
 - A native Tamil speaker should read the bot's Tamil replies (`T["ta"]` in `backend/app/services/bot.py`).
 - Fill in the pilot contact above.
