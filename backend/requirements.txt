@@ -29,7 +29,7 @@ scikit-learn==1.6.1
 lightgbm==4.7.0
 joblib==1.4.2
 pandas==3.0.6
-numpy==2.2.1
+numpy==2.5.4
 
 # Features
 holidays==0.63
